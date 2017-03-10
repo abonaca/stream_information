@@ -674,7 +674,7 @@ def load_atlas(present, nobs=50, potential='gal'):
 
 # effects of different params on stream shape
 
-def plot_potstream2(n, pparams=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1)], potential='gal', age=None, nlabel=0):
+def plot_potstream2(n, pparams=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1)], potential='gal', age=None):
     """Plot observed stream and and a model in a test potential"""
 
     obsmode = 'equatorial'
@@ -817,6 +817,138 @@ def plot_potstream2(n, pparams=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1),
     plt.tight_layout(h_pad=0.02, w_pad=0.02)
     plt.subplots_adjust(hspace=0.5, wspace=0.5)
     plt.savefig('../plots/tevo_{0:s}_{1:d}.png'.format(potential, n))
+
+
+# plot model
+def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun], graph=False):
+    """"""
+    
+    obsmode = 'equatorial'
+    footprint = 'sdss'
+    
+    # Load streams
+    if n==-1:
+        observed = load_gd1(present=[0,1,2,3])
+        age = 1.4*u.Gyr
+        mi = 2e4*u.Msun
+        mf = 2e-1*u.Msun
+        x0, v0 = gd1_coordinates()
+        xlims = [[190, 130], [0, 350]]
+        ylims = [[15, 65], [5, 10], [-250, 150], [0, 250]]
+        loc = 2
+        name = 'GD-1'
+        footprint = 'sdss'
+    elif n==-3:
+        observed = load_tri(present=[0,1,2,3])
+        age = 5*u.Gyr
+        mi = 2e4*u.Msun
+        mf = 2e-1*u.Msun
+        x0, v0 = tri_coordinates()
+        xlims = [[25, 19], [0, 350]]
+        ylims = [[10, 50], [20, 45], [-175, -50], [0, 250]]
+        loc = 1
+        name = 'Triangulum'
+        footprint = 'sdss'
+    elif n==-4:
+        observed = load_atlas(present=[0,1,2,3])
+        age = 2*u.Gyr
+        mi = 2e4*u.Msun
+        mf = 2e-1*u.Msun
+        x0, v0 = atlas_coordinates()
+        xlims = [[35, 10], [0, 350]]
+        ylims = [[-40, -20], [15, 25], [50, 200], [0, 250]]
+        loc = 3
+        name = 'ATLAS'
+        footprint = 'none'
+    else:
+        observed = load_pal5(present=[0,1,2,3])
+        age = 2.7*u.Gyr
+        mi = 1e5*u.Msun
+        mf = 2e4*u.Msun
+        x0, v0 = pal5_coordinates2()
+        xlims = [[245, 225], [0, 350]]
+        ylims = [[-4, 10], [21, 27], [-80, -20], [0, 250]]
+        loc = 3
+        name = 'Pal 5'
+        footprint = 'sdss'
+        
+    ######################
+    # Create mock stream
+
+    potential = 'lmc'
+    mlmc, xlmc = lmc_properties()
+    # fixed: disk and bulge
+    pf = [3.4e10, 0.7, 1e11, 6.5, 0.26]
+    uf = [u.Msun, u.kpc, u.Msun, u.kpc, u.kpc]
+    pfixed = [x*y for x,y in zip(pf, uf)]
+    # free: halo + lmc mass ; fixed again: lmc position
+    pparams = pfixed + pparams0 + [x for x in xlmc]
+    
+    distance = 8.3*u.kpc
+    mr = pparams[5]**2 * pparams[6] / G * (np.log(1 + distance/pparams[6]) - distance/(distance + pparams[6]))
+    vc_ = np.sqrt(G*mr/distance)
+    vsun['vcirc'] = np.sqrt((198*u.km/u.s)**2 + vc_**2)
+    
+    params = {'generate': {'x0': x0*u.kpc, 'v0': v0*u.km/u.s, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': 1*u.Myr, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mw_observer, 'footprint': footprint}}
+    
+    stream = Stream(**params['generate'])
+    stream.generate()
+    stream.observe(**params['observe'])
+    
+    #########################
+    # Plot observed streams
+    
+    if graph:
+        modcol = 'r'
+        obscol = '0.5'
+        ylabel = ['Dec (deg)', 'Distance (kpc)', 'Radial velocity (km/s)']
+        Ndim = np.shape(observed.obs)[0]
+    
+        plt.close()
+        fig, ax = plt.subplots(1, 3, figsize=(12,4))
+        
+        for i in range(3):
+            plt.sca(ax[i])
+            
+            plt.xlim(xlims[0][0], xlims[0][1])
+            plt.ylim(ylims[i][0], ylims[i][1])
+            
+            plt.xlabel('R.A. (deg)')
+            plt.ylabel(ylabel[i])
+            
+            if i<Ndim-1:
+                if i<2:
+                    sample = np.arange(np.size(observed.obs[0]), dtype=int)
+                else:
+                    sample = observed.obs[i+1]>MASK
+                plt.plot(observed.obs[0][sample], observed.obs[i+1][sample], 's', color=obscol, mec='none', ms=8)
+            
+            plt.plot(stream.obs[0], stream.obs[i+1], 'o', color=modcol, mec='none', ms=4)
+        
+        plt.tight_layout()
+    
+    return stream
+
+def model_excursions(n):
+    """Create models around a fiducial halo potential"""
+    
+    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun]
+    Npar = len(pparams0)
+    pid = [0,1,2,3,5,6]
+    dp = [10*u.km/u.s, 1*u.kpc, 0.1*u.rad, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.2e11*u.Msun]
+    
+    Nvar = len(pid)
+    
+    for i in range(Nvar):
+        for k in (-1, 0, 1):
+            pparams = pparams0
+            pparams[pid[i]] += k*dp[i]
+            
+            stream = stream_model(n, pparams0=pparams)
+            
+            np.save('../data/models/stream_{:d}_{:d}_{:d}'.format(n, pid[i], k), stream)
+
+
 
 # residuals
 import scipy.interpolate
