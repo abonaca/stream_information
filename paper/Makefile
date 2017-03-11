@@ -5,7 +5,7 @@ RM          = rm -rf
 TMP_SUFFS   = pdf aux bbl blg log dvi ps eps out brf
 CHECK_RERUN =
 
-NAME = main
+NAME = crlb
 
 all: ${NAME}.pdf
 
