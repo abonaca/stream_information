@@ -6,17 +6,22 @@
 
 \documentclass[modern]{aastex61}
 
+% typography
+\setlength{\parindent}{1.\baselineskip}
+\newcommand{\acronym}[1]{{\small{#1}}}
+\newcommand{\CRLB}{\acronym{CRLB}}
+
+% aastex parameters
 %%\hypersetup{linkcolor=red,citecolor=green,filecolor=cyan,urlcolor=magenta}
 \received{not yet; THIS IS A DRAFT}
 %\revised{not yet}
 %\accepted{not yet}
 %% Adds "Submitted to " the arguement.
 %\submitjournal{ApJ}
-
 \shorttitle{information in stellar streams}
 \shortauthors{bonaca et al.}
 
-\begin{document}
+\begin{document}\sloppy\sloppypar\raggedbottom\frenchspacing % trust me
 
 \title{The information content in cold stellar streams}
 
@@ -35,7 +40,7 @@ New York University}
 \affiliation{Flatiron Institute, Simons Foundation}
 \affiliation{Max-Planck-Institut f\"ur Astronomie, Heidelberg}
 
-\begin{abstract}
+\begin{abstract}\noindent % trust me
 Cold stellar streams---produced by tidal disruptions of globular
 clusters (or equivalent)---are long-lived, coherent dynamical features
 in the stellar halo of the Milky Way.
@@ -45,7 +50,7 @@ dark-matter halo.
 Because of their different positions in phase space, different ages,
 and different levels of observational scrutiny, different streams tell
 us different things about the Galaxy.
-Here we employ a Cram\'er--Rao (CRLB) or Fisher-matrix approach to
+Here we employ a Cram\'er--Rao (\CRLB) or Fisher-matrix approach to
 understand the quantitative information content in the known
 streams (Pal5, GD-1, Styx, [full list here]).
 This approach depends on the existence of a generative model of
@@ -60,13 +65,13 @@ dark-matter halo properties and other parameters, including the mass
 of the Large Magellanic Cloud, the total dark-matter mass, and other
 potential parameters, but we find that simultaneous fitting of multiple
 streams ought to precisely constrain all parameters well.
-The CRLB on any one parameter depends strongly on the model freedom;
+The \CRLB\ on any one parameter depends strongly on the model freedom;
 as we permit more potential freedom, the information about, say, halo
 triaxiality, reduces.
-We perform experiments to demonstrate this using some potential basis
-functions that permit great freedom in the potential on intermediate
+We perform experiments to demonstrate this using potential basis
+functions that permit great freedom in the gravitational potential on intermediate
 scales.
-The CRLB formalism also permits us to assess the value of future
+The \CRLB\ formalism also permits us to assess the value of future
 measurements of stellar velocities, distances, and proper motions. We
 make some comments about the information value of various new
 observations that could be made of particular known streams.
