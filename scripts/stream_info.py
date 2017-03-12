@@ -829,7 +829,7 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
     # Load streams
     if n==-1:
         observed = load_gd1(present=[0,1,2,3])
-        age = 1.4*u.Gyr
+        age = 3*u.Gyr
         mi = 2e4*u.Msun
         mf = 2e-1*u.Msun
         x0, v0 = gd1_coordinates()
@@ -877,7 +877,7 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
 
     potential = 'lmc'
     mlmc, xlmc = lmc_properties()
-    # fixed: disk and bulge
+    # fixed: bulge and disk
     pf = [3.4e10, 0.7, 1e11, 6.5, 0.26]
     uf = [u.Msun, u.kpc, u.Msun, u.kpc, u.kpc]
     pfixed = [x*y for x,y in zip(pf, uf)]
@@ -929,25 +929,197 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
     
     return stream
 
-def model_excursions(n):
+def model_excursions(n, Nex=1):
     """Create models around a fiducial halo potential"""
     
     pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun]
     Npar = len(pparams0)
-    pid = [0,1,2,3,5,6]
-    dp = [10*u.km/u.s, 1*u.kpc, 0.1*u.rad, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.2e11*u.Msun]
     
+    pid = [0,1,3,5,6]
+    dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.4e11*u.Msun]
     Nvar = len(pid)
     
     for i in range(Nvar):
-        for k in (-1, 0, 1):
-            pparams = pparams0
-            pparams[pid[i]] += k*dp[i]
+        for k in range(-Nex, Nex+1):
+            pparams = [x for x in pparams0]
+            pparams[pid[i]] = pparams[pid[i]] + k*dp[i]
             
             stream = stream_model(n, pparams0=pparams)
             
-            np.save('../data/models/stream_{:d}_{:d}_{:d}'.format(n, pid[i], k), stream)
+            np.save('../data/models/stream_{:d}_{:d}_{:d}'.format(n, pid[i], k), stream.obs)
 
+def plot_model(n):
+    """"""
+    
+    # Load streams
+    if n==-1:
+        observed = load_gd1(present=[0,1,2,3])
+        age = 1.4*u.Gyr
+        mi = 2e4*u.Msun
+        mf = 2e-1*u.Msun
+        x0, v0 = gd1_coordinates()
+        xlims = [[190, 130], [0, 350]]
+        ylims = [[15, 65], [5, 10], [-250, 150], [0, 250]]
+        loc = 2
+        name = 'GD-1'
+        footprint = 'sdss'
+    elif n==-3:
+        observed = load_tri(present=[0,1,2,3])
+        age = 5*u.Gyr
+        mi = 2e4*u.Msun
+        mf = 2e-1*u.Msun
+        x0, v0 = tri_coordinates()
+        xlims = [[25, 19], [0, 350]]
+        ylims = [[10, 50], [20, 45], [-175, -50], [0, 250]]
+        loc = 1
+        name = 'Triangulum'
+        footprint = 'sdss'
+    elif n==-4:
+        observed = load_atlas(present=[0,1,2,3])
+        age = 2*u.Gyr
+        mi = 2e4*u.Msun
+        mf = 2e-1*u.Msun
+        x0, v0 = atlas_coordinates()
+        xlims = [[35, 10], [0, 350]]
+        ylims = [[-40, -20], [15, 25], [50, 200], [0, 250]]
+        loc = 3
+        name = 'ATLAS'
+        footprint = 'none'
+    else:
+        observed = load_pal5(present=[0,1,2,3])
+        age = 2.7*u.Gyr
+        mi = 1e5*u.Msun
+        mf = 2e4*u.Msun
+        x0, v0 = pal5_coordinates2()
+        xlims = [[245, 225], [0, 350]]
+        ylims = [[-4, 10], [21, 27], [-80, -20], [0, 250]]
+        loc = 3
+        name = 'Pal 5'
+        footprint = 'sdss'
+    
+    modcol = 'r'
+    obscol = '0.5'
+    ylabel = ['Dec', 'd', '$V_r$']
+    Ndim = np.shape(observed.obs)[0]
+    
+    pid = [0,1,3,5,6]
+    Nvar = len(pid)
+
+    plt.close()
+    fig, ax = plt.subplots(Nvar, 3, figsize=(8,12), sharex=True, sharey='col')
+    
+    # plot data
+    for i in range(3):
+        for j in range(Nvar):
+            plt.sca(ax[j][i])
+            
+            plt.xlim(xlims[0][0], xlims[0][1])
+            plt.ylim(ylims[i][0], ylims[i][1])
+            
+            if j==Nvar-1:
+                plt.xlabel('R.A.', fontsize='small')
+            
+            plt.ylabel(ylabel[i], fontsize='small')
+            
+            if i<Ndim-1:
+                if i<2:
+                    sample = np.arange(np.size(observed.obs[0]), dtype=int)
+                else:
+                    sample = observed.obs[i+1]>MASK
+                plt.plot(observed.obs[0][sample], observed.obs[i+1][sample], 's', color=obscol, mec='none', ms=8)
+    
+    # plot models
+    for i, p in enumerate(pid):
+        # fiducial
+        stream = np.load('../data/models/stream_{:d}_{:d}_{:d}.npy'.format(n, p, 0))
+        for k in range(3):
+            plt.sca(ax[i][k])
+            plt.plot(stream[0], stream[k+1], 'o', color='k', mec='none', ms=2)
+        
+        for e in range(1, 6):
+            for s in (-1, 1):
+                stream = np.load('../data/models/stream_{:d}_{:d}_{:d}.npy'.format(n, p, s*e))
+                modcol = mpl.cm.RdBu(0.5 + s*e/10)
+                
+                for k in range(3):
+                    plt.sca(ax[i][k])
+                    plt.plot(stream[0], stream[k+1], 'o', color=modcol, mec='none', ms=4)
+    
+    plt.tight_layout(h_pad=0, w_pad=0.2)
+    
+
+def crb_all(n, Ndim=6, Nex=1, sign=1):
+    """"""
+    # Load streams
+    if n==-1:
+        observed = load_gd1(present=[0,1,2,3])
+        xi = [140, 180]
+        xlims = [[190, 130], [0, 350]]
+        ylims = [[15, 65], [5, 10], [-250, 150], [0, 250]]
+        loc = 2
+        name = 'GD-1'
+    elif n==-3:
+        observed = load_tri(present=[0,1,2,3])
+        xi = [20, 24]
+        xlims = [[25, 19], [0, 350]]
+        ylims = [[10, 50], [20, 45], [-175, -50], [0, 250]]
+        loc = 1
+        name = 'Triangulum'
+    elif n==-4:
+        observed = load_atlas(present=[0,1,2,3])
+        xi = [15, 28]
+        xlims = [[35, 10], [0, 350]]
+        ylims = [[-40, -20], [15, 25], [50, 200], [0, 250]]
+        loc = 3
+        name = 'ATLAS'
+    else:
+        observed = load_pal5(present=[0,1,2,3])
+        xi = [227, 242]
+        xlims = [[245, 225], [0, 350]]
+        ylims = [[-4, 10], [21, 27], [-80, -20], [0, 250]]
+        loc = 3
+        name = 'Pal 5'
+        
+    
+    # typical uncertainties
+    sig_obs = np.array([0.5, 2, 5, 0.1, 0.1])
+    
+    # mock observations
+    Nobs = 50
+    ra = np.linspace(np.min(observed.obs[0]), np.max(observed.obs[0]), Nobs)
+    err = np.tile(sig_obs, Nobs).reshape(Nobs,-1)
+    
+    pid = [0,1,3,5,6]
+    dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.4e11*u.Msun]
+    Nvar = len(pid)
+    
+    Ndata = Nobs * (Ndim - 1)
+    dydx = np.empty((Nvar, Ndata))
+    cyd = np.empty(Ndata)
+    
+    # find derivatives, uncertainties
+    for k in range(1,Ndim):
+        fits = [None]*2
+        for l, p in enumerate(pid):
+            
+            for i, j in enumerate(sorted([0,1*Nex*sign])):
+                stream = np.load('../data/models/stream_{0:d}_{1:d}_{2:d}.npy'.format(n, pid[l], j))
+                fits[i] = np.poly1d(np.polyfit(stream[0], stream[k],3))
+            
+            dydx[l][(k-1)*Nobs:k*Nobs] = (fits[1](ra) - fits[0](ra))/(dp[l].value*Nex)
+            #print(fits[1], fits[0])
+            cyd[(k-1)*Nobs:k*Nobs] = err[:,k-1]**2
+    
+    cy = np.diag(cyd)
+    cyi = np.linalg.inv(cy)
+    
+    cxi = np.matmul(dydx, np.matmul(cyi, dydx.T))
+
+    cx = np.linalg.inv(cxi)
+    sx = np.sqrt(np.diag(cx))
+    print(sx)
+
+    np.save('../data/crb/full_cxi_{:d}_{:d}'.format(n, Ndim), cxi)
 
 
 # residuals
