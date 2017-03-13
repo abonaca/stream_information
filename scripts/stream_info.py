@@ -1200,6 +1200,7 @@ def plot_crb_all():
         plt.legend(frameon=False, fontsize='x-small', handlelength=1, loc=3)
             
     plt.tight_layout(h_pad=0, w_pad=0)
+    plt.savefig('../plots/crlb_2d.png', bbox_inches='tight')
 
 # residuals
 import scipy.interpolate
