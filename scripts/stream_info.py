@@ -1159,7 +1159,7 @@ def plot_crb_all(paper=False):
                 width = np.sqrt(w[0])*2
                 height = np.sqrt(w[1])*2
                 
-                e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.bone(l/5), lw=2)
+                e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.bone(l/4), lw=2)
                 ax[j-1][i].add_artist(e)
                 
                 plt.xlim(-150,150)
@@ -1184,7 +1184,7 @@ def plot_crb_all(paper=False):
             width = np.sqrt(w[0])*2
             height = np.sqrt(w[1])*2
             
-            e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.bone(l/5), lw=2)
+            e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.bone(l/4), lw=2)
             ax[j-1][Nstr].add_artist(e)
             
             plt.xlim(-150,150)
@@ -1199,7 +1199,7 @@ def plot_crb_all(paper=False):
             plt.axis('off')
         
         plt.sca(ax[Nvar-3][Nstr+1])
-        plt.plot(np.linspace(0,1,10), '-', color=mpl.cm.bone(l/5), lw=2, label=labels[l])
+        plt.plot(np.linspace(0,1,10), '-', color=mpl.cm.bone(l/4), lw=2, label=labels[l])
         plt.xlim(-2,-1)
         plt.legend(frameon=False, fontsize='small', handlelength=1, loc=3)
             
