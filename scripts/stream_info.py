@@ -1121,10 +1121,14 @@ def crb_all(n, Ndim=6, Nex=1, sign=1):
 
     np.save('../data/crb/full_cxi_{:d}_{:d}'.format(n, Ndim), cxi)
 
-def plot_crb_all():
+def plot_crb_all(paper=False):
     """Plot 2D Cramer-Rao lower bounds for the MW halo parameters based on individual streams and their combination"""
     
-    params = ['$V_h$ (km/s)', '$R_h$ (kpc)', '$q_1$', '$q_z$', '$M_{LMC}$']
+    mpl.rcParams['axes.linewidth'] = 1
+    mpl.rcParams['font.size'] = 15
+    
+    params0 = ['$V_h$ (km/s)', '$R_h$ (kpc)', '$q_1$', '$q_z$', '$M_{LMC}$']
+    params = ['$\Delta$ '+x for x in params0]
     Nvar = len(params)
     
     streams = [-1,-2,-3,-4]
@@ -1155,7 +1159,7 @@ def plot_crb_all():
                 width = np.sqrt(w[0])*2
                 height = np.sqrt(w[1])*2
                 
-                e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.bone(Ndim/7), lw=2)
+                e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.bone(l/5), lw=2)
                 ax[j-1][i].add_artist(e)
                 
                 plt.xlim(-150,150)
@@ -1180,7 +1184,7 @@ def plot_crb_all():
             width = np.sqrt(w[0])*2
             height = np.sqrt(w[1])*2
             
-            e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.bone(Ndim/7), lw=2)
+            e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.bone(l/5), lw=2)
             ax[j-1][Nstr].add_artist(e)
             
             plt.xlim(-150,150)
@@ -1195,12 +1199,17 @@ def plot_crb_all():
             plt.axis('off')
         
         plt.sca(ax[Nvar-3][Nstr+1])
-        plt.plot(np.linspace(0,1,10), '-', color=mpl.cm.bone(Ndim/7), lw=2, label=labels[l])
+        plt.plot(np.linspace(0,1,10), '-', color=mpl.cm.bone(l/5), lw=2, label=labels[l])
         plt.xlim(-2,-1)
-        plt.legend(frameon=False, fontsize='x-small', handlelength=1, loc=3)
+        plt.legend(frameon=False, fontsize='small', handlelength=1, loc=3)
             
     plt.tight_layout(h_pad=0, w_pad=0)
-    plt.savefig('../plots/crlb_2d.png', bbox_inches='tight')
+    plt.savefig('../plots/crlb_2d.pdf', bbox_inches='tight')
+    if paper:
+        plt.savefig('../paper/crlb_2d.pdf', bbox_inches='tight')
+
+    mpl.rcParams['axes.linewidth'] = 2
+    mpl.rcParams['font.size'] = 18
 
 # residuals
 import scipy.interpolate
