@@ -892,6 +892,7 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
     for i in range(3):
         x0[i] += pparams0[7+i].to(u.kpc).value
         v0[i] += pparams0[10+i].to(u.km/u.s).value
+    pparams0[7:]
     
     # MWPotential2014
     #R0 ( kpc) 8 fixed
@@ -983,10 +984,14 @@ def get_varied_pars(vary):
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.4e11*u.Msun]
     elif vary=='progenitor':
         pid = [7,8,9,10,11,12]
-        dp = [0.2*u.kpc for x in range(3)] + [10*u.km/u.s for x in range(3)]
+        dp = [0.1*u.kpc for x in range(3)] + [1*u.km/u.s for x in range(3)]
     elif vary=='all':
-        pid = [0,1,3,5,6,7,8,9,10,11,12]
-        dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.4e11*u.Msun] + [0.005*u.kpc for x in range(3)] + [0.05*u.km/u.s for x in range(3)]
+        pid = []
+        dp = []
+        for v in ['potential', 'progenitor']:
+            o1, o2 = get_varied_pars(v)
+            pid += o1
+            dp += o2
     else:
         pid = []
         dp = []
