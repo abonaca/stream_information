@@ -984,7 +984,7 @@ def get_varied_pars(vary):
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.4e11*u.Msun]
     elif vary=='progenitor':
         pid = [7,8,9,10,11,12]
-        dp = [0.1*u.kpc for x in range(3)] + [1*u.km/u.s for x in range(3)]
+        dp = [0.2*u.kpc for x in range(3)] + [2*u.km/u.s for x in range(3)]
     elif vary=='all':
         pid = []
         dp = []
