@@ -961,16 +961,7 @@ def model_excursions(n, Nex=1, vary='potential'):
     pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
     Npar = len(pparams0)
     
-    if vary=='potential':
-        pid = [0,1,3,5,6]
-        dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.4e11*u.Msun]
-    elif vary=='progenitor':
-        pid = [7,8,9,10,11,12]
-        dp = [0.2*u.kpc for x in range(3)] + [10*u.km/u.s for x in range(3)]
-    else:
-        pid = []
-        dp = []
-    
+    pid, dp = get_varied_pars(vary)
     Nvar = len(pid)
     
     for i in range(Nvar):
@@ -982,7 +973,40 @@ def model_excursions(n, Nex=1, vary='potential'):
             
             np.save('../data/models/stream_{:d}_{:d}_{:d}'.format(n, pid[i], k), stream.obs)
 
-def plot_model(n):
+def get_varied_pars(vary):
+    """Return indices and steps for a preset of varied parameters
+    Parameters:
+    vary - string setting the parameter combination to be varied, options: 'potential', 'progenitor', 'all'"""
+    
+    if vary=='potential':
+        pid = [0,1,3,5,6]
+        dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.4e11*u.Msun]
+    elif vary=='progenitor':
+        pid = [7,8,9,10,11,12]
+        dp = [0.2*u.kpc for x in range(3)] + [10*u.km/u.s for x in range(3)]
+    elif vary=='all':
+        pid = [0,1,3,5,6,7,8,9,10,11,12]
+        dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.4e11*u.Msun] + [0.005*u.kpc for x in range(3)] + [0.05*u.km/u.s for x in range(3)]
+    else:
+        pid = []
+        dp = []
+    
+    return (pid, dp)
+
+def get_parlabel(pid):
+    """Return label for a list of parameter ids
+    Parameter:
+    pid - list of parameter ids"""
+    
+    master = ['$V_h$', '$R_h$', '$\phi$', '$q_1$', '$q_2$', '$q_z$', '$M_{lmc}$', '$X_p$', '$Y_p$', '$Z_p$', '$V_{x_p}$', '$V_{y_p}$', '$V_{z_p}$']
+    labels = []
+    
+    for i in pid:
+        labels += [master[i]]
+    
+    return labels
+
+def plot_model(n, vary='potential'):
     """"""
     
     # Load streams
@@ -1036,7 +1060,8 @@ def plot_model(n):
     ylabel = ['Dec', 'd', '$V_r$']
     Ndim = np.shape(observed.obs)[0]
     
-    pid = [0,1,3,5,6]
+    pid, dp = get_varied_pars(vary)
+    labels = get_parlabel(pid)
     Nvar = len(pid)
 
     plt.close()
@@ -1078,11 +1103,13 @@ def plot_model(n):
                 for k in range(3):
                     plt.sca(ax[i][k])
                     plt.plot(stream[0], stream[k+1], 'o', color=modcol, mec='none', ms=4)
+        
+        ax[i][0].annotate(labels[i], xy=(0, 0.5), xytext=(-ax[i][0].yaxis.labelpad - 5, 0), xycoords=ax[i][0].yaxis.label, textcoords='offset points', fontsize='small', ha='right', va='center', rotation='vertical')
     
-    plt.tight_layout(h_pad=0, w_pad=0.2)
+    plt.tight_layout(h_pad=0, w_pad=0.2, rect=[0.02,0,1,1])
     
 
-def crb_all(n, Ndim=6, Nex=1, sign=1):
+def crb_all(n, Ndim=6, Nex=1, sign=1, vary='potential'):
     """"""
     # Load streams
     if n==-1:
@@ -1113,7 +1140,6 @@ def crb_all(n, Ndim=6, Nex=1, sign=1):
         ylims = [[-4, 10], [21, 27], [-80, -20], [0, 250]]
         loc = 3
         name = 'Pal 5'
-        
     
     # typical uncertainties
     sig_obs = np.array([0.5, 2, 5, 0.1, 0.1])
@@ -1123,8 +1149,7 @@ def crb_all(n, Ndim=6, Nex=1, sign=1):
     ra = np.linspace(np.min(observed.obs[0]), np.max(observed.obs[0]), Nobs)
     err = np.tile(sig_obs, Nobs).reshape(Nobs,-1)
     
-    pid = [0,1,3,5,6]
-    dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.4e11*u.Msun]
+    pid, dp = get_varied_pars(vary)
     Nvar = len(pid)
     
     Ndata = Nobs * (Ndim - 1)
@@ -1151,7 +1176,7 @@ def crb_all(n, Ndim=6, Nex=1, sign=1):
 
     cx = np.linalg.inv(cxi)
     sx = np.sqrt(np.diag(cx))
-    print(sx)
+    print(np.diag(cx))
 
     np.save('../data/crb/full_cxi_{:d}_{:d}'.format(n, Ndim), cxi)
 
