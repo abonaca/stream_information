@@ -820,7 +820,7 @@ def plot_potstream2(n, pparams=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1),
 
 
 # plot model
-def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun], graph=False):
+def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s], graph=False):
     """"""
     
     obsmode = 'equatorial'
@@ -875,14 +875,40 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
     ######################
     # Create mock stream
 
+    #potential parameters
     potential = 'lmc'
     mlmc, xlmc = lmc_properties()
     # fixed: bulge and disk
+    # Kupper et al. (2015)
     pf = [3.4e10, 0.7, 1e11, 6.5, 0.26]
+    # ~MWPotential2014
+    pf = [0.5e10, 0.7, 6.8e10, 3, 0.28]
     uf = [u.Msun, u.kpc, u.Msun, u.kpc, u.kpc]
     pfixed = [x*y for x,y in zip(pf, uf)]
     # free: halo + lmc mass ; fixed again: lmc position
-    pparams = pfixed + pparams0 + [x for x in xlmc]
+    pparams = pfixed + pparams0[:7] + [x for x in xlmc]
+    
+    # progenitor parameters
+    for i in range(3):
+        x0[i] += pparams0[7+i].to(u.kpc).value
+        v0[i] += pparams0[10+i].to(u.km/u.s).value
+    
+    # MWPotential2014
+    #R0 ( kpc) 8 fixed
+    #vc(R0) ( km s-1
+    #) 220 fixed
+    #fb 0.05 . . .
+    #fd 0.60 . . .
+    #fh 0.35 . . .
+    #a ( kpc) 3.0 . . .
+    #b ( pc) 280 . . .
+    #Halo rs ( kpc) 16 . . .
+    #Mvir (1012 M) 0.8 . . .
+    #rvir ( kpc) 245
+    # pf = [0.5e10, 0.7, 6.8e10, 3, 0.28]
+    
+    # Licquia & Newman (2015)
+    #pf = [0.9e10, 5.2e10]
     
     distance = 8.3*u.kpc
     mr = pparams[5]**2 * pparams[6] / G * (np.log(1 + distance/pparams[6]) - distance/(distance + pparams[6]))
@@ -929,14 +955,22 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
     
     return stream
 
-def model_excursions(n, Nex=1):
+def model_excursions(n, Nex=1, vary='potential'):
     """Create models around a fiducial halo potential"""
     
-    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun]
+    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
     Npar = len(pparams0)
     
-    pid = [0,1,3,5,6]
-    dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.4e11*u.Msun]
+    if vary=='potential':
+        pid = [0,1,3,5,6]
+        dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.4e11*u.Msun]
+    elif vary=='progenitor':
+        pid = [7,8,9,10,11,12]
+        dp = [0.2*u.kpc for x in range(3)] + [10*u.km/u.s for x in range(3)]
+    else:
+        pid = []
+        dp = []
+    
     Nvar = len(pid)
     
     for i in range(Nvar):
