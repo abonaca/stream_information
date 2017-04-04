@@ -1211,6 +1211,7 @@ def plot_crb_all(paper=False):
         # Individual streams
         for i in range(Nstr):
             cxi = np.load('../data/crb/full_cxi_{:d}_{:d}.npy'.format(streams[i], Ndim))
+            cxi = cxi[:Nvar,:Nvar]
             cxi_all[l] += cxi
             cx = np.linalg.inv(cxi)
             
@@ -1274,6 +1275,84 @@ def plot_crb_all(paper=False):
 
     mpl.rcParams['axes.linewidth'] = 2
     mpl.rcParams['font.size'] = 18
+
+def plot_crb_triangle(n=-1, vary='potential', out='save'):
+    """Produce a triangle plot of 2D Cramer-Rao bounds for all model parameters using a given stream"""
+    
+    if vary=='all':
+        mpl.rcParams['axes.linewidth'] = 1
+        mpl.rcParams['font.size'] = 6
+        mpl.rcParams['xtick.major.size'] = 2
+        mpl.rcParams['ytick.major.size'] = 2
+    
+    pid, dp = get_varied_pars(vary)
+    Nvar = len(pid)
+    
+    columns = ['GD-1', 'Pal 5', 'Triangulum', 'ATLAS']
+    name = columns[int(np.abs(n)-1)]
+    
+    labels = ['RA, Dec, d', 'RA, Dec, d,\n$V_r$', 'RA, Dec, d,\n$V_r$, $\mu_\\alpha$, $\mu_\\delta$']
+    params0 = ['$V_h$ (km/s)', '$R_h$ (kpc)', '$q_1$', '$q_z$', '$M_{LMC}$', '$X_p$', '$Y_p$', '$Z_p$', '$V_{xp}$', '$V_{yp}$', '$V_{zp}$']
+    params = ['$\Delta$ '+x for x in params0]
+    ylim = [150, 20, 0.5, 0.5, 5e11]
+    
+    plt.close()
+    fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(8,8), sharex='col', sharey='row')
+    
+    # plot 2d bounds in a triangle fashion
+    for l, Ndim in enumerate([3,4,6]):
+        cxi = np.load('../data/crb/full_cxi_{:d}_{:d}.npy'.format(n, Ndim))
+        cxi = cxi[:Nvar,:Nvar]
+        cx = np.linalg.inv(cxi)
+        
+        for i in range(0,Nvar-1):
+            for j in range(i+1,Nvar):
+                plt.sca(ax[j-1][i])
+                cx_2d = np.array([[cx[i][i], cx[i][j]], [cx[j][i], cx[j][j]]])
+                
+                w, v = np.linalg.eig(cx_2d)
+                if np.all(np.isreal(v)):
+                    theta = np.degrees(np.arccos(v[0][0]))
+                    width = np.sqrt(w[0])*2
+                    height = np.sqrt(w[1])*2
+                    
+                    e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.bone(l/4), lw=2)
+                    plt.gca().add_artist(e)
+                
+                if vary=='potential':
+                    plt.xlim(-ylim[i],ylim[i])
+                    plt.ylim(-ylim[j], ylim[j])
+                else:
+                    if l==1:
+                        plt.xlim(-0.5*width, 0.5*width)
+                        plt.ylim(-0.5*height, 0.5*height)
+                
+                if j==Nvar-1:
+                    plt.xlabel(params[i])
+                
+                if i==0:
+                    plt.ylabel(params[j])
+    
+    # turn off unused axes
+    for i in range(0,Nvar-1):
+        for j in range(i+1,Nvar-1):
+            plt.sca(ax[i][j])
+            plt.axis('off')
+    
+    plt.suptitle('{} stream'.format(name), fontsize='large')
+    plt.tight_layout(h_pad=0.0, w_pad=0.0, rect=[0,0,1,0.97])
+    
+    if vary=='all':
+        mpl.rcParams['axes.linewidth'] = 2
+        mpl.rcParams['font.size'] = 18
+        mpl.rcParams['xtick.major.size'] = 10
+        mpl.rcParams['ytick.major.size'] = 10
+    
+    if out=='save':
+        plt.savefig('../plots/crb_individual_{}_{}.png'.format(n, vary))
+    else:
+        return fig
+
 
 # residuals
 import scipy.interpolate
