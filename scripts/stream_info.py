@@ -3,6 +3,7 @@ from __future__ import division, print_function
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 import streakline
 #import halo_masses as hm
@@ -1353,6 +1354,17 @@ def plot_crb_triangle(n=-1, vary='potential', out='save'):
     else:
         return fig
 
+def collate_individual_crb(vary='potential'):
+    """"""
+    
+    # open pdf
+    pp = PdfPages("../plots/crb_allstreams_{}.pdf".format(vary))
+    
+    for n in [-1,-2,-3,-4]:
+        fig = plot_crb_triangle(n=n, vary=vary, out='return')
+        pp.savefig(fig)
+    
+    pp.close()
 
 # residuals
 import scipy.interpolate
