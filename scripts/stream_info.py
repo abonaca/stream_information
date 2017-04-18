@@ -820,6 +820,123 @@ def plot_potstream2(n, pparams=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1),
     plt.savefig('../plots/tevo_{0:s}_{1:d}.png'.format(potential, n))
 
 
+# choose appropriate step size when calculating derivatives
+def get_steps():
+    """"""
+    Nstep = 20
+    step = np.logspace(-2, 1, Nstep)
+    step = np.linspace(0.1, 10, Nstep)
+    step = np.concatenate([-step[::-1], step])
+    
+    return (Nstep, step)
+
+def explore_stepsize(n, p=0, vary='all'):
+    """Create models with smoothly varying parameter p values and save polynomial stream tracks"""
+    
+    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
+    pid, dp = get_varied_pars(vary)
+
+    Nstep, step = get_steps()
+
+    Ndim = 6
+    Ndeg = 3
+    fits = np.empty((2*Nstep+1, Ndim-1, Ndeg+1))
+    
+    # fiducial model
+    stream = stream_model(n, pparams0=pparams0)
+    for j in range(Ndim-1):
+        fits[0][j] = np.poly1d(np.polyfit(stream.obs[0], stream.obs[j+1], Ndeg))
+    
+    # excursions
+    for i, s in enumerate(step):
+        pparams = [x for x in pparams0]
+        pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
+        
+        stream = stream_model(n, pparams0=pparams)
+        for j in range(Ndim-1):
+            fits[i+1][j] = np.poly1d(np.polyfit(stream.obs[0], stream.obs[j+1], Ndeg))
+    
+    np.savez('../data/stepsize_{:d}_{:d}'.format(n, p), fits)
+
+def get_all_stepsizes():
+    """"""
+    streams = np.array([-1, -2, -3, -4])
+    
+    for n in streams[1:]:
+        for p in range(11):
+            print(n, p)
+            explore_stepsize(n, p=p)
+
+def dydx_stepsize(n, Nobs=10, vary='all'):
+    """Plot derivatives dy/dx as a function of parameter step delta x"""
+    
+    mpl.rcParams['axes.linewidth'] = 1
+    mpl.rcParams['font.size'] = 15
+
+    # Load streams
+    if n==-1:
+        observed = load_gd1(present=[0,1,2,3])
+        name = 'GD-1'
+    elif n==-3:
+        observed = load_tri(present=[0,1,2,3])
+        name = 'Triangulum'
+    elif n==-4:
+        observed = load_atlas(present=[0,1,2,3])
+        name = 'ATLAS'
+    else:
+        observed = load_pal5(present=[0,1,2,3])
+        name = 'Pal 5'
+    
+    ra = np.linspace(np.min(observed.obs[0]), np.max(observed.obs[0]), Nobs)
+    
+    Ndim = 5
+    dimensions = ['$\delta$', 'd', '$V_r$', '$\mu_\\alpha$', '$\mu_\delta$']
+    
+    Nstep, step = get_steps()
+    Npar = 5
+    
+    h = 2
+    plt.close()
+    fig, ax = plt.subplots(Ndim, Npar, figsize=(Npar*h,Ndim*h), sharex='col')
+
+    for p in range(Npar):
+        fin = np.load('../data/stepsize_{:d}_{:d}.npz'.format(n, p))
+        fits = fin['arr_0']
+        
+        pid, dp = get_varied_pars(vary)
+        parameter = get_parlabel(pid)[p]
+        units = ['km/s', 'kpc', '', '', '$M_\odot$']
+        
+        dydx = np.empty((Ndim, 2*Nstep, Nobs))
+        
+        for i in range(Ndim):
+            for j, s in enumerate(step):
+                #print((np.poly1d(fits[j+1][i])(ra) - np.poly1d(fits[0][i])(ra))/(dp[p].value*s))
+                dydx[i][j] = (np.poly1d(fits[j+1][i])(ra) - np.poly1d(fits[0][i])(ra))/(dp[p].value*s)
+        
+            plt.sca(ax[i][p])
+            for k in range(Nobs):
+                plt.plot(step * dp[p], dydx[i,:,k], '-', color='{}'.format(k/Nobs), lw=1.5)
+            
+            if i==Ndim-1:
+                if len(units[p]):
+                    plt.xlabel('$\Delta$ {} ({})'.format(parameter, units[p]))
+                else:
+                    plt.xlabel('$\Delta$ {}'.format(parameter))
+            if p==0:
+                plt.ylabel('d{}/dx'.format(dimensions[i]))
+            if i==0:
+                plt.title('x = {}'.format(parameter), fontsize='medium')
+            
+            plt.setp(plt.gca().get_yticklabels(), visible=False)
+    
+    plt.suptitle(name, fontsize='large')
+    plt.tight_layout(h_pad=0.02, w_pad=0.02, rect=(0,0,1,0.95))
+    plt.savefig('../plots/stepsize_{:d}.pdf'.format(n))
+
+    mpl.rcParams['axes.linewidth'] = 2
+    mpl.rcParams['font.size'] = 18
+
 # plot model
 def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s], graph=False):
     """"""
@@ -985,7 +1102,7 @@ def get_varied_pars(vary):
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.4e11*u.Msun]
     elif vary=='progenitor':
         pid = [7,8,9,10,11,12]
-        dp = [0.2*u.kpc for x in range(3)] + [2*u.km/u.s for x in range(3)]
+        dp = [0.05*u.kpc for x in range(3)] + [2*u.km/u.s for x in range(3)]
     elif vary=='all':
         pid = []
         dp = []
@@ -1172,7 +1289,6 @@ def crb_all(n, Ndim=6, Nex=1, sign=1, vary='potential'):
                 fits[i] = np.poly1d(np.polyfit(stream[0], stream[k],3))
             
             dydx[l][(k-1)*Nobs:k*Nobs] = (fits[1](ra) - fits[0](ra))/(dp[l].value*Nex)
-            #print(fits[1], fits[0])
             cyd[(k-1)*Nobs:k*Nobs] = err[:,k-1]**2
     
     cy = np.diag(cyd)
