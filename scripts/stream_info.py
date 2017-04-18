@@ -1108,12 +1108,12 @@ def plot_model(n, vary='potential'):
                 
                 for k in range(3):
                     plt.sca(ax[i][k])
-                    plt.plot(stream[0], stream[k+1], 'o', color=modcol, mec='none', ms=4)
+                    plt.plot(stream[0], stream[k+1], 'o', color=modcol, mec='none', ms=1)
         
         ax[i][0].annotate(labels[i], xy=(0, 0.5), xytext=(-ax[i][0].yaxis.labelpad - 5, 0), xycoords=ax[i][0].yaxis.label, textcoords='offset points', fontsize='small', ha='right', va='center', rotation='vertical')
     
     plt.tight_layout(h_pad=0, w_pad=0.2, rect=[0.02,0,1,1])
-    
+    plt.savefig('../plots/param_variation_{:2d}_{:s}.png'.format(n, vary))
 
 def crb_all(n, Ndim=6, Nex=1, sign=1, vary='potential'):
     """"""
@@ -1182,7 +1182,18 @@ def crb_all(n, Ndim=6, Nex=1, sign=1, vary='potential'):
 
     cx = np.linalg.inv(cxi)
     sx = np.sqrt(np.diag(cx))
-    print(np.diag(cx))
+    
+    plt.close()
+    plt.figure()
+    
+    t = 1 - cx[:,0]/cx[0,:]
+    plt.plot(t, 'ko')
+    
+    print(t)
+    print(np.diag(cxi))
+    print(np.linalg.det(cxi))
+    print(np.allclose(cxi, cxi.T))
+    print(np.allclose(cx, cx.T))
 
     np.save('../data/crb/full_cxi_{:d}_{:d}'.format(n, Ndim), cxi)
 
@@ -1333,6 +1344,11 @@ def plot_crb_triangle(n=-1, vary='potential', out='save'):
                 
                 if i==0:
                     plt.ylabel(params[j])
+        
+        plt.sca(ax[0][Nvar-2])
+        plt.plot(np.linspace(0,1,10), '-', color=mpl.cm.bone(l/4), lw=2, label=labels[l])
+        plt.xlim(-2,-1)
+        plt.legend(frameon=False, fontsize=14, handlelength=1)
     
     # turn off unused axes
     for i in range(0,Nvar-1):
