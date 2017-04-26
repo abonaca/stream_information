@@ -821,22 +821,28 @@ def plot_potstream2(n, pparams=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1),
 
 
 # choose appropriate step size when calculating derivatives
-def get_steps():
-    """"""
-    Nstep = 20
-    step = np.logspace(-2, 1, Nstep)
-    step = np.linspace(0.1, 10, Nstep)
+def get_steps(Nstep=50, log=False):
+    """Return deltax steps
+    Paramerets:
+    Nstep - 0.5 x number of steps to return (default: 50)
+    log - if True, steps are logarithmically spaced (default: False)"""
+    
+    if log:
+        step = np.logspace(-3, 1, Nstep)
+    else:
+        step = np.linspace(0.1, 10, Nstep)
+    
     step = np.concatenate([-step[::-1], step])
     
     return (Nstep, step)
 
-def explore_stepsize(n, p=0, vary='all'):
+def explore_stepsize(n, p=0, vary='all', Nstep=50, log=False):
     """Create models with smoothly varying parameter p values and save polynomial stream tracks"""
     
     pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
     pid, dp = get_varied_pars(vary)
 
-    Nstep, step = get_steps()
+    Nstep, step = get_steps(Nstep=Nstep, log=log)
 
     Ndim = 6
     Ndeg = 3
@@ -856,18 +862,17 @@ def explore_stepsize(n, p=0, vary='all'):
         for j in range(Ndim-1):
             fits[i+1][j] = np.poly1d(np.polyfit(stream.obs[0], stream.obs[j+1], Ndeg))
     
-    np.savez('../data/stepsize_{:d}_{:d}'.format(n, p), fits)
+    np.savez('../data/stepsize_{:d}_{:d}_{:d}'.format(n, p, log), fits)
 
-def get_all_stepsizes():
+def get_all_stepsizes(streams=[-1, -2, -3, -4], Npar=11, Nstep=50, log=False):
     """"""
-    streams = np.array([-1, -2, -3, -4])
     
-    for n in streams[1:]:
-        for p in range(11):
+    for n in streams:
+        for p in range(Npar):
             print(n, p)
-            explore_stepsize(n, p=p)
+            explore_stepsize(n, p=p, Nstep=Nstep, log=log)
 
-def dydx_stepsize(n, Nobs=10, vary='all'):
+def dydx_stepsize(n, Nobs=10, vary='all', log=False, ylabels=False):
     """Plot derivatives dy/dx as a function of parameter step delta x"""
     
     mpl.rcParams['axes.linewidth'] = 1
@@ -892,7 +897,7 @@ def dydx_stepsize(n, Nobs=10, vary='all'):
     Ndim = 5
     dimensions = ['$\delta$', 'd', '$V_r$', '$\mu_\\alpha$', '$\mu_\delta$']
     
-    Nstep, step = get_steps()
+    Nstep, step = get_steps(log=log)
     Npar = 5
     
     h = 2
@@ -900,7 +905,7 @@ def dydx_stepsize(n, Nobs=10, vary='all'):
     fig, ax = plt.subplots(Ndim, Npar, figsize=(Npar*h,Ndim*h), sharex='col')
 
     for p in range(Npar):
-        fin = np.load('../data/stepsize_{:d}_{:d}.npz'.format(n, p))
+        fin = np.load('../data/stepsize_{:d}_{:d}_{:d}.npz'.format(n, p, log))
         fits = fin['arr_0']
         
         pid, dp = get_varied_pars(vary)
@@ -916,7 +921,7 @@ def dydx_stepsize(n, Nobs=10, vary='all'):
         
             plt.sca(ax[i][p])
             for k in range(Nobs):
-                plt.plot(step * dp[p], dydx[i,:,k], '-', color='{}'.format(k/Nobs), lw=1.5)
+                plt.plot(step[Nstep:] * dp[p], dydx[i,Nstep:,k], '-', ms=2, color='{}'.format(k/Nobs), lw=1.5)
             
             if i==Ndim-1:
                 if len(units[p]):
@@ -928,11 +933,12 @@ def dydx_stepsize(n, Nobs=10, vary='all'):
             if i==0:
                 plt.title('x = {}'.format(parameter), fontsize='medium')
             
-            plt.setp(plt.gca().get_yticklabels(), visible=False)
+            plt.setp(plt.gca().get_yticklabels(), visible=ylabels)
+            plt.gca().set_xscale('log')
     
     plt.suptitle(name, fontsize='large')
     plt.tight_layout(h_pad=0.02, w_pad=0.02, rect=(0,0,1,0.95))
-    plt.savefig('../plots/stepsize_{:d}.pdf'.format(n))
+    plt.savefig('../plots/stepsize_{:d}_{:d}.pdf'.format(n, log))
 
     mpl.rcParams['axes.linewidth'] = 2
     mpl.rcParams['font.size'] = 18
