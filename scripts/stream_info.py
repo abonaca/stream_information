@@ -836,7 +836,7 @@ def get_steps(Nstep=50, log=False):
     
     return (Nstep, step)
 
-def explore_stepsize(n, p=0, vary='all', Nstep=50, log=False):
+def explore_stepsize(n, p=0, vary='all', Nstep=50, log=False, Ndeg=3):
     """Create models with smoothly varying parameter p values and save polynomial stream tracks"""
     
     pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
@@ -845,7 +845,6 @@ def explore_stepsize(n, p=0, vary='all', Nstep=50, log=False):
     Nstep, step = get_steps(Nstep=Nstep, log=log)
 
     Ndim = 6
-    Ndeg = 3
     fits = np.empty((2*Nstep+1, Ndim-1, Ndeg+1))
     
     # fiducial model
@@ -857,14 +856,17 @@ def explore_stepsize(n, p=0, vary='all', Nstep=50, log=False):
     for i, s in enumerate(step):
         pparams = [x for x in pparams0]
         pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
+        #print(pparams)
         
         stream = stream_model(n, pparams0=pparams)
         for j in range(Ndim-1):
             fits[i+1][j] = np.poly1d(np.polyfit(stream.obs[0], stream.obs[j+1], Ndeg))
+        
+    #print(fits[:,0])
     
     np.savez('../data/stepsize_{:d}_{:d}_{:d}'.format(n, p, log), fits)
 
-def get_all_stepsizes(streams=[-1, -2, -3, -4], Npar=11, Nstep=50, log=False):
+def get_all_stepsizes(streams=[-1, -2, -3, -4], Npar=11, Nstep=50, log=False, Ndeg=3):
     """"""
     
     for n in streams:
@@ -872,7 +874,7 @@ def get_all_stepsizes(streams=[-1, -2, -3, -4], Npar=11, Nstep=50, log=False):
             print(n, p)
             explore_stepsize(n, p=p, Nstep=Nstep, log=log)
 
-def dydx_stepsize(n, Nobs=10, vary='all', log=False, ylabels=False):
+def dydx_stepsize(n, Nobs=10, vary='all', log=False, ylabels=False, Nstep=50, fiducial=False):
     """Plot derivatives dy/dx as a function of parameter step delta x"""
     
     mpl.rcParams['axes.linewidth'] = 1
@@ -897,12 +899,175 @@ def dydx_stepsize(n, Nobs=10, vary='all', log=False, ylabels=False):
     Ndim = 5
     dimensions = ['$\delta$', 'd', '$V_r$', '$\mu_\\alpha$', '$\mu_\delta$']
     
-    Nstep, step = get_steps(log=log)
+    Nstep, step = get_steps(log=log, Nstep=Nstep)
+    pid, dp = get_varied_pars(vary)
+    Npar = len(pid)
+    
+    h = 2
+    plt.close()
+    fig, ax = plt.subplots(Ndim, Npar, figsize=(Npar*h*1.2,Ndim*h), sharex='col')
+    #fig, ax = plt.subplots(Npar, Ndim, figsize=(Ndim*h,Npar*h), sharex='col')
+
+    for p in range(Npar):
+        fin = np.load('../data/stepsize_{:d}_{:d}_{:d}.npz'.format(n, p, log))
+        fits = fin['arr_0']
+        
+        parameter = get_parlabel(pid)[p]
+        units = ['km/s', 'kpc', '', '', '$M_\odot$']
+        
+        dydx = np.empty((Ndim, 2*Nstep, Nobs))
+        
+        for i in range(Ndim):
+            for j, s in enumerate(step):
+                #if (i==0) & (p==0):
+                    #print(j, fits[j+1][i])
+                #print((np.poly1d(fits[j+1][i])(ra) - np.poly1d(fits[0][i])(ra))/(dp[p].value*s))
+                dydx[i][j] = (np.poly1d(fits[j+1][i])(ra) - np.poly1d(fits[0][i])(ra))/(dp[p].value*s)
+        
+            plt.sca(ax[i][p])
+            for k in range(Nobs):
+                plt.plot(step[Nstep:] * dp[p], dydx[i,Nstep:,k], '-', ms=2, color='{}'.format(k/Nobs), lw=1.5)
+
+                #dsigma = 0.1/(dp[p].value*step[Nstep+1:])
+                #plt.fill_between(step[Nstep+1:] * dp[p].value, dydx[i,Nstep+1:,k]+dsigma, y2=dydx[i,Nstep+1:,k]-dsigma, color='k', alpha=0.5)
+            
+            if fiducial:
+                plt.axvline(dp[p].value, color='lightsteelblue', lw=2)
+            
+            if i==Ndim-1:
+                if len(units[p]):
+                    plt.xlabel('$\Delta$ {} ({})'.format(parameter, units[p]))
+                else:
+                    plt.xlabel('$\Delta$ {}'.format(parameter))
+            if p==0:
+                plt.ylabel('d{}/dx'.format(dimensions[i]))
+            #if i==0:
+                #plt.title('x = {}'.format(parameter), fontsize='medium')
+            
+            plt.setp(plt.gca().get_yticklabels(), visible=ylabels)
+            #if log:
+            plt.gca().set_xscale('log')
+    
+    plt.suptitle(name, fontsize='large')
+    plt.tight_layout(h_pad=0.02, w_pad=0.02, rect=(0,0,1,0.95))
+    plt.savefig('../plots/stepsize_{:d}_{:d}.pdf'.format(n, log))
+    plt.savefig('../plots/stepsize_{:d}_{:d}_{:d}_{:d}.png'.format(n, log, Nobs, fiducial))
+
+    mpl.rcParams['axes.linewidth'] = 2
+    mpl.rcParams['font.size'] = 18
+
+def adjacent_models(n, p=0, vary='all', dim=1):
+    """"""
+    nstep = 100 + np.int64(np.linspace(0,70,4))
+    
+    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
+    pid, dp = get_varied_pars(vary)
+
+    Nstep = 100
+    log = True
+    Nstep, step = get_steps(Nstep=Nstep, log=log)
+    #print(step)
+
+    Ndim = 6
+    Ndeg = 3
+    c = ['b', 'r']
+    
+    # fiducial model
+    stream_fid = stream_model(n, pparams0=pparams0)
+    fit_fid = np.poly1d(np.polyfit(stream_fid.obs[0], stream_fid.obs[dim], Ndeg))
+    print(np.std(stream_fid.obs[dim] - fit_fid(stream_fid.obs[0])))
+    
+    plt.close()
+    plt.figure()
+    
+    for i, s in enumerate(np.array(step)[nstep]):
+        color = mpl.cm.magma(i/np.size(nstep))
+        pparams = [x for x in pparams0]
+        pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
+        
+        stream = stream_model(n, pparams0=pparams)
+        fit = np.poly1d(np.polyfit(stream.obs[0], stream.obs[dim], Ndeg))
+        
+        ra = np.sort(stream.obs[0])
+        #plt.plot(stream_fid.obs[0], stream_fid.obs[dim] - fit_fid(stream_fid.obs[0]), 'o', color='k', ms=2, zorder=0)
+        #plt.plot(stream.obs[0], stream.obs[dim] - fit_fid(stream.obs[0]), 'o', color=color, ms=1)
+        plt.plot(stream.obs[0], stream.obs[dim] - stream_fid.obs[dim], 'o', color=color, ms=2, label='$\Delta$ {} = {:4.2g}'.format(get_parlabel([pid[p]])[0], s*dp[p]))
+        #plt.plot(ra, fit(ra) - fit_fid(ra), '-', color=color, ms=2, label='$\Delta$ {} = {:.1g}'.format(get_parlabel([pid[p]])[0], s*dp[p]))
+    
+    ylabel = ['$\Delta$ R.A. (deg)', '$\Delta$ Dec (deg)', '$\Delta$ d (kpc)', '$\Delta$ $V_r$ (km/s)', '$\Delta$ $\mu_\\alpha$ (mas/yr)', '$\Delta$ $\mu_\delta$ (mas/yr)']
+    plt.xlabel('R.A. (deg)')
+    plt.ylabel(ylabel[dim])
+    plt.legend(fontsize='small', frameon=False)
+    
+    plt.tight_layout()
+    plt.savefig('../plots/step_sizes_{}_{}.png'.format(n, dim))
+
+def crb_stepsize(n, Nobs=10, vary='potential', log=False, ylabels=False, Nstep=50):
+    """Plot derivatives dy/dx as a function of parameter step delta x"""
+    
+    mpl.rcParams['axes.linewidth'] = 1
+    mpl.rcParams['font.size'] = 15
+
+    # Load streams
+    if n==-1:
+        observed = load_gd1(present=[0,1,2,3])
+        name = 'GD-1'
+    elif n==-3:
+        observed = load_tri(present=[0,1,2,3])
+        name = 'Triangulum'
+    elif n==-4:
+        observed = load_atlas(present=[0,1,2,3])
+        name = 'ATLAS'
+    else:
+        observed = load_pal5(present=[0,1,2,3])
+        name = 'Pal 5'
+    
+    # mock observations
+    ra = np.linspace(np.min(observed.obs[0]), np.max(observed.obs[0]), Nobs)
+    sig_obs = np.array([0.1, 2, 5, 0.1, 0.1])
+    err = np.tile(sig_obs, Nobs).reshape(Nobs,-1)
+    
+    Ndim = 5
+    dimensions = ['$\delta$', 'd', '$V_r$', '$\mu_\\alpha$', '$\mu_\delta$']
+    
+    Nstep, step = get_steps(log=log, Nstep=Nstep)
     Npar = 5
     
     h = 2
     plt.close()
     fig, ax = plt.subplots(Ndim, Npar, figsize=(Npar*h,Ndim*h), sharex='col')
+
+    pid, dp = get_varied_pars(vary)
+    Nvar = len(pid)
+
+    Ndata = Nobs * (Ndim - 1)
+    dydx = np.empty((Nvar, Ndata))
+    cyd = np.empty(Ndata)
+    
+    #for js, s in enumerate(step):
+    s = step[Nstep+2]
+    
+    # find derivatives, uncertainties
+    for k in range(1,Ndim):
+        fits = [None]*2
+        for l, p in enumerate(pid):
+            fin = np.load('../data/stepsize_{:d}_{:d}_{:d}.npz'.format(n, p, log))
+            fits = fin['arr_0']
+            
+            #for i, j in enumerate(sorted([0,1*Nex*sign])):
+                #stream = np.load('../data/models/stream_{0:d}_{1:d}_{2:d}.npy'.format(n, pid[l], j))
+                #fits[i] = np.poly1d(np.polyfit(stream[0], stream[k],3))
+            
+            dydx[l][(k-1)*Nobs:k*Nobs] = (fits[1](ra) - fits[0](ra))/(dp[l].value*Nex)
+            cyd[(k-1)*Nobs:k*Nobs] = err[:,k-1]**2
+
+    cy = np.diag(cyd)
+    cyi = np.linalg.inv(cy)
+    
+    cxi = np.matmul(dydx, np.matmul(cyi, dydx.T))
+
+    cx = np.linalg.inv(cxi)
+    sx = np.sqrt(np.diag(cx))
 
     for p in range(Npar):
         fin = np.load('../data/stepsize_{:d}_{:d}_{:d}.npz'.format(n, p, log))
@@ -912,43 +1077,46 @@ def dydx_stepsize(n, Nobs=10, vary='all', log=False, ylabels=False):
         parameter = get_parlabel(pid)[p]
         units = ['km/s', 'kpc', '', '', '$M_\odot$']
         
-        dydx = np.empty((Ndim, 2*Nstep, Nobs))
+        dydx = np.empty((Ndim, Nobs))
         
         for i in range(Ndim):
-            for j, s in enumerate(step):
-                #print((np.poly1d(fits[j+1][i])(ra) - np.poly1d(fits[0][i])(ra))/(dp[p].value*s))
-                dydx[i][j] = (np.poly1d(fits[j+1][i])(ra) - np.poly1d(fits[0][i])(ra))/(dp[p].value*s)
+            dydx[i][j] = (np.poly1d(fits[j+1][i])(ra) - np.poly1d(fits[0][i])(ra))/(dp[p].value*s)
+            
+            
+            dydx[l][(k-1)*Nobs:k*Nobs] = (fits[1](ra) - fits[0](ra))/(dp[l].value*Nex)
+            cyd[(k-1)*Nobs:k*Nobs] = err[:,k-1]**2
         
-            plt.sca(ax[i][p])
-            for k in range(Nobs):
-                plt.plot(step[Nstep:] * dp[p], dydx[i,Nstep:,k], '-', ms=2, color='{}'.format(k/Nobs), lw=1.5)
+            #plt.sca(ax[i][p])
+            #for k in range(Nobs):
+                #plt.plot(step[Nstep:] * dp[p], dydx[i,Nstep:,k], '-', ms=2, color='{}'.format(k/Nobs), lw=1.5)
+
+            #if i==Ndim-1:
+                #if len(units[p]):
+                    #plt.xlabel('$\Delta$ {} ({})'.format(parameter, units[p]))
+                #else:
+                    #plt.xlabel('$\Delta$ {}'.format(parameter))
+            #if p==0:
+                #plt.ylabel('d{}/dx'.format(dimensions[i]))
+            #if i==0:
+                #plt.title('x = {}'.format(parameter), fontsize='medium')
             
-            if i==Ndim-1:
-                if len(units[p]):
-                    plt.xlabel('$\Delta$ {} ({})'.format(parameter, units[p]))
-                else:
-                    plt.xlabel('$\Delta$ {}'.format(parameter))
-            if p==0:
-                plt.ylabel('d{}/dx'.format(dimensions[i]))
-            if i==0:
-                plt.title('x = {}'.format(parameter), fontsize='medium')
-            
-            plt.setp(plt.gca().get_yticklabels(), visible=ylabels)
-            plt.gca().set_xscale('log')
+            #plt.setp(plt.gca().get_yticklabels(), visible=ylabels)
+            #plt.gca().set_xscale('log')
     
     plt.suptitle(name, fontsize='large')
     plt.tight_layout(h_pad=0.02, w_pad=0.02, rect=(0,0,1,0.95))
-    plt.savefig('../plots/stepsize_{:d}_{:d}.pdf'.format(n, log))
+    plt.savefig('../plots/crb_stepsize_{:d}_{:d}.pdf'.format(n, log))
 
     mpl.rcParams['axes.linewidth'] = 2
     mpl.rcParams['font.size'] = 18
+
 
 # plot model
 def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s], graph=False):
     """"""
     
     obsmode = 'equatorial'
-    footprint = 'sdss'
+    footprint = ''
     
     # Load streams
     if n==-1:
@@ -961,7 +1129,6 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
         ylims = [[15, 65], [5, 10], [-250, 150], [0, 250]]
         loc = 2
         name = 'GD-1'
-        footprint = 'sdss'
     elif n==-3:
         observed = load_tri(present=[0,1,2,3])
         age = 5*u.Gyr
@@ -972,7 +1139,6 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
         ylims = [[10, 50], [20, 45], [-175, -50], [0, 250]]
         loc = 1
         name = 'Triangulum'
-        footprint = 'sdss'
     elif n==-4:
         observed = load_atlas(present=[0,1,2,3])
         age = 2*u.Gyr
@@ -983,7 +1149,6 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
         ylims = [[-40, -20], [15, 25], [50, 200], [0, 250]]
         loc = 3
         name = 'ATLAS'
-        footprint = 'none'
     else:
         observed = load_pal5(present=[0,1,2,3])
         age = 2.7*u.Gyr
@@ -994,7 +1159,6 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
         ylims = [[-4, 10], [21, 27], [-80, -20], [0, 250]]
         loc = 3
         name = 'Pal 5'
-        footprint = 'sdss'
         
     ######################
     # Create mock stream
@@ -1106,6 +1270,9 @@ def get_varied_pars(vary):
     if vary=='potential':
         pid = [0,1,3,5,6]
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.4e11*u.Msun]
+    if vary=='halo':
+        pid = [0,1,3,5]
+        dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
     elif vary=='progenitor':
         pid = [7,8,9,10,11,12]
         dp = [0.05*u.kpc for x in range(3)] + [2*u.km/u.s for x in range(3)]
@@ -1271,7 +1438,7 @@ def crb_all(n, Ndim=6, Nex=1, sign=1, vary='potential'):
         name = 'Pal 5'
     
     # typical uncertainties
-    sig_obs = np.array([0.5, 2, 5, 0.1, 0.1])
+    sig_obs = np.array([0.1, 2, 5, 0.1, 0.1])
     
     # mock observations
     Nobs = 50
@@ -1453,13 +1620,13 @@ def plot_crb_triangle(n=-1, vary='potential', out='save'):
                     e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.bone(l/4), lw=2)
                     plt.gca().add_artist(e)
                 
-                if vary=='potential':
+                if (vary=='potential') | (vary=='halo'):
                     plt.xlim(-ylim[i],ylim[i])
                     plt.ylim(-ylim[j], ylim[j])
-                else:
-                    if l==1:
-                        plt.xlim(-0.5*width, 0.5*width)
-                        plt.ylim(-0.5*height, 0.5*height)
+                #else:
+                    #if l==1:
+                        #plt.xlim(-0.5*width, 0.5*width)
+                        #plt.ylim(-0.5*height, 0.5*height)
                 
                 if j==Nvar-1:
                     plt.xlabel(params[i])
@@ -1468,8 +1635,8 @@ def plot_crb_triangle(n=-1, vary='potential', out='save'):
                     plt.ylabel(params[j])
         
         plt.sca(ax[0][Nvar-2])
-        plt.plot(np.linspace(0,1,10), '-', color=mpl.cm.bone(l/4), lw=2, label=labels[l])
-        plt.xlim(-2,-1)
+        plt.plot(np.linspace(-200,-100,10), '-', color=mpl.cm.bone(l/4), lw=2, label=labels[l])
+        #plt.xlim(-2,-1)
         plt.legend(frameon=False, fontsize=14, handlelength=1)
     
     # turn off unused axes
