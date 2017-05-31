@@ -19,6 +19,8 @@ import astropy.coordinates as coord
 #from astropy.coordinates import Angle
 import gala.coordinates as gc
 
+import scipy.interpolate
+
 # observers
 vl2_observer = {'z_sun': 0.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_ra': 300*u.deg, 'galcen_dec': 20*u.deg}
 
@@ -966,19 +968,19 @@ def adjacent_models(n, p=0, vary='all', dim=1):
     Nstep = 100
     log = True
     Nstep, step = get_steps(Nstep=Nstep, log=log)
-    #print(step)
 
     Ndim = 6
     Ndeg = 3
     c = ['b', 'r']
+    ylabel = ['R.A. (deg)', 'Dec (deg)', 'd (kpc)', '$V_r$ (km/s)', '$\mu_\\alpha$ (mas/yr)', '$\mu_\delta$ (mas/yr)']
     
     # fiducial model
     stream_fid = stream_model(n, pparams0=pparams0)
     fit_fid = np.poly1d(np.polyfit(stream_fid.obs[0], stream_fid.obs[dim], Ndeg))
-    print(np.std(stream_fid.obs[dim] - fit_fid(stream_fid.obs[0])))
+    #print(np.std(stream_fid.obs[dim] - fit_fid(stream_fid.obs[0])))
     
     plt.close()
-    plt.figure()
+    fig, ax = plt.subplots(2,5,figsize=(18,4), gridspec_kw = {'height_ratios':[3, 1]}, sharex='col')
     
     for i, s in enumerate(np.array(step)[nstep]):
         color = mpl.cm.magma(i/np.size(nstep))
@@ -986,21 +988,98 @@ def adjacent_models(n, p=0, vary='all', dim=1):
         pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
         
         stream = stream_model(n, pparams0=pparams)
-        fit = np.poly1d(np.polyfit(stream.obs[0], stream.obs[dim], Ndeg))
+        #fit = np.poly1d(np.polyfit(stream.obs[0], stream.obs[dim], Ndeg))
         
-        ra = np.sort(stream.obs[0])
-        #plt.plot(stream_fid.obs[0], stream_fid.obs[dim] - fit_fid(stream_fid.obs[0]), 'o', color='k', ms=2, zorder=0)
-        #plt.plot(stream.obs[0], stream.obs[dim] - fit_fid(stream.obs[0]), 'o', color=color, ms=1)
-        plt.plot(stream.obs[0], stream.obs[dim] - stream_fid.obs[dim], 'o', color=color, ms=2, label='$\Delta$ {} = {:4.2g}'.format(get_parlabel([pid[p]])[0], s*dp[p]))
-        #plt.plot(ra, fit(ra) - fit_fid(ra), '-', color=color, ms=2, label='$\Delta$ {} = {:.1g}'.format(get_parlabel([pid[p]])[0], s*dp[p]))
-    
-    ylabel = ['$\Delta$ R.A. (deg)', '$\Delta$ Dec (deg)', '$\Delta$ d (kpc)', '$\Delta$ $V_r$ (km/s)', '$\Delta$ $\mu_\\alpha$ (mas/yr)', '$\Delta$ $\mu_\delta$ (mas/yr)']
-    plt.xlabel('R.A. (deg)')
-    plt.ylabel(ylabel[dim])
-    plt.legend(fontsize='small', frameon=False)
+        for dim in range(1,6):
+            plt.sca(ax[0][dim-1])
+            plt.plot(stream.obs[0], stream.obs[dim], 'o', color=color, ms=2, label='$\Delta$ {} = {:4.2g}'.format(get_parlabel([pid[p]])[0], s*dp[p]))
+            
+            plt.ylabel(ylabel[dim])
+            if dim==1:
+                plt.legend(fontsize='xx-small', frameon=False, handlelength=0.2)
+            
+            plt.sca(ax[1][dim-1])
+            plt.plot(stream.obs[0], stream.obs[dim] - stream_fid.obs[dim], 'o', color=color, ms=2, label='$\Delta$ {} = {:4.2g}'.format(get_parlabel([pid[p]])[0], s*dp[p]))
+
+            plt.xlabel('R.A. (deg)')
+            plt.ylabel('$\Delta$')
     
     plt.tight_layout()
-    plt.savefig('../plots/step_sizes_{}_{}.png'.format(n, dim))
+    plt.savefig('../plots/step_sizes_{}_{}.png'.format(n, p))
+
+def adjacent_models_expanded(n, p=0, vary='all', dim=1):
+    """"""
+    #nstep = 100 + np.int64(np.linspace(30,90,4))
+    nstep = 100 + np.int64(np.linspace(10,70,4))
+    
+    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
+    pid, dp = get_varied_pars(vary)
+
+    Nstep = 100
+    log = True
+    Nstep, step = get_steps(Nstep=Nstep, log=log)
+
+    Ndim = 6
+    Ndeg = 5
+    Nobs = 15
+    c = ['b', 'r']
+    ylabel = ['$\Delta$ R.A. (deg)', '$\Delta$ Dec (deg)', '$\Delta$ d (kpc)', '$\Delta$ $V_r$ (km/s)', '$\Delta$ $\mu_\\alpha$ (mas/yr)', '$\Delta$ $\mu_\delta$ (mas/yr)']
+    
+    # fiducial model
+    stream_fid = stream_model(n, pparams0=pparams0)
+    poly_fid = np.poly1d(np.polyfit(stream_fid.obs[0], stream_fid.obs[dim], Ndeg))
+    
+    isort = np.argsort(stream_fid.obs[0])
+    ra = np.linspace(np.min(stream_fid.obs[0])*1.05, np.max(stream_fid.obs[0])*0.95, Nobs)
+    k = 3
+    t = np.r_[(stream_fid.obs[0][isort][0],)*(k+1), ra, (stream_fid.obs[0][isort][-1],)*(k+1)]
+    spline_fid = scipy.interpolate.make_lsq_spline(stream_fid.obs[0][isort], stream_fid.obs[dim][isort], t, k=k)
+    #print(np.std(stream_fid.obs[dim] - fit_fid(stream_fid.obs[0])))
+    
+    plt.close()
+    fig, ax = plt.subplots(2,4,figsize=(16,5), gridspec_kw = {'height_ratios':[3, 1]}, sharey='row', sharex='col')
+    
+    for i, s in enumerate(np.array(step)[nstep]):
+        color = mpl.cm.magma(i/np.size(nstep))
+        #color = 'k'
+        pparams = [x for x in pparams0]
+        pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
+        
+        stream = stream_model(n, pparams0=pparams)
+        poly = np.poly1d(np.polyfit(stream.obs[0], stream.obs[dim], Ndeg))
+        isort_ = np.argsort(stream.obs[0])
+        ra_ = np.linspace(np.min(stream.obs[0])*1.05, np.max(stream.obs[0])*0.95, Nobs)
+        k = 3
+        t = np.r_[(stream.obs[0][isort_][0],)*(k+1), ra_, (stream.obs[0][isort_][-1],)*(k+1)]
+        spline = scipy.interpolate.make_lsq_spline(stream.obs[0][isort_], stream.obs[dim][isort_], t, k=k)
+        
+        for j in range(4):
+            plt.sca(ax[0][j])
+            plt.plot(stream.obs[0], stream.obs[dim], 'o', color=color, ms=2)
+        #plt.plot(stream.obs[0], stream.obs[dim], 'ko')
+        #plt.plot(stream.obs[0], poly(stream.obs[0]), 'r.')
+        #plt.plot(stream.obs[0], spline(stream.obs[0]), 'b.')
+        #plt.plot(stream_fid.obs[0], stream_fid.obs[dim], 'wo', mec='k', ms=4, mew=0.5, alpha=0.1)
+
+            #if j==0:
+                #plt.title('$\Delta$ {} = {:4.2g}'.format(get_parlabel([pid[p]])[0], s*dp[p]), fontsize='medium')
+        if i==0:
+            plt.sca(ax[0][i])
+            plt.ylabel(ylabel[dim])
+        
+        plt.sca(ax[1][i])
+        plt.plot(stream.obs[0], stream.obs[dim] - stream_fid.obs[dim], 'ko')
+        plt.plot(stream.obs[0], poly(stream.obs[0]) - poly_fid(stream.obs[0]), 'r.')
+        plt.plot(stream.obs[0], spline(stream.obs[0]) - spline_fid(stream.obs[0]), 'b.')
+        
+        #plt.ylim(-10,10)
+        plt.xlabel('R.A. (deg)')
+        if i==0:
+            plt.ylabel('$\Delta$')
+    #plt.legend(fontsize='small', frameon=False)
+    
+    plt.tight_layout()
+    plt.savefig('../plots/step_sizes_expanded_{}_{}.png'.format(n, dim))
 
 def crb_stepsize(n, Nobs=10, vary='potential', log=False, ylabels=False, Nstep=50):
     """Plot derivatives dy/dx as a function of parameter step delta x"""
@@ -1110,6 +1189,47 @@ def crb_stepsize(n, Nobs=10, vary='potential', log=False, ylabels=False, Nstep=5
     mpl.rcParams['axes.linewidth'] = 2
     mpl.rcParams['font.size'] = 18
 
+
+# stream track
+def stream_track(n, dim=1):
+    """"""
+    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
+    Ndeg = 5
+    Nobs = 15
+    
+    ylabel = ['R.A. (deg)', 'Dec (deg)', 'd (kpc)', '$V_r$ (km/s)', '$\mu_\\alpha$ (mas/yr)', '$\mu_\delta$ (mas/yr)']
+    
+    # fiducial model
+    stream = stream_model(n, pparams0=pparams0)
+    isort = np.argsort(stream.obs[0])
+    ra = np.linspace(np.min(stream.obs[0])*1.05, np.max(stream.obs[0])*0.95, Nobs)
+    k = 3
+    t = np.r_[(stream.obs[0][isort][0],)*(k+1), ra, (stream.obs[0][isort][-1],)*(k+1)]
+    
+    plt.close()
+    fig, ax = plt.subplots(2, 5, figsize=(16,4), gridspec_kw = {'height_ratios':[3, 1]}, sharex='col')
+
+    for dim in range(1,6):
+        fit_poly = np.poly1d(np.polyfit(stream.obs[0], stream.obs[dim], Ndeg))
+        fit_spline = scipy.interpolate.make_lsq_spline(stream.obs[0][isort], stream.obs[dim][isort], t, k=k)
+        
+        plt.sca(ax[0][dim-1])
+        plt.plot(stream.obs[0], stream.obs[dim], 'ko', label='stream model')
+        plt.plot(stream.obs[0], fit_poly(stream.obs[0]), 'r.', label='polynomial fit')
+        plt.plot(stream.obs[0], fit_spline(stream.obs[0]), 'b.', label='b-spline fit')
+        plt.ylabel(ylabel[dim])
+        if dim==1:
+            plt.legend(frameon=False, fontsize='x-small', handlelength=0.2)
+        
+        plt.sca(ax[1][dim-1])
+        plt.plot(stream.obs[0], stream.obs[dim] - fit_poly(stream.obs[0]), 'r.')
+        plt.plot(stream.obs[0], stream.obs[dim] - fit_spline(stream.obs[0]), 'b.')
+        
+        plt.xlabel('R.A. (deg)')
+        plt.ylabel('$\Delta$')
+    
+    plt.tight_layout()
+    plt.savefig('../plots/stream_track_{}.png'.format(n))
 
 # plot model
 def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s], graph=False):
@@ -1273,6 +1393,7 @@ def get_varied_pars(vary):
     if vary=='halo':
         pid = [0,1,3,5]
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
+        dp = [20*u.km/u.s, 2*u.kpc, 0.1*u.Unit(1), 0.1*u.Unit(1)]
     elif vary=='progenitor':
         pid = [7,8,9,10,11,12]
         dp = [0.05*u.kpc for x in range(3)] + [2*u.km/u.s for x in range(3)]
