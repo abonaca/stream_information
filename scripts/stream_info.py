@@ -1375,7 +1375,91 @@ def analyze_atdx(n, Nobs=10, log=True, Nstep=20, vary='halo', ylabels=True):
 
     mpl.rcParams['axes.linewidth'] = 2
     mpl.rcParams['font.size'] = 18
+
+# crbs using bspline
+def bspline_crb(n, Ndim=6, istep=15, Nstep=20, log=True, vary='halo', Nobs=50):
+    """"""
+    # Load streams
+    if n==-1:
+        observed = load_gd1(present=[0,1,2,3])
+        xi = [140, 180]
+        xlims = [[190, 130], [0, 350]]
+        ylims = [[15, 65], [5, 10], [-250, 150], [0, 250]]
+        loc = 2
+        name = 'GD-1'
+    elif n==-3:
+        observed = load_tri(present=[0,1,2,3])
+        xi = [20, 24]
+        xlims = [[25, 19], [0, 350]]
+        ylims = [[10, 50], [20, 45], [-175, -50], [0, 250]]
+        loc = 1
+        name = 'Triangulum'
+    elif n==-4:
+        observed = load_atlas(present=[0,1,2,3])
+        xi = [15, 28]
+        xlims = [[35, 10], [0, 350]]
+        ylims = [[-40, -20], [15, 25], [50, 200], [0, 250]]
+        loc = 3
+        name = 'ATLAS'
+    else:
+        observed = load_pal5(present=[0,1,2,3])
+        xi = [227, 242]
+        xlims = [[245, 225], [0, 350]]
+        ylims = [[-4, 10], [21, 27], [-80, -20], [0, 250]]
+        loc = 3
+        name = 'Pal 5'
     
+    # typical uncertainties
+    sig_obs = np.array([0.1, 2, 5, 0.1, 0.1])
+    
+    # mock observations
+    ra = np.linspace(np.min(observed.obs[0]), np.max(observed.obs[0]), Nobs)
+    err = np.tile(sig_obs, Nobs).reshape(Nobs,-1)
+    
+    Nstep, step = get_steps(log=log, Nstep=Nstep)
+    pid, dp = get_varied_pars(vary)
+    Nvar = len(pid)
+    #print(pid, dp)
+    
+    Ndata = Nobs * (Ndim - 1)
+    dydx = np.empty((Nvar, Ndata))
+    cyd = np.empty(Ndata)
+    
+    # find derivatives, uncertainties
+    for k in range(1,Ndim):
+        fits = [None]*2
+        for l, p in enumerate(pid):
+            
+            fin1 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}.npz'.format(n, l, istep, log))
+            fin2 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}.npz'.format(n, l, 2*Nstep - istep - 1, log))
+            fits1 = fin1['fits']
+            fits2 = fin2['fits']
+            
+            dydx[l][(k-1)*Nobs:k*Nobs] = (fits1[k-1](ra) - fits2[k-1](ra))/(dp[l].value*(step[istep] - step[2*Nstep-istep-1]))
+            cyd[(k-1)*Nobs:k*Nobs] = err[:,k-1]**2
+    
+    cy = np.diag(cyd)
+    cyi = np.linalg.inv(cy)
+    
+    cxi = np.matmul(dydx, np.matmul(cyi, dydx.T))
+
+    cx = np.linalg.inv(cxi)
+    sx = np.sqrt(np.diag(cx))
+    
+    #plt.close()
+    #plt.figure()
+    
+    #t = 1 - cx[:,0]/cx[0,:]
+    #plt.plot(t, 'ko')
+    #print(t)
+    
+    print(np.diag(cxi))
+    print(np.linalg.det(cxi))
+    print(np.allclose(cxi, cxi.T))
+    print(np.allclose(cx, cx.T))
+
+    np.save('../data/crb/bspline_cxi_{:d}_{:d}'.format(n, Ndim), cxi)
+
 ################
 # stream track #
 def stream_track(n, dim=1):
@@ -1904,13 +1988,15 @@ def plot_crb_triangle(n=-1, vary='potential', out='save'):
     params0 = ['$V_h$ (km/s)', '$R_h$ (kpc)', '$q_1$', '$q_z$', '$M_{LMC}$', '$X_p$', '$Y_p$', '$Z_p$', '$V_{xp}$', '$V_{yp}$', '$V_{zp}$']
     params = ['$\Delta$ '+x for x in params0]
     ylim = [150, 20, 0.5, 0.5, 5e11]
+    ylim = [10, 1, 0.1, 0.1]
     
     plt.close()
     fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(8,8), sharex='col', sharey='row')
     
     # plot 2d bounds in a triangle fashion
     for l, Ndim in enumerate([3,4,6]):
-        cxi = np.load('../data/crb/full_cxi_{:d}_{:d}.npy'.format(n, Ndim))
+        cxi = np.load('../data/crb/bspline_cxi_{:d}_{:d}.npy'.format(n, Ndim))
+        #cxi = np.load('../data/crb/full_cxi_{:d}_{:d}.npy'.format(n, Ndim))
         cxi = cxi[:Nvar,:Nvar]
         cx = np.linalg.inv(cxi)
         
@@ -1963,7 +2049,8 @@ def plot_crb_triangle(n=-1, vary='potential', out='save'):
         mpl.rcParams['ytick.major.size'] = 10
     
     if out=='save':
-        plt.savefig('../plots/crb_individual_{}_{}.png'.format(n, vary))
+        #plt.savefig('../plots/crb_individual_{}_{}.png'.format(n, vary))
+        plt.savefig('../plots/crb_bspline_individual_{}_{}.png'.format(n, vary))
     else:
         return fig
 
