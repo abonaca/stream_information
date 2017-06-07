@@ -1197,8 +1197,106 @@ def crb_stepsize(n, Nobs=10, vary='potential', log=False, ylabels=False, Nstep=5
     mpl.rcParams['axes.linewidth'] = 2
     mpl.rcParams['font.size'] = 18
 
+##############################
+# b-spline based derivatives #
 
-# stream track
+# fit b-spline to a stream model
+def fit_bspline(n, pparams=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s], dt=1*u.Myr, graph=False, save=''):
+    """"""
+    Ndim = 6
+    fits = [None]*(Ndim-1)
+    
+    stream = stream_model(n, pparams0=pparams, dt=dt)
+    
+    Nobs = 10
+    k = 3
+    isort = np.argsort(stream.obs[0])
+    ra = np.linspace(np.min(stream.obs[0])*1.05, np.max(stream.obs[0])*0.95, Nobs)
+    t = np.r_[(stream.obs[0][isort][0],)*(k+1), ra, (stream.obs[0][isort][-1],)*(k+1)]
+    
+    for j in range(Ndim-1):
+        fits[j] = scipy.interpolate.make_lsq_spline(stream.obs[0][isort], stream.obs[j+1][isort], t, k=k)
+    
+    if len(save)>0:
+        np.savez('../data/{:s}'.format(save), fits=fits)
+    
+    if graph:
+        ylabel = ['R.A. (deg)', 'Dec (deg)', 'd (kpc)', '$V_r$ (km/s)', '$\mu_\\alpha$ (mas/yr)', '$\mu_\delta$ (mas/yr)']
+        
+        plt.close()
+        fig, ax = plt.subplots(1,5,figsize=(16,5), sharex=True)
+        
+        for i in range(Ndim-1):
+            plt.sca(ax[i])
+            plt.plot(stream.obs[0], stream.obs[i+1], 'ko')
+            plt.plot(stream.obs[0][isort], fits[i](stream.obs[0][isort]), 'r-', lw=2)
+            
+            plt.xlabel('R.A. (deg)')
+            plt.ylabel(ylabel[i+1])
+        
+        plt.tight_layout()
+
+# fit bspline for a range of integration time steps
+def bspline_atdt(n):
+    """"""
+    dt = np.array([0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 0.75, 1])*u.Myr
+    
+    for dt_ in dt:
+        fout = 'bspline_n{:d}_dt{:.2f}'.format(n, dt_.value)
+        fit_bspline(n, dt=dt_, save=fout)
+
+def analyze_atdt(n):
+    """"""
+    stream = stream_model(n, dt=0.01*u.Myr)
+    Ndim = np.shape(stream.obs)[0]
+
+    ylabel = ['R.A. (deg)', 'Dec (deg)', 'd (kpc)', '$V_r$ (km/s)', '$\mu_\\alpha$ (mas/yr)', '$\mu_\delta$ (mas/yr)']
+    Nobs = 10
+    k = 3
+    
+    isort = np.argsort(stream.obs[0])
+    ra = np.linspace(np.min(stream.obs[0])*1.05, np.max(stream.obs[0])*0.95, Nobs)
+    t = np.r_[(stream.obs[0][isort][0],)*(k+1), ra, (stream.obs[0][isort][-1],)*(k+1)]
+    
+    fiducial = [None]*(Ndim-1)
+    for j in range(Ndim-1):
+        fiducial[j] = scipy.interpolate.make_lsq_spline(stream.obs[0][isort], stream.obs[j+1][isort], t, k=k)
+    
+    plt.close()
+    fig, ax = plt.subplots(2,5,figsize=(16,5), sharex='col', gridspec_kw = {'height_ratios':[3, 1]})
+    
+    for i in range(Ndim-1):
+        plt.sca(ax[0][i])
+        plt.plot(stream.obs[0], stream.obs[i+1], 'wo', mec='k', mew=0.1)
+        
+        plt.ylabel(ylabel[i+1])
+        
+        plt.sca(ax[1][i])
+        plt.plot(stream.obs[0][isort], stream.obs[i+1][isort] - fiducial[i](stream.obs[0][isort]), 'wo', mec='k', mew=0.1)
+        plt.xlabel('R.A. (deg)')
+        plt.ylabel('$\Delta$')
+    
+    dt = np.array([0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 0.75, 1])*u.Myr
+    for j, dt_ in enumerate(dt):
+        fin = np.load('../data/bspline_n{:d}_dt{:.2f}.npz'.format(n, dt_.value))
+        fits = fin['fits']
+        
+        for i in range(Ndim-1):
+            plt.sca(ax[0][i])
+            plt.plot(stream.obs[0][isort], fits[i](stream.obs[0][isort]), '-', color=mpl.cm.bone(j/np.size(dt)), lw=2, label='{}'.format(dt_))
+            
+            if i==0:
+                plt.legend(frameon=True, framealpha=0.3, fontsize='xx-small', handlelength=0.5)
+            
+            plt.sca(ax[1][i])
+            plt.plot(stream.obs[0][isort], fits[i](stream.obs[0][isort]) - fiducial[i](stream.obs[0][isort]), '-', color=mpl.cm.bone(j/np.size(dt)), lw=2)
+    
+    plt.tight_layout()
+    plt.savefig('../plots/bspline_atdt_n{:d}.png'.format(n))
+    
+    
+################
+# stream track #
 def stream_track(n, dim=1):
     """"""
     pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
@@ -1240,7 +1338,7 @@ def stream_track(n, dim=1):
     plt.savefig('../plots/stream_track_{}.png'.format(n))
 
 # plot model
-def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s], graph=False):
+def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s], dt=1*u.Myr, graph=False):
     """"""
     
     obsmode = 'equatorial'
@@ -1332,7 +1430,7 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
     vc_ = np.sqrt(G*mr/distance)
     vsun['vcirc'] = np.sqrt((198*u.km/u.s)**2 + vc_**2)
     
-    params = {'generate': {'x0': x0*u.kpc, 'v0': v0*u.km/u.s, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': 1*u.Myr, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mw_observer, 'footprint': footprint}}
+    params = {'generate': {'x0': x0*u.kpc, 'v0': v0*u.km/u.s, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mw_observer, 'footprint': footprint}}
     
     stream = Stream(**params['generate'])
     stream.generate()
