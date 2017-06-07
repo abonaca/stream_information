@@ -1293,7 +1293,88 @@ def analyze_atdt(n):
     
     plt.tight_layout()
     plt.savefig('../plots/bspline_atdt_n{:d}.png'.format(n))
+
+# fit bspline for a range of potential parameter steps
+def bspline_atdx(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=False):
+    """"""
+    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
+    pid, dp = get_varied_pars(vary)
+
+    Nstep, step = get_steps(Nstep=Nstep, log=log)
     
+    # excursions
+    for i, s in enumerate(step):
+        pparams = [x for x in pparams0]
+        pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
+        fout = 'bspline_n{:d}_p{:d}_dx{:d}_log{:d}'.format(n, p, i, log)
+        if verbose: print(fout)
+        fit_bspline(n, pparams=pparams, dt=dt, save=fout)
+
+def analyze_atdx(n, Nobs=10, log=True, Nstep=20, vary='halo', ylabels=True):
+    """"""
+    
+    mpl.rcParams['axes.linewidth'] = 1
+    mpl.rcParams['font.size'] = 15
+
+    stream = stream_model(n, dt=1*u.Myr)
+    Ndim = np.shape(stream.obs)[0] - 1
+
+    ylabel = ['R.A. (deg)', 'Dec (deg)', 'd (kpc)', '$V_r$ (km/s)', '$\mu_\\alpha$ (mas/yr)', '$\mu_\delta$ (mas/yr)']
+    names = {'-1':'GD-1', '-2':'Pal 5', '-3':'Triangulum', '-4':'ATLAS'}
+    name = names['{:d}'.format(n)]
+    k = 3
+    
+    isort = np.argsort(stream.obs[0])
+    ra = np.linspace(np.min(stream.obs[0])*1.05, np.max(stream.obs[0])*0.95, Nobs)
+    t = np.r_[(stream.obs[0][isort][0],)*(k+1), ra, (stream.obs[0][isort][-1],)*(k+1)]
+    
+    Ndim = 5
+    dimensions = ['$\delta$', 'd', '$V_r$', '$\mu_\\alpha$', '$\mu_\delta$']
+    
+    Nstep, step = get_steps(log=log, Nstep=Nstep)
+    pid, dp = get_varied_pars(vary)
+    Npar = len(pid)
+
+    h = 2
+    plt.close()
+    fig, ax = plt.subplots(Ndim, Npar, figsize=(Npar*h*1.2,Ndim*h), sharex='col')
+
+    for p in range(Npar):
+        parameter = get_parlabel(pid)[p]
+        units = ['km/s', 'kpc', '', '', '$M_\odot$']
+        
+        dydx = np.empty((Ndim, Nstep, Nobs))
+        
+        for j in range(Nstep):
+            fin1 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}.npz'.format(n, p, j, log))
+            fin2 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}.npz'.format(n, p, 2*Nstep - j - 1, log))
+            fits1 = fin1['fits']
+            fits2 = fin2['fits']
+            for i in range(Ndim):
+                dydx[i][j] = (fits1[i](ra) - fits2[i](ra))/(dp[p].value*(step[j] - step[2*Nstep-j-1]))
+        
+        for i in range(Ndim):
+            plt.sca(ax[i][p])
+            for k in range(Nobs):
+                plt.plot(step[Nstep:] * dp[p], dydx[i,:,k], '-', ms=2, color='{}'.format(k/Nobs), lw=1.5)
+            
+            if i==Ndim-1:
+                if len(units[p]):
+                    plt.xlabel('$\Delta$ {} ({})'.format(parameter, units[p]))
+                else:
+                    plt.xlabel('$\Delta$ {}'.format(parameter))
+            if p==0:
+                plt.ylabel('d{}/dx'.format(dimensions[i]))
+
+            plt.setp(plt.gca().get_yticklabels(), visible=ylabels)
+            plt.gca().set_xscale('log')
+    
+    plt.suptitle(name, fontsize='large')
+    plt.tight_layout(h_pad=0.02, w_pad=0.02, rect=(0,0,1,0.95))
+    plt.savefig('../plots/stepsize_{:d}_{:d}_{:d}.png'.format(n, log, Nobs))
+
+    mpl.rcParams['axes.linewidth'] = 2
+    mpl.rcParams['font.size'] = 18
     
 ################
 # stream track #
@@ -1499,7 +1580,7 @@ def get_varied_pars(vary):
     if vary=='halo':
         pid = [0,1,3,5]
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
-        dp = [20*u.km/u.s, 2*u.kpc, 0.1*u.Unit(1), 0.1*u.Unit(1)]
+        #dp = [20*u.km/u.s, 2*u.kpc, 0.1*u.Unit(1), 0.1*u.Unit(1)]
     elif vary=='progenitor':
         pid = [7,8,9,10,11,12]
         dp = [0.05*u.kpc for x in range(3)] + [2*u.km/u.s for x in range(3)]
