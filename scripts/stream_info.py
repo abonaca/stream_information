@@ -904,7 +904,7 @@ def dydx_stepsize(n, Nobs=10, vary='all', log=False, ylabels=False, Nstep=50, fi
     Nstep, step = get_steps(log=log, Nstep=Nstep)
     pid, dp = get_varied_pars(vary)
     Npar = len(pid)
-    
+
     h = 2
     plt.close()
     fig, ax = plt.subplots(Ndim, Npar, figsize=(Npar*h*1.2,Ndim*h), sharex='col')
@@ -920,15 +920,23 @@ def dydx_stepsize(n, Nobs=10, vary='all', log=False, ylabels=False, Nstep=50, fi
         dydx = np.empty((Ndim, 2*Nstep, Nobs))
         
         for i in range(Ndim):
-            for j, s in enumerate(step):
+            #for j, s in enumerate(step):
                 #if (i==0) & (p==0):
                     #print(j, fits[j+1][i])
                 #print((np.poly1d(fits[j+1][i])(ra) - np.poly1d(fits[0][i])(ra))/(dp[p].value*s))
-                dydx[i][j] = (np.poly1d(fits[j+1][i])(ra) - np.poly1d(fits[0][i])(ra))/(dp[p].value*s)
+                #dydx[i][j] = (np.poly1d(fits[j+1][i])(ra) - np.poly1d(fits[0][i])(ra))/(dp[p].value*s)
+            for j in range(Nstep):
+                dydx[i][j] = (np.poly1d(fits[j+1][i])(ra) - np.poly1d(fits[2*Nstep-j][i])(ra))/(dp[p].value*(step[j] - step[2*Nstep-j-1]))
+                #if (np.abs(dydx[i][j][0])<1e-5):
+                    #dydx[i][j][0] = np.nan
+                #else:
+                    #dydx[i][j][0] /= dp[p].value*(step[j] - step[2*Nstep-j-1])
+                #print(i, j, dydx[i][j]) #, np.poly1d(fits[j+1][i])(ra), np.poly1d(fits[2*Nstep-j][i])(ra))
         
             plt.sca(ax[i][p])
             for k in range(Nobs):
-                plt.plot(step[Nstep:] * dp[p], dydx[i,Nstep:,k], '-', ms=2, color='{}'.format(k/Nobs), lw=1.5)
+                #plt.plot(step[Nstep:] * dp[p], dydx[i,Nstep:,k], '-', ms=2, color='{}'.format(k/Nobs), lw=1.5)
+                plt.plot(step[Nstep:] * dp[p], dydx[i,:Nstep,k], '-', ms=2, color='{}'.format(k/Nobs), lw=1.5)
 
                 #dsigma = 0.1/(dp[p].value*step[Nstep+1:])
                 #plt.fill_between(step[Nstep+1:] * dp[p].value, dydx[i,Nstep+1:,k]+dsigma, y2=dydx[i,Nstep+1:,k]-dsigma, color='k', alpha=0.5)
