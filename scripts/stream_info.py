@@ -1200,8 +1200,10 @@ def crb_stepsize(n, Nobs=10, vary='potential', log=False, ylabels=False, Nstep=5
 ##############################
 # b-spline based derivatives #
 
+pparams_fid = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
+
 # fit b-spline to a stream model
-def fit_bspline(n, pparams=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s], dt=1*u.Myr, graph=False, save=''):
+def fit_bspline(n, pparams=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s], dt=1*u.Myr, save='', graph=False, graphsave='', fiducial=False):
     """"""
     Ndim = 6
     fits = [None]*(Ndim-1)
@@ -1221,20 +1223,58 @@ def fit_bspline(n, pparams=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u
         np.savez('../data/{:s}'.format(save), fits=fits)
     
     if graph:
+        xlims, ylims = get_stream_limits(n)
         ylabel = ['R.A. (deg)', 'Dec (deg)', 'd (kpc)', '$V_r$ (km/s)', '$\mu_\\alpha$ (mas/yr)', '$\mu_\delta$ (mas/yr)']
         
+        if fiducial:
+            stream_fid = stream_model(n, pparams0=pparams_fid, dt=dt)
+            fidsort = np.argsort(stream_fid.obs[0])
+            ra = np.linspace(np.min(stream_fid.obs[0])*1.05, np.max(stream_fid.obs[0])*0.95, Nobs)
+            t = np.r_[(stream_fid.obs[0][fidsort][0],)*(k+1), ra, (stream_fid.obs[0][fidsort][-1],)*(k+1)]
+            llabel = 'b-spline fit'
+        else:
+            llabel = ''
+        
         plt.close()
-        fig, ax = plt.subplots(1,5,figsize=(16,5), sharex=True)
+        fig, ax = plt.subplots(1,5,figsize=(20,5), sharex=True)
         
         for i in range(Ndim-1):
             plt.sca(ax[i])
             plt.plot(stream.obs[0], stream.obs[i+1], 'ko')
-            plt.plot(stream.obs[0][isort], fits[i](stream.obs[0][isort]), 'r-', lw=2)
+            plt.plot(stream.obs[0][isort], fits[i](stream.obs[0][isort]), 'r-', lw=2, label=llabel)
+            
+            if fiducial:
+                fits_fid = scipy.interpolate.make_lsq_spline(stream_fid.obs[0][fidsort], stream_fid.obs[i+1][fidsort], t, k=k)
+                plt.plot(stream_fid.obs[0][fidsort], fits_fid(stream_fid.obs[0][fidsort]), 'b-', lw=2, label='Fiducial')
             
             plt.xlabel('R.A. (deg)')
             plt.ylabel(ylabel[i+1])
+            plt.xlim(xlims[1], xlims[0])
+            plt.ylim(ylims[i][0], ylims[i][1])
+        
+        if fiducial:
+            plt.legend(fontsize='small')
         
         plt.tight_layout()
+        if len(graphsave)>0:
+            plt.savefig('../plots/{:s}.png'.format(graphsave))
+
+def get_stream_limits(n):
+    """Return lists with limiting values in different dimensions"""
+    if n==-1:
+        xlims = [260, 100]
+        ylims = [[-20, 70], [5, 15], [-400, 400], [-15,5], [-15, 5]]
+    elif n==-2:
+        xlims = [245, 225]
+        ylims = [[-4, 10], [21, 27], [-80, -20], [0, 250]]
+    elif n==-3:
+        xlims = [30, 15]
+        ylims = [[10, 50], [34, 36], [-175, -50], [0.45, 1], [0.1, 0.7]]
+    elif n==-4:
+        xlims = [35, 10]
+        ylims = [[-40, -20], [15, 25], [50, 200], [0, 250]]
+
+    return (xlims, ylims)
 
 # fit bspline for a range of integration time steps
 def bspline_atdt(n):
@@ -1308,9 +1348,9 @@ def bspline_atdx(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=
         pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
         fout = 'bspline_n{:d}_p{:d}_dx{:d}_log{:d}'.format(n, p, i, log)
         if verbose: print(fout)
-        fit_bspline(n, pparams=pparams, dt=dt, save=fout)
+        fit_bspline(n, pparams=pparams, dt=dt, save=fout, graph=True, graphsave=fout, fiducial=True)
 
-def analyze_atdx(n, Nobs=10, log=True, Nstep=20, vary='halo', ylabels=True):
+def analyze_atdx(n, Nobs=10, log=True, Nstep=20, vary='halo', ylabels=True, fiducial=False):
     """"""
     
     mpl.rcParams['axes.linewidth'] = 1
@@ -1334,6 +1374,7 @@ def analyze_atdx(n, Nobs=10, log=True, Nstep=20, vary='halo', ylabels=True):
     Nstep, step = get_steps(log=log, Nstep=Nstep)
     pid, dp = get_varied_pars(vary)
     Npar = len(pid)
+    best_step = optimal_stepsize(n, Nobs=Nobs, log=log, Nstep=Nstep, vary=vary)
 
     h = 2
     plt.close()
@@ -1356,7 +1397,7 @@ def analyze_atdx(n, Nobs=10, log=True, Nstep=20, vary='halo', ylabels=True):
         for i in range(Ndim):
             plt.sca(ax[i][p])
             for k in range(Nobs):
-                plt.plot(step[Nstep:] * dp[p], dydx[i,:,k], '-', ms=2, color='{}'.format(k/Nobs), lw=1.5)
+                plt.plot(step[Nstep:][::-1] * dp[p], dydx[i,:,k], '-', ms=2, color='{}'.format(k/Nobs), lw=1.5)
             
             if i==Ndim-1:
                 if len(units[p]):
@@ -1368,58 +1409,85 @@ def analyze_atdx(n, Nobs=10, log=True, Nstep=20, vary='halo', ylabels=True):
 
             plt.setp(plt.gca().get_yticklabels(), visible=ylabels)
             plt.gca().set_xscale('log')
+        
+            if fiducial:
+                plt.axvline(step[best_step[p]]*dp[p].value, ls='-', lw=2, color='orange', zorder=0)
     
     plt.suptitle(name, fontsize='large')
     plt.tight_layout(h_pad=0.02, w_pad=0.02, rect=(0,0,1,0.95))
-    plt.savefig('../plots/stepsize_{:d}_{:d}_{:d}.png'.format(n, log, Nobs))
+    plt.savefig('../plots/stepsize_{:d}_{:d}_{:d}_{:d}.png'.format(n, log, Nobs, fiducial))
 
     mpl.rcParams['axes.linewidth'] = 2
     mpl.rcParams['font.size'] = 18
 
-# crbs using bspline
-def bspline_crb(n, Ndim=6, istep=15, Nstep=20, log=True, vary='halo', Nobs=50):
+def optimal_stepsize(n, Nobs=10, log=True, Nstep=20, vary='halo'):
     """"""
-    # Load streams
-    if n==-1:
-        observed = load_gd1(present=[0,1,2,3])
-        xi = [140, 180]
-        xlims = [[190, 130], [0, 350]]
-        ylims = [[15, 65], [5, 10], [-250, 150], [0, 250]]
-        loc = 2
-        name = 'GD-1'
-    elif n==-3:
-        observed = load_tri(present=[0,1,2,3])
-        xi = [20, 24]
-        xlims = [[25, 19], [0, 350]]
-        ylims = [[10, 50], [20, 45], [-175, -50], [0, 250]]
-        loc = 1
-        name = 'Triangulum'
-    elif n==-4:
-        observed = load_atlas(present=[0,1,2,3])
-        xi = [15, 28]
-        xlims = [[35, 10], [0, 350]]
-        ylims = [[-40, -20], [15, 25], [50, 200], [0, 250]]
-        loc = 3
-        name = 'ATLAS'
+    Nstep, step = get_steps(log=log, Nstep=Nstep)
+    pid, dp = get_varied_pars(vary)
+    Npar = len(pid)
+    
+    stepid = np.arange(1,Nstep-1,1, dtype=np.int64)[::-1]
+    best_step = np.ones(Npar, dtype=np.int64) * np.nan
+    
+    stream = stream_model(n, dt=1*u.Myr)
+    Ndim = np.shape(stream.obs)[0] - 1
+    ra = np.linspace(np.min(stream.obs[0])*1.05, np.max(stream.obs[0])*0.95, Nobs)
+    
+    if Nobs>1:
+        #sig_obs = np.empty((Nobs, Ndim))
+        #for i in range(Ndim):
+            
+        sig_obs_ = np.array([[0.01, 0.1, 0.1, 0.01, 0.01]])
+        sig_obs = np.tile(sig_obs_, Nobs).reshape(Nobs, -1)
     else:
-        observed = load_pal5(present=[0,1,2,3])
-        xi = [227, 242]
-        xlims = [[245, 225], [0, 350]]
-        ylims = [[-4, 10], [21, 27], [-80, -20], [0, 250]]
-        loc = 3
-        name = 'Pal 5'
+        sig_obs = np.array([[0.01, 0.1, 0.1, 0.01, 0.01]])
+    
+    for p in range(Npar):
+        for s in stepid:
+            if ~np.isfinite(best_step[p]):
+                fitdn1 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}.npz'.format(n, p, s - 1, log))['fits']
+                fitdn2 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}.npz'.format(n, p, 2*Nstep - s, log))['fits']
+                fitup1 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}.npz'.format(n, p, s + 1, log))['fits']
+                fitup2 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}.npz'.format(n, p, 2*Nstep - s - 2, log))['fits']
+                
+                criterion = np.zeros(Ndim, dtype=bool)
+                
+                for i in range(Ndim):
+                    dydn = fitdn1[i](ra) - fitdn2[i](ra)
+                    dyup = fitup1[i](ra) - fitup2[i](ra)
+                    dy0 = np.array([x for x in sig_obs[:,i]])
+                    
+                    #dy0 /= (step[s] - step[2*Nstep - s - 1])
+                    #dy0 = np.abs(dy0)
+                    #dydn *= (step[s - 1] - step[2*Nstep - s]) / (step[s] - step[2*Nstep - s - 1])
+                    #dyup *= (step[s + 1] - step[2*Nstep - s - 2]) / (step[s] - step[2*Nstep - s - 1])
+                    
+                    criterion[i] = np.all(np.less(np.abs(dydn - dyup), dy0))
+                    #print(np.less(np.abs(dydn - dyup), dy0))
+                    #print(s, dydn, dyup, dydn - dyup, dy0)
+                
+                if np.all(criterion):
+                    best_step[p] = 2*Nstep - s - 1
+                    #print(s, step[s], step[2*Nstep - s - 1])
+    
+    #print(best_step, step[np.int64(best_step)])
+    return best_step.astype(int)
+    
+# crbs using bspline
+def bspline_crb(n, Ndim=6, istep=15, Nstep=20, log=True, vary='halo', Nobs=50, verbose=False):
+    """"""
     
     # typical uncertainties
     sig_obs = np.array([0.1, 2, 5, 0.1, 0.1])
     
     # mock observations
-    ra = np.linspace(np.min(observed.obs[0]), np.max(observed.obs[0]), Nobs)
+    stream = stream_model(n, dt=1*u.Myr)
+    ra = np.linspace(np.min(stream.obs[0])*1.05, np.max(stream.obs[0])*0.95, Nobs)
     err = np.tile(sig_obs, Nobs).reshape(Nobs,-1)
-    
+
     Nstep, step = get_steps(log=log, Nstep=Nstep)
     pid, dp = get_varied_pars(vary)
     Nvar = len(pid)
-    #print(pid, dp)
     
     Ndata = Nobs * (Ndim - 1)
     dydx = np.empty((Nvar, Ndata))
@@ -1446,19 +1514,12 @@ def bspline_crb(n, Ndim=6, istep=15, Nstep=20, log=True, vary='halo', Nobs=50):
     cx = np.linalg.inv(cxi)
     sx = np.sqrt(np.diag(cx))
     
-    #plt.close()
-    #plt.figure()
-    
-    #t = 1 - cx[:,0]/cx[0,:]
-    #plt.plot(t, 'ko')
-    #print(t)
-    
-    print(np.diag(cxi))
-    print(np.linalg.det(cxi))
-    print(np.allclose(cxi, cxi.T))
-    print(np.allclose(cx, cx.T))
+    if verbose:
+        print(np.diag(cxi))
+        print(np.linalg.det(cxi))
+        print(np.allclose(cxi, cxi.T), np.allclose(cx, cx.T))
 
-    np.save('../data/crb/bspline_cxi_{:d}_{:d}'.format(n, Ndim), cxi)
+    np.save('../data/crb/bspline_cxi_{:d}_{:d}_{:d}'.format(n, Ndim, istep), cxi)
 
 ################
 # stream track #
@@ -1969,7 +2030,7 @@ def plot_crb_all(paper=False):
     mpl.rcParams['axes.linewidth'] = 2
     mpl.rcParams['font.size'] = 18
 
-def plot_crb_triangle(n=-1, vary='potential', out='save'):
+def plot_crb_triangle(n=-1, istep=18, vary='potential', out='save'):
     """Produce a triangle plot of 2D Cramer-Rao bounds for all model parameters using a given stream"""
     
     if vary=='all':
@@ -1988,14 +2049,15 @@ def plot_crb_triangle(n=-1, vary='potential', out='save'):
     params0 = ['$V_h$ (km/s)', '$R_h$ (kpc)', '$q_1$', '$q_z$', '$M_{LMC}$', '$X_p$', '$Y_p$', '$Z_p$', '$V_{xp}$', '$V_{yp}$', '$V_{zp}$']
     params = ['$\Delta$ '+x for x in params0]
     ylim = [150, 20, 0.5, 0.5, 5e11]
-    ylim = [10, 1, 0.1, 0.1]
+    ylim = [20, 5, 0.2, 0.2]
+    #ylim = [10, 1, 0.1, 0.1]
     
     plt.close()
     fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(8,8), sharex='col', sharey='row')
     
     # plot 2d bounds in a triangle fashion
     for l, Ndim in enumerate([3,4,6]):
-        cxi = np.load('../data/crb/bspline_cxi_{:d}_{:d}.npy'.format(n, Ndim))
+        cxi = np.load('../data/crb/bspline_cxi_{:d}_{:d}_{:d}.npy'.format(n, Ndim, istep))
         #cxi = np.load('../data/crb/full_cxi_{:d}_{:d}.npy'.format(n, Ndim))
         cxi = cxi[:Nvar,:Nvar]
         cx = np.linalg.inv(cxi)
@@ -2050,7 +2112,7 @@ def plot_crb_triangle(n=-1, vary='potential', out='save'):
     
     if out=='save':
         #plt.savefig('../plots/crb_individual_{}_{}.png'.format(n, vary))
-        plt.savefig('../plots/crb_bspline_individual_{}_{}.png'.format(n, vary))
+        plt.savefig('../plots/crb_bspline_individual_{}_{}_{:02d}.png'.format(n, vary, istep))
     else:
         return fig
 
