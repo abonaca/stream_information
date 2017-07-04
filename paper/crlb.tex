@@ -28,7 +28,7 @@
 \correspondingauthor{Ana Bonaca}
 % \email{whatevs}
 
-\author{Ana Bonaca}
+\author[0000-0002-7846-9787]{Ana Bonaca}
 \affil{Harvard--Smithsonian Center for Astrophysics}
 
 \author[0000-0003-2866-9403]{David W. Hogg}
@@ -81,7 +81,50 @@ observations that could be made of particular known streams.
 
 \section{Introduction} \label{sec:intro}
 
-Hello World!
+\begin{itemize}
+ \item establish streams useful in constraining gravitational potential
+ \item tied to parametric models (too complex for inference otherwise, at least in current approaches)
+ \item constraints only as good as the model (VL2 results)
+ \item so, since not likely that the true potential is NFW, what are the streams constraining? 
+ \item here we're building a framework to measure the information content of stellar streams regarding the gravitational potential
+ \item two-fold goals: given a simple parametric model, what kind of data do we need? what aspect of a (non-parametric) potential do individual streams constrain?
+\end{itemize}
+
+
+\section{Methods}
+\label{sec:method}
+
+\subsection{Information content}
+
+\subsection{Calculating \CRLB\ for tidal streams}
+
+\begin{itemize}
+ \item fiducial potential
+ \item numerical derivative
+ - regard only transverse direction, as longitudinal has a strong degeneracy with stream age
+ - rotate to a system of where the equator is a best-fitting great circle to the stream
+ - noisy data due to the particle nature of streams, tested time step small enough so that we're not introducing numerical noise that way
+ - interested in a general shape of the stream, so we're fitting a bspline to the stream (more stable than polynomial)
+ - choice of step size for numerical derivative such that the derivative converged
+\end{itemize}
+
+\subsection{Sets of observational data}
+
+\begin{itemize}
+ \item fiducial
+ \item DESI-like
+ \item Gaia DR2
+ \item MM
+ \item SDSS-5
+ \item Gaia final
+\end{itemize}
+
+\subsection{Cold tidal streams in the Milky Way}
+
+
+\section{Results}
+
+
 
 \begin{figure}
 \begin{center}
@@ -101,4 +144,3 @@ Even if only limited observational data is available for multiple streams, the o
 
 \end{document}
 
-% End of file `sample61.tex'.
