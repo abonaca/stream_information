@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 import streakline
-#import halo_masses as hm
 import myutils
 import ffwd
 
@@ -14,12 +13,11 @@ import astropy
 import astropy.units as u
 from astropy.constants import G
 from astropy.table import Table
-#from astropy.io import fits
 import astropy.coordinates as coord
-#from astropy.coordinates import Angle
 import gala.coordinates as gc
 
 import scipy.interpolate
+import scipy.optimize
 
 # observers
 vl2_observer = {'z_sun': 0.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_ra': 300*u.deg, 'galcen_dec': 20*u.deg}
@@ -147,7 +145,7 @@ class Stream():
         self.trailing['x'] = stream[3:6]*u.m
         self.trailing['v'] = stream[9:12]*u.m/u.s
     
-    def observe(self, mode='cartesian', units=[], errors=[], nstars=-1, sequential=False, present=[], logerr=False, observer = {'z_sun': 0.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_ra': 300*u.deg, 'galcen_dec': 20*u.deg}, footprint='none'):
+    def observe(self, mode='cartesian', units=[], errors=[], nstars=-1, sequential=False, present=[], logerr=False, observer = {'z_sun': 0.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_ra': 300*u.deg, 'galcen_dec': 20*u.deg}, footprint='none', rotmatrix=None):
         """Observe the stream
         stream.obs holds all observations
         stream.err holds all errors"""
@@ -206,6 +204,11 @@ class Stream():
             if footprint=='sdss':
                 infoot = dec > -2.5*u.deg
                 obs = obs[:,infoot]
+            
+            if np.all(rotmatrix)!=None:
+                xi, eta  = myutils.rotate_angles(obs[0], obs[1], rotmatrix)
+                obs[0] = xi
+                obs[1] = eta
             
             self.obs = obs
             
@@ -830,7 +833,7 @@ def get_steps(Nstep=50, log=False):
     log - if True, steps are logarithmically spaced (default: False)"""
     
     if log:
-        step = np.logspace(-3, 1, Nstep)
+        step = np.logspace(-1, 1, Nstep)
     else:
         step = np.linspace(0.1, 10, Nstep)
     
@@ -1203,12 +1206,17 @@ def crb_stepsize(n, Nobs=10, vary='potential', log=False, ylabels=False, Nstep=5
 pparams_fid = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
 
 # fit b-spline to a stream model
-def fit_bspline(n, pparams=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s], dt=1*u.Myr, save='', graph=False, graphsave='', fiducial=False):
+def fit_bspline(n, pparams=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s], dt=1*u.Myr, align=False, save='', graph=False, graphsave='', fiducial=False):
     """"""
     Ndim = 6
     fits = [None]*(Ndim-1)
     
-    stream = stream_model(n, pparams0=pparams, dt=dt)
+    if align:
+        rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
+    else:
+        rotmatrix = None
+    
+    stream = stream_model(n, pparams0=pparams, dt=dt, rotmatrix=rotmatrix)
     
     Nobs = 10
     k = 3
@@ -1223,56 +1231,148 @@ def fit_bspline(n, pparams=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u
         np.savez('../data/{:s}'.format(save), fits=fits)
     
     if graph:
-        xlims, ylims = get_stream_limits(n)
+        xlims, ylims = get_stream_limits(n, align)
         ylabel = ['R.A. (deg)', 'Dec (deg)', 'd (kpc)', '$V_r$ (km/s)', '$\mu_\\alpha$ (mas/yr)', '$\mu_\delta$ (mas/yr)']
+        if align:
+            ylabel[:2] = ['$\\xi$ (deg)', '$\\eta$ (deg)']
         
         if fiducial:
-            stream_fid = stream_model(n, pparams0=pparams_fid, dt=dt)
+            stream_fid = stream_model(n, pparams0=pparams_fid, dt=dt, rotmatrix=rotmatrix)
             fidsort = np.argsort(stream_fid.obs[0])
             ra = np.linspace(np.min(stream_fid.obs[0])*1.05, np.max(stream_fid.obs[0])*0.95, Nobs)
-            t = np.r_[(stream_fid.obs[0][fidsort][0],)*(k+1), ra, (stream_fid.obs[0][fidsort][-1],)*(k+1)]
+            tfid = np.r_[(stream_fid.obs[0][fidsort][0],)*(k+1), ra, (stream_fid.obs[0][fidsort][-1],)*(k+1)]
             llabel = 'b-spline fit'
         else:
             llabel = ''
         
         plt.close()
-        fig, ax = plt.subplots(1,5,figsize=(20,5), sharex=True)
+        fig, ax = plt.subplots(2,5,figsize=(20,5), sharex=True, gridspec_kw = {'height_ratios':[3, 1]})
         
         for i in range(Ndim-1):
-            plt.sca(ax[i])
+            plt.sca(ax[0][i])
             plt.plot(stream.obs[0], stream.obs[i+1], 'ko')
             plt.plot(stream.obs[0][isort], fits[i](stream.obs[0][isort]), 'r-', lw=2, label=llabel)
             
             if fiducial:
-                fits_fid = scipy.interpolate.make_lsq_spline(stream_fid.obs[0][fidsort], stream_fid.obs[i+1][fidsort], t, k=k)
+                fits_fid = scipy.interpolate.make_lsq_spline(stream_fid.obs[0][fidsort], stream_fid.obs[i+1][fidsort], tfid, k=k)
+                plt.plot(stream_fid.obs[0], stream_fid.obs[i+1], 'wo', mec='k', alpha=0.1)
                 plt.plot(stream_fid.obs[0][fidsort], fits_fid(stream_fid.obs[0][fidsort]), 'b-', lw=2, label='Fiducial')
             
-            plt.xlabel('R.A. (deg)')
             plt.ylabel(ylabel[i+1])
-            plt.xlim(xlims[1], xlims[0])
+            plt.xlim(xlims[0], xlims[1])
             plt.ylim(ylims[i][0], ylims[i][1])
+            
+            plt.sca(ax[1][i])
+            if fiducial:
+                yref = fits_fid(stream.obs[0])
+                ycolor = 'b'
+            else:
+                yref = fits[i](stream.obs[0])
+                ycolor = 'r'
+            plt.axhline(0, color=ycolor, lw=2)
+
+            plt.plot(stream.obs[0][isort], stream.obs[i+1][isort] - stream_fid.obs[i+1][fidsort], 'wo', mec='k', alpha=0.1)
+            plt.plot(stream.obs[0], stream.obs[i+1] - yref, 'ko')
+            
+            fits_diff = scipy.interpolate.make_lsq_spline(stream.obs[0][isort], stream.obs[i+1][isort] - stream_fid.obs[i+1][fidsort], t, k=k)
+            plt.plot(stream.obs[0][isort], fits_diff(stream.obs[0][isort]), 'r--')
+            plt.plot(stream.obs[0][isort], fits[i](stream.obs[0][isort]) - yref[isort], 'r-', lw=2, label=llabel)
+            
+            
+            plt.xlabel(ylabel[0])
+            plt.ylabel('$\Delta$ {}'.format(ylabel[i+1].split(' ')[0]))
         
         if fiducial:
+            plt.sca(ax[0][Ndim-2])
             plt.legend(fontsize='small')
         
         plt.tight_layout()
         if len(graphsave)>0:
             plt.savefig('../plots/{:s}.png'.format(graphsave))
+    
 
-def get_stream_limits(n):
+def fitbyt_bspline(n, pparams=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s], dt=1*u.Myr, align=False, save='', graph=False, graphsave='', fiducial=False):
+    """"""
+    Ndim = 6
+    fits = [None]*(Ndim-1)
+    
+    if align:
+        rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
+    else:
+        rotmatrix = None
+    
+    stream = stream_model(n, pparams0=pparams, dt=dt, rotmatrix=rotmatrix)
+    
+    Nobs = 10
+    k = 3
+    isort = np.argsort(stream.obs[0])
+    ra = np.linspace(np.min(stream.obs[0])*1.05, np.max(stream.obs[0])*0.95, Nobs)
+    t = np.r_[(stream.obs[0][isort][0],)*(k+1), ra, (stream.obs[0][isort][-1],)*(k+1)]
+    
+    for j in range(Ndim-1):
+        fits[j] = scipy.interpolate.make_lsq_spline(stream.obs[0][isort], stream.obs[j+1][isort], t, k=k)
+    
+    if len(save)>0:
+        np.savez('../data/{:s}'.format(save), fits=fits)
+    
+    if graph:
+        xlims, ylims = get_stream_limits(n, align)
+        ylabel = ['R.A. (deg)', 'Dec (deg)', 'd (kpc)', '$V_r$ (km/s)', '$\mu_\\alpha$ (mas/yr)', '$\mu_\delta$ (mas/yr)']
+        if align:
+            ylabel[:2] = ['$\\xi$ (deg)', '$\\eta$ (deg)']
+        
+        if fiducial:
+            stream_fid = stream_model(n, pparams0=pparams_fid, dt=dt, rotmatrix=rotmatrix)
+        
+        plt.close()
+        fig, ax = plt.subplots(2,Ndim,figsize=(20,4), sharex=True, gridspec_kw = {'height_ratios':[3, 1]})
+        
+        for i in range(Ndim):
+            plt.sca(ax[0][i])
+            Nhalf = int(0.5*np.size(stream.obs[i]))
+            plt.plot(stream.obs[i][:Nhalf], 'o')
+            plt.plot(stream.obs[i][Nhalf:], 'o')
+
+            if fiducial:
+                plt.plot(stream_fid.obs[i][:Nhalf], 'wo', mec='k', mew=0.2, alpha=0.5)
+                plt.plot(stream_fid.obs[i][Nhalf:], 'wo', mec='k', mew=0.2, alpha=0.5)
+
+            plt.ylabel(ylabel[i])
+            
+            plt.sca(ax[1][i])
+            if fiducial:
+                plt.plot(stream.obs[i][:Nhalf] - stream_fid.obs[i][:Nhalf], 'o')
+                plt.plot(stream.obs[i][Nhalf:] - stream_fid.obs[i][Nhalf:], 'o')
+        
+        if fiducial:
+            plt.sca(ax[0][Ndim-1])
+            plt.legend(fontsize='small')
+        
+        plt.tight_layout()
+        if len(graphsave)>0:
+            plt.savefig('../plots/{:s}.png'.format(graphsave))
+        else:
+            return fig
+
+def get_stream_limits(n, align=False):
     """Return lists with limiting values in different dimensions"""
     if n==-1:
         xlims = [260, 100]
         ylims = [[-20, 70], [5, 15], [-400, 400], [-15,5], [-15, 5]]
     elif n==-2:
-        xlims = [245, 225]
-        ylims = [[-4, 10], [21, 27], [-80, -20], [0, 250]]
+        xlims = [250, 210]
+        ylims = [[-20, 15], [17, 27], [-80, -20], [-5,0], [-5, 0]]
     elif n==-3:
-        xlims = [30, 15]
+        xlims = [27, 17]
         ylims = [[10, 50], [34, 36], [-175, -50], [0.45, 1], [0.1, 0.7]]
     elif n==-4:
         xlims = [35, 10]
-        ylims = [[-40, -20], [15, 25], [50, 200], [0, 250]]
+        ylims = [[-40, -20], [15, 25], [50, 200], [-0.5,0.5], [-1.5, -0.5]]
+    
+    if align:
+        ylims[0] = [-5, 5]
+        xup = [180, 110, 80, 80]
+        xlims = [xup[np.abs(n)-1], 40]
 
     return (xlims, ylims)
 
@@ -1346,11 +1446,11 @@ def bspline_atdx(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=
     for i, s in enumerate(step):
         pparams = [x for x in pparams0]
         pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
-        fout = 'bspline_n{:d}_p{:d}_dx{:d}_log{:d}'.format(n, p, i, log)
+        fout = 'bspline_n{:d}_p{:d}_dx{:d}_log{:d}_align'.format(n, p, i, log)
         if verbose: print(fout)
-        fit_bspline(n, pparams=pparams, dt=dt, save=fout, graph=True, graphsave=fout, fiducial=True)
+        fit_bspline(n, pparams=pparams, dt=dt, save=fout, graph=False, graphsave=fout, fiducial=True, align=True)
 
-def analyze_atdx(n, Nobs=10, log=True, Nstep=20, vary='halo', ylabels=True, fiducial=False):
+def analyze_atdx(n, Nobs=10, log=True, Nstep=20, vary='halo', ylabels=True, fiducial=False, align=False):
     """"""
     
     mpl.rcParams['axes.linewidth'] = 1
@@ -1363,6 +1463,10 @@ def analyze_atdx(n, Nobs=10, log=True, Nstep=20, vary='halo', ylabels=True, fidu
     names = {'-1':'GD-1', '-2':'Pal 5', '-3':'Triangulum', '-4':'ATLAS'}
     name = names['{:d}'.format(n)]
     k = 3
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
     
     isort = np.argsort(stream.obs[0])
     ra = np.linspace(np.min(stream.obs[0])*1.05, np.max(stream.obs[0])*0.95, Nobs)
@@ -1387,8 +1491,8 @@ def analyze_atdx(n, Nobs=10, log=True, Nstep=20, vary='halo', ylabels=True, fidu
         dydx = np.empty((Ndim, Nstep, Nobs))
         
         for j in range(Nstep):
-            fin1 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}.npz'.format(n, p, j, log))
-            fin2 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}.npz'.format(n, p, 2*Nstep - j - 1, log))
+            fin1 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}{:s}.npz'.format(n, p, j, log, alabel))
+            fin2 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}{:s}.npz'.format(n, p, 2*Nstep - j - 1, log, alabel))
             fits1 = fin1['fits']
             fits2 = fin2['fits']
             for i in range(Ndim):
@@ -1415,7 +1519,7 @@ def analyze_atdx(n, Nobs=10, log=True, Nstep=20, vary='halo', ylabels=True, fidu
     
     plt.suptitle(name, fontsize='large')
     plt.tight_layout(h_pad=0.02, w_pad=0.02, rect=(0,0,1,0.95))
-    plt.savefig('../plots/stepsize_{:d}_{:d}_{:d}_{:d}.png'.format(n, log, Nobs, fiducial))
+    plt.savefig('../plots/stepsize_{:d}_{:d}_{:d}_{:d}{:s}.png'.format(n, log, Nobs, fiducial, alabel))
 
     mpl.rcParams['axes.linewidth'] = 2
     mpl.rcParams['font.size'] = 18
@@ -1473,10 +1577,119 @@ def optimal_stepsize(n, Nobs=10, log=True, Nstep=20, vary='halo'):
     #print(best_step, step[np.int64(best_step)])
     return best_step.astype(int)
     
-# crbs using bspline
-def bspline_crb(n, Ndim=6, istep=15, Nstep=20, log=True, vary='halo', Nobs=50, verbose=False):
-    """"""
+def plot_steps(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=False, align=True):
+    """Plot stream for different values of a potential parameter"""
     
+    if align:
+        rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
+    else:
+        rotmatrix = None
+    
+    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
+    pid, dp = get_varied_pars(vary)
+    plabel = get_parlabel(pid[p])
+
+    Nstep, step = get_steps(Nstep=Nstep, log=log)
+    
+    plt.close()
+    fig, ax = plt.subplots(5,5,figsize=(20,10), sharex=True, gridspec_kw = {'height_ratios':[3, 1, 1, 1, 1]})
+    
+    # fiducial model
+    stream0 = stream_model(n, pparams0=pparams0, dt=dt, rotmatrix=rotmatrix)
+    
+    Nobs = 10
+    k = 3
+    isort = np.argsort(stream0.obs[0])
+    ra = np.linspace(np.min(stream0.obs[0])*1.05, np.max(stream0.obs[0])*0.95, Nobs)
+    t = np.r_[(stream0.obs[0][isort][0],)*(k+1), ra, (stream0.obs[0][isort][-1],)*(k+1)]
+    fits = [None]*5
+    
+    for j in range(5):
+        fits[j] = scipy.interpolate.make_lsq_spline(stream0.obs[0][isort], stream0.obs[j+1][isort], t, k=k)
+    
+    # excursions
+    stream_fits = [[None] * 5 for x in range(2 * Nstep)]
+    
+    for i, s in enumerate(step[:]):
+        pparams = [x for x in pparams0]
+        pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
+        stream = stream_model(n, pparams0=pparams, dt=dt, rotmatrix=rotmatrix)
+        color = mpl.cm.RdBu(i/(2*Nstep-1))
+        #print(i, dp[p], pparams)
+        
+        # fits
+        iexsort = np.argsort(stream.obs[0])
+        raex = np.linspace(np.percentile(stream.obs[0], 10), np.percentile(stream.obs[0], 90), Nobs)
+        tex = np.r_[(stream.obs[0][iexsort][0],)*(k+1), raex, (stream.obs[0][iexsort][-1],)*(k+1)]
+        fits_ex = [None]*5
+        
+        for j in range(5):
+            fits_ex[j] = scipy.interpolate.make_lsq_spline(stream.obs[0][iexsort], stream.obs[j+1][iexsort], tex, k=k)
+            stream_fits[i][j] = fits_ex[j]
+            
+            plt.sca(ax[0][j])
+            plt.plot(stream.obs[0], stream.obs[j+1], 'o', color=color, ms=2)
+            
+            plt.sca(ax[1][j])
+            plt.plot(stream.obs[0], stream.obs[j+1] - fits[j](stream.obs[0]), 'o', color=color, ms=2)
+            
+            plt.sca(ax[2][j])
+            plt.plot(stream.obs[0], fits_ex[j](stream.obs[0]) - fits[j](stream.obs[0]), 'o', color=color, ms=2)
+            
+            plt.sca(ax[3][j])
+            plt.plot(stream.obs[0], (fits_ex[j](stream.obs[0]) - fits[j](stream.obs[0]))/(s*dp[p]), 'o', color=color, ms=2)
+    
+    # symmetric derivatives
+    ra_der = np.linspace(np.min(stream0.obs[0])*1.05, np.max(stream0.obs[0])*0.95, 100)
+    for i in range(Nstep):
+        color = mpl.cm.Greys_r(i/Nstep)
+        for j in range(5):
+            dy = stream_fits[i][j](ra_der) - stream_fits[-i-1][j](ra_der)
+            dydx = -dy / np.abs(2*step[i]*dp[p])
+            
+            plt.sca(ax[4][j])
+            plt.plot(ra_der, dydx, '-', color=color, lw=2, zorder=Nstep-i)
+    
+    # labels, limits
+    xlims, ylims = get_stream_limits(n, align)
+    ylabel = ['R.A. (deg)', 'Dec (deg)', 'd (kpc)', '$V_r$ (km/s)', '$\mu_\\alpha$ (mas/yr)', '$\mu_\delta$ (mas/yr)']
+    if align:
+        ylabel[:2] = ['$\\xi$ (deg)', '$\\eta$ (deg)']
+    
+    for j in range(5):
+        plt.sca(ax[0][j])
+        plt.ylabel(ylabel[j+1])
+        plt.xlim(xlims[0], xlims[1])
+        plt.ylim(ylims[j][0], ylims[j][1])
+        
+        plt.sca(ax[1][j])
+        plt.ylabel('$\Delta$ {}'.format(ylabel[j+1].split(' ')[0]))
+        
+        plt.sca(ax[2][j])
+        plt.ylabel('$\Delta$ {}'.format(ylabel[j+1].split(' ')[0]))
+        
+        plt.sca(ax[3][j])
+        plt.ylabel('$\Delta${}/$\Delta${}'.format(ylabel[j+1].split(' ')[0], plabel))
+        
+        plt.sca(ax[4][j])
+        plt.xlabel(ylabel[0])
+        plt.ylabel('$\langle$$\Delta${}/$\Delta${}$\\rangle$'.format(ylabel[j+1].split(' ')[0], plabel))
+    
+    #plt.suptitle('Varying {}'.format(plabel), fontsize='small')
+    plt.tight_layout()
+    plt.savefig('../plots/observable_steps_{:d}_p{:d}_Ns{:d}.png'.format(n, p, Nstep))
+
+def step_convergence():
+    """"""
+
+# crbs using bspline
+def bspline_crb(n, Ndim=6, istep=15, Nstep=20, log=True, vary='halo', Nobs=50, verbose=False, align=False):
+    """"""
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+        
     # typical uncertainties
     sig_obs = np.array([0.1, 2, 5, 0.1, 0.1])
     
@@ -1498,8 +1711,8 @@ def bspline_crb(n, Ndim=6, istep=15, Nstep=20, log=True, vary='halo', Nobs=50, v
         fits = [None]*2
         for l, p in enumerate(pid):
             
-            fin1 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}.npz'.format(n, l, istep, log))
-            fin2 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}.npz'.format(n, l, 2*Nstep - istep - 1, log))
+            fin1 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}{:s}.npz'.format(n, l, istep, log, alabel))
+            fin2 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}{:s}.npz'.format(n, l, 2*Nstep - istep - 1, log, alabel))
             fits1 = fin1['fits']
             fits2 = fin2['fits']
             
@@ -1519,20 +1732,106 @@ def bspline_crb(n, Ndim=6, istep=15, Nstep=20, log=True, vary='halo', Nobs=50, v
         print(np.linalg.det(cxi))
         print(np.allclose(cxi, cxi.T), np.allclose(cx, cx.T))
 
-    np.save('../data/crb/bspline_cxi_{:d}_{:d}_{:d}'.format(n, Ndim, istep), cxi)
+    np.save('../data/crb/bspline_cxi{:s}_{:d}_{:d}_{:d}'.format(alabel, n, Ndim, istep), cxi)
+
+
+############################
+# great circle orientation #
+
+def find_greatcircle(n, pparams=pparams_fid, dt=0.2*u.Myr):
+    """"""
+    
+    stream = stream_model(n, pparams0=pparams, dt=dt)
+    
+    # find the pole
+    ra = np.radians(stream.obs[0])
+    dec = np.radians(stream.obs[1])
+    
+    rx = np.cos(ra) * np.cos(dec)
+    ry = np.sin(ra) * np.cos(dec)
+    rz = np.sin(dec)
+    r = np.column_stack((rx, ry, rz))
+
+    # fit the plane
+    x0 = np.array([0, 1, 0])
+    lsq = scipy.optimize.minimize(wfit_plane, x0, args=(r,))
+    x0 = lsq.x/np.linalg.norm(lsq.x)
+    ra0 = np.arctan2(x0[1], x0[0])
+    dec0 = np.arcsin(x0[2])
+    
+    ra0 += np.pi
+    dec0 = np.pi/2 - dec0
+
+    # euler rotations
+    R0 = myutils.rotmatrix(np.degrees(-ra0), 2)
+    R1 = myutils.rotmatrix(np.degrees(dec0), 1)
+    R2 = myutils.rotmatrix(0, 2)
+    R = np.dot(R2, np.matmul(R1, R0))
+    
+    xi, eta = myutils.rotate_angles(stream.obs[0], stream.obs[1], R)
+    
+    # put xi = 50 at the beginning of the stream
+    xi[xi>180] -= 360
+    xi += 360
+    xi0 = np.min(xi) - 50
+    R2 = myutils.rotmatrix(-xi0, 2)
+    R = np.dot(R2, np.matmul(R1, R0))
+    xi, eta = myutils.rotate_angles(stream.obs[0], stream.obs[1], R)
+    
+    np.save('../data/rotmatrix_{:d}'.format(n), R)
+    
+    plt.close()
+    fig, ax = plt.subplots(1,2,figsize=(10,5))
+    
+    plt.sca(ax[0])
+    plt.plot(stream.obs[0], stream.obs[1], 'ko')
+    
+    plt.xlabel('R.A. (deg)')
+    plt.ylabel('Dec (deg)')
+    
+    plt.sca(ax[1])
+    plt.plot(xi, eta, 'ko')
+    
+    plt.xlabel('$\\xi$ (deg)')
+    plt.ylabel('$\\eta$ (deg)')
+    plt.ylim(-5, 5)
+    
+    plt.tight_layout()
+    plt.savefig('../plots/gc_orientation_{:d}.png'.format(n))
+
+def wfit_plane(x, r, p=None):
+    """Fit a plane to a set of 3d points"""
+    
+    Np = np.shape(r)[0]
+    if np.any(p)==None:
+        p = np.ones(Np)
+    
+    Q = np.zeros((3,3))
+    
+    for i in range(Np):
+        Q += p[i]**2 * np.outer(r[i], r[i])
+    
+    x = x/np.linalg.norm(x)
+    lsq = np.inner(x, np.inner(Q, x))
+    
+    return lsq
 
 ################
 # stream track #
-def stream_track(n, dim=1):
+def stream_track(n, dim=1, align=False):
     """"""
     pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
     Ndeg = 5
     Nobs = 15
+    if align:
+        rotmatrix = np.load('../data/rotmatrix_{:d}.npy'.format(n))
+    else:
+        rotmatrix = None
     
     ylabel = ['R.A. (deg)', 'Dec (deg)', 'd (kpc)', '$V_r$ (km/s)', '$\mu_\\alpha$ (mas/yr)', '$\mu_\delta$ (mas/yr)']
     
     # fiducial model
-    stream = stream_model(n, pparams0=pparams0)
+    stream = stream_model(n, pparams0=pparams0, rotmatrix=rotmatrix)
     isort = np.argsort(stream.obs[0])
     ra = np.linspace(np.min(stream.obs[0])*1.05, np.max(stream.obs[0])*0.95, Nobs)
     k = 3
@@ -1564,7 +1863,7 @@ def stream_track(n, dim=1):
     plt.savefig('../plots/stream_track_{}.png'.format(n))
 
 # plot model
-def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s], dt=1*u.Myr, graph=False):
+def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s], dt=1*u.Myr, rotmatrix=None, graph=False):
     """"""
     
     obsmode = 'equatorial'
@@ -1656,7 +1955,7 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
     vc_ = np.sqrt(G*mr/distance)
     vsun['vcirc'] = np.sqrt((198*u.km/u.s)**2 + vc_**2)
     
-    params = {'generate': {'x0': x0*u.kpc, 'v0': v0*u.km/u.s, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mw_observer, 'footprint': footprint}}
+    params = {'generate': {'x0': x0*u.kpc, 'v0': v0*u.km/u.s, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mw_observer, 'footprint': footprint, 'rotmatrix': rotmatrix}}
     
     stream = Stream(**params['generate'])
     stream.generate()
@@ -1725,6 +2024,7 @@ def get_varied_pars(vary):
     if vary=='halo':
         pid = [0,1,3,5]
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
+        dp = [5*u.km/u.s, 1*u.kpc, 0.005*u.Unit(1), 0.01*u.Unit(1)]
         #dp = [20*u.km/u.s, 2*u.kpc, 0.1*u.Unit(1), 0.1*u.Unit(1)]
     elif vary=='progenitor':
         pid = [7,8,9,10,11,12]
@@ -1748,10 +2048,14 @@ def get_parlabel(pid):
     pid - list of parameter ids"""
     
     master = ['$V_h$', '$R_h$', '$\phi$', '$q_1$', '$q_2$', '$q_z$', '$M_{lmc}$', '$X_p$', '$Y_p$', '$Z_p$', '$V_{x_p}$', '$V_{y_p}$', '$V_{z_p}$']
-    labels = []
     
-    for i in pid:
-        labels += [master[i]]
+    if pid is list:
+        labels = []
+        
+        for i in pid:
+            labels += [master[i]]
+    else:
+        labels = master[pid]
     
     return labels
 
@@ -2057,7 +2361,7 @@ def plot_crb_triangle(n=-1, istep=18, vary='potential', out='save'):
     
     # plot 2d bounds in a triangle fashion
     for l, Ndim in enumerate([3,4,6]):
-        cxi = np.load('../data/crb/bspline_cxi_{:d}_{:d}_{:d}.npy'.format(n, Ndim, istep))
+        cxi = np.load('../data/crb/bspline_cxi_align_{:d}_{:d}_{:d}.npy'.format(n, Ndim, istep))
         #cxi = np.load('../data/crb/full_cxi_{:d}_{:d}.npy'.format(n, Ndim))
         cxi = cxi[:Nvar,:Nvar]
         cx = np.linalg.inv(cxi)
@@ -2112,7 +2416,7 @@ def plot_crb_triangle(n=-1, istep=18, vary='potential', out='save'):
     
     if out=='save':
         #plt.savefig('../plots/crb_individual_{}_{}.png'.format(n, vary))
-        plt.savefig('../plots/crb_bspline_individual_{}_{}_{:02d}.png'.format(n, vary, istep))
+        plt.savefig('../plots/crb_bspline_individual_{}_{}_align_{:02d}.png'.format(n, vary, istep))
     else:
         return fig
 
