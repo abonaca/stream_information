@@ -1679,8 +1679,142 @@ def plot_steps(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=Fa
     plt.tight_layout()
     plt.savefig('../plots/observable_steps_{:d}_p{:d}_Ns{:d}.png'.format(n, p, Nstep))
 
-def step_convergence():
+def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', verbose=False, align=True, graph=False):
+    """Check deviations in numerical derivatives for consecutive step sizes"""
+    
+    if align:
+        rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
+    else:
+        rotmatrix = None
+    
+    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
+    pid, dp = get_varied_pars(vary)
+    Np = len(pid)
+    units = ['km/s', 'kpc', '', '']
+    punits = ['({})'.format(x) if len(x) else '' for x in units]
+
+    Nstep, step = get_steps(Nstep=Nstep, log=log)
+
+    dev_der = np.empty((Np, Nstep-2*layer))
+    step_der = np.empty((Np, Nstep-2*layer))
+    
+    # fiducial model
+    stream0 = stream_model(n, pparams0=pparams0, dt=dt, rotmatrix=rotmatrix)
+    
+    Nobs = 10
+    k = 3
+    isort = np.argsort(stream0.obs[0])
+    ra = np.linspace(np.min(stream0.obs[0])*1.05, np.max(stream0.obs[0])*0.95, Nobs)
+    t = np.r_[(stream0.obs[0][isort][0],)*(k+1), ra, (stream0.obs[0][isort][-1],)*(k+1)]
+    fits = [None]*5
+    
+    for j in range(5):
+        fits[j] = scipy.interpolate.make_lsq_spline(stream0.obs[0][isort], stream0.obs[j+1][isort], t, k=k)
+    
+    for p in range(Np):
+        plabel = get_parlabel(pid[p])
+        
+        # excursions
+        stream_fits = [[None] * 5 for x in range(2 * Nstep)]
+        
+        for i, s in enumerate(step[:]):
+            pparams = [x for x in pparams0]
+            pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
+            stream = stream_model(n, pparams0=pparams, dt=dt, rotmatrix=rotmatrix)
+            
+            # fits
+            iexsort = np.argsort(stream.obs[0])
+            raex = np.linspace(np.percentile(stream.obs[0], 10), np.percentile(stream.obs[0], 90), Nobs)
+            tex = np.r_[(stream.obs[0][iexsort][0],)*(k+1), raex, (stream.obs[0][iexsort][-1],)*(k+1)]
+            fits_ex = [None]*5
+            
+            for j in range(5):
+                fits_ex[j] = scipy.interpolate.make_lsq_spline(stream.obs[0][iexsort], stream.obs[j+1][iexsort], tex, k=k)
+                stream_fits[i][j] = fits_ex[j]
+        
+        # symmetric derivatives
+        ra_der = np.linspace(np.min(stream0.obs[0])*1.05, np.max(stream0.obs[0])*0.95, 100)
+        dydx = np.empty((Nstep, 5, 100))
+        
+        for i in range(Nstep):
+            color = mpl.cm.Greys_r(i/Nstep)
+            for j in range(5):
+                dy = stream_fits[i][j](ra_der) - stream_fits[-i-1][j](ra_der)
+                dydx[i][j] = -dy / np.abs(2*step[i]*dp[p])
+        
+        # deviations from adjacent steps
+        step_der[p] = -step[layer:Nstep-layer] * dp[p]
+        
+        for i in range(layer, Nstep-layer):
+            dev_der[p][i-layer] = 0
+            for j in range(5):
+                for l in range(layer):
+                    dev_der[p][i-layer] += np.sum((dydx[i][j] - dydx[i-l-1][j])**2)
+                    dev_der[p][i-layer] += np.sum((dydx[i][j] - dydx[i+l+1][j])**2)
+    
+    np.savez('../data/step_convergence_{}_Ns{}_log{}_l{}'.format(n, Nstep, log, layer), step=step_der, dev=dev_der)
+    
+    if graph:
+        plt.close()
+        fig, ax = plt.subplots(1,Np,figsize=(4*Np,4))
+        
+        for p in range(Np):
+            plt.sca(ax[p])
+            plt.plot(step_der[p], dev_der[p], 'ko')
+            
+            plt.xlabel('$\Delta$ {} {}'.format(plabel, punits[p]))
+            plt.ylabel('D')
+            plt.gca().set_yscale('log')
+        
+        plt.tight_layout()
+        plt.savefig('../plots/step_convergence_{}_Ns{}_log{}_l{}.png'.format(n, Nstep, log, layer))
+
+def choose_step(n, tolerance=2, Nstep=20, log=True, layer=2, vary='halo'):
     """"""
+    
+    t = np.load('../data/step_convergence_{}_Ns{}_log{}_l{}.npz'.format(n, Nstep, log, layer))
+    dev = t['dev']
+    step = t['step']
+    
+    pid, dp = get_varied_pars(vary)
+    Np = len(pid)
+    units = ['km/s', 'kpc', '', '']
+    punits = ['({})'.format(x) if len(x) else '' for x in units]
+    
+    best = np.empty(Np)
+    
+    plt.close()
+    fig, ax = plt.subplots(1,Np, figsize=(4*Np, 4))
+    
+    for p in range(Np):
+        plabel = get_parlabel(pid[p])
+        
+        plt.sca(ax[p])
+        plt.plot(step[p], dev[p], 'ko')
+        
+        # choose step
+        dmin = np.min(dev[p])
+        dtol = tolerance * dmin
+        opt_step = np.min(step[p][dev[p]<dtol])
+        opt_id = step[p]==opt_step
+        best[p] = opt_step
+        
+        plt.axhline(dtol, ls='-', color='orange', lw=1)
+        y0, y1 = plt.gca().get_ylim()
+        plt.axhspan(y0, dtol, color='orange', alpha=0.3, zorder=0)
+        
+        plt.axvline(opt_step, ls='-', color='r', lw=2)
+        plt.plot(step[p][opt_id], dev[p][opt_id], 'ro')
+        
+        plt.gca().set_yscale('log')
+        plt.xlabel('$\Delta$ {} {}'.format(plabel, punits[p]))
+        plt.ylabel('Derivative deviation')
+        plt.title('{}'.format(plabel)+'$_{best}$ = '+'{:2.2g}'.format(opt_step), fontsize='small')
+    
+    np.save('../data/optimal_step_{}_{}'.format(n, vary), best)
+
+    plt.tight_layout()
+    plt.savefig('../plots/step_convergence_{}_Ns{}_log{}_l{}.png'.format(n, Nstep, log, layer))
 
 # crbs using bspline
 def bspline_crb(n, Ndim=6, istep=15, Nstep=20, log=True, vary='halo', Nobs=50, verbose=False, align=False):
@@ -2024,7 +2158,8 @@ def get_varied_pars(vary):
     if vary=='halo':
         pid = [0,1,3,5]
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
-        dp = [5*u.km/u.s, 1*u.kpc, 0.005*u.Unit(1), 0.01*u.Unit(1)]
+        dp = [5*u.km/u.s, 1*u.kpc, 0.005*u.Unit(1), 0.01*u.Unit(1)] # used for talk
+        dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)] # large range
         #dp = [20*u.km/u.s, 2*u.kpc, 0.1*u.Unit(1), 0.1*u.Unit(1)]
     elif vary=='progenitor':
         pid = [7,8,9,10,11,12]
@@ -2729,5 +2864,168 @@ def plot_crb_ind():
     plt.title('Cramer-Rao bounds for:', fontsize='medium')
     plt.tight_layout()
     plt.savefig('../plots/lmc/crb_summary.png', bbox_inches='tight')
+
+
+########
+# Talk #
+
+def talk_plot_steps(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=False, align=True):
+    """Plot stream for different values of a potential parameter"""
+    
+    if align:
+        rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
+    else:
+        rotmatrix = None
+    
+    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
+    pid, dp = get_varied_pars(vary)
+    plabel = get_parlabel(pid[p])
+
+    if Nstep==1:
+        step = np.array([-10.,10.])
+    else:
+        Nstep, step = get_steps(Nstep=Nstep, log=log)
+    
+    plt.close()
+    fig, ax = plt.subplots(5,5,figsize=(15,10), sharex=True, gridspec_kw = {'height_ratios':[1.5, 1, 1, 1, 1]})
+    
+    # fiducial model
+    stream0 = stream_model(n, pparams0=pparams0, dt=dt, rotmatrix=rotmatrix)
+    
+    Nobs = 10
+    k = 3
+    isort = np.argsort(stream0.obs[0])
+    ra = np.linspace(np.min(stream0.obs[0])*1.05, np.max(stream0.obs[0])*0.95, Nobs)
+    t = np.r_[(stream0.obs[0][isort][0],)*(k+1), ra, (stream0.obs[0][isort][-1],)*(k+1)]
+    fits = [None]*5
+    
+    for j in range(5):
+        fits[j] = scipy.interpolate.make_lsq_spline(stream0.obs[0][isort], stream0.obs[j+1][isort], t, k=k)
+        
+        plt.sca(ax[0][j])
+        plt.plot(stream0.obs[0], stream0.obs[j+1], 'ko', ms=2)
+    
+    # excursions
+    stream_fits = [[None] * 5 for x in range(2 * Nstep)]
+    
+    for i, s in enumerate(step[:]):
+        pparams = [x for x in pparams0]
+        pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
+        stream = stream_model(n, pparams0=pparams, dt=dt, rotmatrix=rotmatrix)
+        color = mpl.cm.RdBu(i/(2*Nstep-1))
+        #print(i, dp[p], pparams)
+        
+        # fits
+        iexsort = np.argsort(stream.obs[0])
+        raex = np.linspace(np.percentile(stream.obs[0], 10), np.percentile(stream.obs[0], 90), Nobs)
+        tex = np.r_[(stream.obs[0][iexsort][0],)*(k+1), raex, (stream.obs[0][iexsort][-1],)*(k+1)]
+        fits_ex = [None]*5
+        
+        for j in range(5):
+            fits_ex[j] = scipy.interpolate.make_lsq_spline(stream.obs[0][iexsort], stream.obs[j+1][iexsort], tex, k=k)
+            stream_fits[i][j] = fits_ex[j]
+            
+            plt.sca(ax[0][j])
+            plt.plot(stream.obs[0], stream.obs[j+1], 'o', color=color, ms=2)
+            
+            plt.sca(ax[1][j])
+            plt.plot(stream.obs[0], stream.obs[j+1] - fits[j](stream.obs[0]), 'o', color=color, ms=2)
+            
+            plt.sca(ax[2][j])
+            plt.plot(stream.obs[0], fits_ex[j](stream.obs[0]) - fits[j](stream.obs[0]), 'o', color=color, ms=2)
+            
+            plt.sca(ax[3][j])
+            plt.plot(stream.obs[0], (fits_ex[j](stream.obs[0]) - fits[j](stream.obs[0]))/(s*dp[p]), 'o', color=color, ms=2)
+    
+    # symmetric derivatives
+    ra_der = np.linspace(np.min(stream0.obs[0])*1.05, np.max(stream0.obs[0])*0.95, 100)
+    for i in range(Nstep):
+        color = mpl.cm.Greys_r(i/Nstep)
+        for j in range(5):
+            dy = stream_fits[i][j](ra_der) - stream_fits[-i-1][j](ra_der)
+            dydx = -dy / np.abs(2*step[i]*dp[p])
+            
+            plt.sca(ax[4][j])
+            plt.plot(ra_der, dydx, '-', color=color, lw=2, zorder=Nstep-i)
+    
+    # labels, limits
+    xlims, ylims = get_stream_limits(n, align)
+    ylabel = ['R.A. (deg)', 'Dec (deg)', 'd (kpc)', '$V_r$ (km/s)', '$\mu_\\alpha$ (mas/yr)', '$\mu_\delta$ (mas/yr)']
+    if align:
+        ylabel[:2] = ['$\\xi$ (deg)', '$\\eta$ (deg)']
+    
+    for j in range(5):
+        plt.sca(ax[0][j])
+        plt.ylabel(ylabel[j+1])
+        plt.xlim(xlims[0], xlims[1])
+        plt.ylim(ylims[j][0], ylims[j][1])
+        
+        plt.sca(ax[1][j])
+        plt.ylabel('$\Delta$ {}'.format(ylabel[j+1].split(' ')[0]))
+        
+        plt.sca(ax[2][j])
+        plt.ylabel('$\Delta$ {}'.format(ylabel[j+1].split(' ')[0]))
+        
+        plt.sca(ax[3][j])
+        plt.ylabel('$\Delta${}/$\Delta${}'.format(ylabel[j+1].split(' ')[0], plabel))
+        
+        plt.sca(ax[4][j])
+        plt.xlabel(ylabel[0])
+        plt.ylabel('$\langle$$\Delta${}/$\Delta${}$\\rangle$'.format(ylabel[j+1].split(' ')[0], plabel))
+    
+    #plt.suptitle('Varying {}'.format(plabel), fontsize='small')
+    plt.tight_layout()
+    plt.savefig('../plots/talk/observable_steps_{:d}_p{:d}_Ns{:d}.png'.format(n, p, Nstep))
+
+def talk_choose_step(n, tolerance=2, Nstep=20, log=True, layer=2, vary='halo', reveal=0):
+    """"""
+    
+    t = np.load('../data/step_convergence_{}_Ns{}_log{}_l{}.npz'.format(n, Nstep, log, layer))
+    dev = t['dev']
+    step = t['step']
+    
+    pid, dp = get_varied_pars(vary)
+    Np = len(pid)
+    units = ['km/s', 'kpc', '', '']
+    punits = ['({})'.format(x) if len(x) else '' for x in units]
+    
+    plt.close()
+    fig, ax = plt.subplots(1,Np, figsize=(3*Np, 4.1))
+    
+    for p in range(Np):
+        plabel = get_parlabel(pid[p])
+        
+        plt.sca(ax[p])
+        plt.plot(step[p], dev[p], 'ko')
+        
+        # choose step
+        dmin = np.min(dev[p])
+        dtol = tolerance * dmin
+        opt_step = np.min(step[p][dev[p]<dtol])
+        opt_id = step[p]==opt_step
+        
+        plt.title('{}'.format(plabel)+'$_{adopt}$ = '+'{:2.2g}'.format(opt_step), fontsize='small', color='w')
+
+        if reveal>0:
+            plt.axhline(dtol, ls='-', color='orange', lw=1)
+            y0, y1 = plt.gca().get_ylim()
+            plt.axhspan(y0, dtol, color='orange', alpha=0.3, zorder=0)
+        
+        if reveal>1:
+            plt.axvline(opt_step, ls='-', color='r', lw=2)
+            plt.plot(step[p][opt_id], dev[p][opt_id], 'ro')
+            plt.title('$\Delta$ {}'.format(plabel)+'$_{adopt}$ = '+'{:2.2g}'.format(opt_step), fontsize='small', color='k')
+    
+        
+        plt.gca().set_yscale('log')
+        plt.xlabel('$\Delta$ {} {}'.format(plabel, punits[p]))
+        if p==0:
+            plt.ylabel('Derivative deviation')
+    
+    
+    plt.tight_layout()
+    plt.savefig('../plots/talk/step_convergence_{}_Ns{}_log{}_l{}_r{}.png'.format(n, Nstep, log, layer, reveal))
+    
+    
 
 
