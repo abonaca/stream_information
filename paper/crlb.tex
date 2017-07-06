@@ -94,10 +94,23 @@ observations that could be made of particular known streams.
 \section{Methods}
 \label{sec:method}
 
-\subsection{Information content}
+\subsection{Information content in stellar streams}
+Numerous methods have been developed to estimate properties of a dark matter halo by modeling observations of stellar streams \citep[e.g.,][]{}.
+In this approach, the dark matter halo is usually described by an analytic model with a handful of free parameters.
+We define the information content in this context as the best-case uncertainties on our model parameters achievable using the observational data at hand.
+Formally, the lower bound on the variance of a deterministic parameter is given by the Cram\' er--Rao lower bound \citep[\CRLB][]{Cramer1946, Rao1945}.
 
-\subsection{Calculating \CRLB\ for tidal streams}
+For some data set $\vec{y}$ (e.g., a vector of position and velocity measurements of stars along a stream), the associated covariance matrix is $C_y$.
+Given the model parameters $\vec{x}$ (e.g., a vector with the mass and scale radius of a dark matter halo), the Cram\' er--Rao bound is given by the covariance matrix $C_x$.
+The \CRLB\ is set by the inverse of a Fisher information matrix \citep{}:
+\begin{equation}
+C_x^{-1} = \left(\frac{d\vec{y}}{d\vec{x}}\right)^{T} C_y^{-1} \left(\frac{d\vec{y}}{d\vec{x}}\right)
+\label{eq:crlb}
+\end{equation}
+In the next two subsections, we describe individual terms of Equation~\ref{eq:crlb}: the change in stream observables $\vec{y}$ as a function of changes in the gravitational potential $\vec{x}$, i.e., the derivative $d\vec{y}/d\vec{x}$, in \S\ref{sec:derivatives}, and the adopted observational uncertainties, which set the covariance matrix $C_y$, in \S\ref{sec:datasets}.
 
+\subsection{Calculating numerical derivatives for the \CRLB}
+\label{sec:derivatives}
 \begin{itemize}
  \item fiducial potential
  \item numerical derivative
@@ -109,7 +122,7 @@ observations that could be made of particular known streams.
 \end{itemize}
 
 \subsection{Sets of observational data}
-
+\label{sec:datasets}
 \begin{itemize}
  \item fiducial
  \item DESI-like
@@ -141,6 +154,9 @@ Even if only limited observational data is available for multiple streams, the o
 \label{fig:2dbounds}
 \end{center}
 \end{figure}
+
+\bibliographystyle{aasjournal}
+\bibliography{crlb}
 
 \end{document}
 
