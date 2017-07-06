@@ -1817,56 +1817,82 @@ def choose_step(n, tolerance=2, Nstep=20, log=True, layer=2, vary='halo'):
     plt.savefig('../plots/step_convergence_{}_Ns{}_log{}_l{}.png'.format(n, Nstep, log, layer))
 
 # crbs using bspline
-def bspline_crb(n, Ndim=6, istep=15, Nstep=20, log=True, vary='halo', Nobs=50, verbose=False, align=False):
+def bspline_crb(n, Ndim=6, istep=15, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=False):
     """"""
     if align:
+        rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
         alabel = '_align'
     else:
+        rotmatrix = None
         alabel = ''
         
     # typical uncertainties
     sig_obs = np.array([0.1, 2, 5, 0.1, 0.1])
     
     # mock observations
-    stream = stream_model(n, dt=1*u.Myr)
-    ra = np.linspace(np.min(stream.obs[0])*1.05, np.max(stream.obs[0])*0.95, Nobs)
+    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
+    stream0 = stream_model(n, pparams0=pparams0, dt=dt, rotmatrix=rotmatrix)
+    
+    ra = np.linspace(np.min(stream0.obs[0])*1.05, np.max(stream0.obs[0])*0.95, Nobs)
     err = np.tile(sig_obs, Nobs).reshape(Nobs,-1)
 
     Nstep, step = get_steps(log=log, Nstep=Nstep)
-    pid, dp = get_varied_pars(vary)
-    Nvar = len(pid)
-    
-    Ndata = Nobs * (Ndim - 1)
-    dydx = np.empty((Nvar, Ndata))
-    cyd = np.empty(Ndata)
-    
-    # find derivatives, uncertainties
-    for k in range(1,Ndim):
-        fits = [None]*2
-        for l, p in enumerate(pid):
-            
-            fin1 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}{:s}.npz'.format(n, l, istep, log, alabel))
-            fin2 = np.load('../data/bspline_n{:d}_p{:d}_dx{:d}_log{:d}{:s}.npz'.format(n, l, 2*Nstep - istep - 1, log, alabel))
-            fits1 = fin1['fits']
-            fits2 = fin2['fits']
-            
-            dydx[l][(k-1)*Nobs:k*Nobs] = (fits1[k-1](ra) - fits2[k-1](ra))/(dp[l].value*(step[istep] - step[2*Nstep-istep-1]))
-            cyd[(k-1)*Nobs:k*Nobs] = err[:,k-1]**2
-    
-    cy = np.diag(cyd)
-    cyi = np.linalg.inv(cy)
-    
-    cxi = np.matmul(dydx, np.matmul(cyi, dydx.T))
+    pid, dp_fid = get_varied_pars(vary)
+    Np = len(pid)
+    dp_opt = np.load('../data/optimal_step_{}_{}.npy'.format(n, vary))
+    dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
 
-    cx = np.linalg.inv(cxi)
-    sx = np.sqrt(np.diag(cx))
+    #Ndata = Nobs * (Ndim - 1)
+    #dydx = np.empty((Np, Ndata))
+    #cyd = np.empty(Ndata)
     
-    if verbose:
-        print(np.diag(cxi))
-        print(np.linalg.det(cxi))
-        print(np.allclose(cxi, cxi.T), np.allclose(cx, cx.T))
+    k = 3
+    
+    fits_ex = [[[None]*5 for x in range(2)] for y in range(Np)]
 
-    np.save('../data/crb/bspline_cxi{:s}_{:d}_{:d}_{:d}'.format(alabel, n, Ndim, istep), cxi)
+    for p in range(Np):
+        for i, s in enumerate([-1, 1]):
+            pparams = [x for x in pparams0]
+            pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
+            stream = stream_model(n, pparams0=pparams, dt=dt, rotmatrix=rotmatrix)
+            
+            # fits
+            iexsort = np.argsort(stream.obs[0])
+            raex = np.linspace(np.percentile(stream.obs[0], 10), np.percentile(stream.obs[0], 90), Nobs)
+            tex = np.r_[(stream.obs[0][iexsort][0],)*(k+1), raex, (stream.obs[0][iexsort][-1],)*(k+1)]
+            
+            for j in range(5):
+                fits_ex[p][i][j] = scipy.interpolate.make_lsq_spline(stream.obs[0][iexsort], stream.obs[j+1][iexsort], tex, k=k)
+    
+    for Ndim in [3,4,6]:
+        Ndata = Nobs * (Ndim - 1)
+        cyd = np.empty(Ndata)
+        dydx = np.empty((Np, Ndata))
+        
+        for j in range(1, Ndim):
+            for p in range(Np):
+                dy = fits_ex[p][0][j-1](ra) - fits_ex[p][1][j-1](ra)
+                dydx[p][(j-1)*Nobs:j*Nobs] = -dy / np.abs(2*dp[p].value)
+            
+            cyd[(j-1)*Nobs:j*Nobs] = err[:,j-1]**2
+        
+        #print(dydx, cyd)
+        
+        cy = np.diag(cyd)
+        cyi = np.linalg.inv(cy)
+        
+        cxi = np.matmul(dydx, np.matmul(cyi, dydx.T))
+
+        cx = np.linalg.inv(cxi)
+        sx = np.sqrt(np.diag(cx))
+        
+        if verbose:
+            print(Ndim)
+            print(np.diag(cxi))
+            print(np.linalg.det(cxi))
+            print(np.allclose(cxi, cxi.T), np.allclose(cx, cx.T))
+
+        np.save('../data/crb/bspline_cxi{:s}_{:d}_{:d}'.format(alabel, n, Ndim), cxi)
 
 
 ############################
@@ -2007,6 +2033,7 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
     if n==-1:
         observed = load_gd1(present=[0,1,2,3])
         age = 3*u.Gyr
+        age = 1.8*u.Gyr
         mi = 2e4*u.Msun
         mf = 2e-1*u.Msun
         x0, v0 = gd1_coordinates()
@@ -2099,8 +2126,8 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
     # Plot observed streams
     
     if graph:
-        modcol = 'r'
-        obscol = '0.5'
+        modcol = 'k'
+        obscol = 'orange'
         ylabel = ['Dec (deg)', 'Distance (kpc)', 'Radial velocity (km/s)']
         Ndim = np.shape(observed.obs)[0]
     
@@ -2121,11 +2148,15 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
                     sample = np.arange(np.size(observed.obs[0]), dtype=int)
                 else:
                     sample = observed.obs[i+1]>MASK
-                plt.plot(observed.obs[0][sample], observed.obs[i+1][sample], 's', color=obscol, mec='none', ms=8)
+                plt.plot(observed.obs[0][sample], observed.obs[i+1][sample], 's', color=obscol, mec='none', ms=8, label='Observed stream')
             
-            plt.plot(stream.obs[0], stream.obs[i+1], 'o', color=modcol, mec='none', ms=4)
+            plt.plot(stream.obs[0], stream.obs[i+1], 'o', color=modcol, mec='none', ms=4, label='Fiducial model')
+            
+            if i==0:
+                plt.legend(frameon=False, handlelength=0.5, fontsize='small')
         
         plt.tight_layout()
+        plt.savefig('../plots/talk/iducial_{}.png'.format(n))
     
     return stream
 
@@ -3026,6 +3057,164 @@ def talk_choose_step(n, tolerance=2, Nstep=20, log=True, layer=2, vary='halo', r
     plt.tight_layout()
     plt.savefig('../plots/talk/step_convergence_{}_Ns{}_log{}_l{}_r{}.png'.format(n, Nstep, log, layer, reveal))
     
+def talk_crb_triangle(n=-1, vary='halo', reveal=0):
+    """Produce a triangle plot of 2D Cramer-Rao bounds for all model parameters using a given stream"""
     
+    pid, dp = get_varied_pars(vary)
+    Nvar = len(pid)
+    
+    columns = ['GD-1', 'Pal 5', 'Triangulum', 'ATLAS']
+    name = columns[int(np.abs(n)-1)]
+    
+    labels = ['RA, Dec, d', 'RA, Dec, d,\n$V_r$', 'RA, Dec, d,\n$V_r$, $\mu_\\alpha$, $\mu_\\delta$']
+    params0 = ['$V_h$ (km/s)', '$R_h$ (kpc)', '$q_1$', '$q_z$', '$M_{LMC}$', '$X_p$', '$Y_p$', '$Z_p$', '$V_{xp}$', '$V_{yp}$', '$V_{zp}$']
+    params = ['$\Delta$ '+x for x in params0]
+    ylim = [150, 20, 0.5, 0.5, 5e11]
+    ylim = [20, 10, 0.1, 0.1]
+    
+    plt.close()
+    fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(8,8), sharex='col', sharey='row')
+    
+    # plot 2d bounds in a triangle fashion
+    Ndim = 3
+    labels = columns
+    streams = np.array([-1,-2,-3,-4])
+    slist = streams[:reveal+1]
+    for l, n in enumerate(slist):
+    #for l, Ndim in enumerate([3,4,6]):
+        cxi = np.load('../data/crb/bspline_cxi_{:d}_{:d}.npy'.format(n, Ndim))
+        cxi = cxi[:Nvar,:Nvar]
+        cx = np.linalg.inv(cxi)
+        
+        for i in range(0,Nvar-1):
+            for j in range(i+1,Nvar):
+                plt.sca(ax[j-1][i])
+                cx_2d = np.array([[cx[i][i], cx[i][j]], [cx[j][i], cx[j][j]]])
+                
+                w, v = np.linalg.eig(cx_2d)
+                if np.all(np.isreal(v)):
+                    theta = np.degrees(np.arccos(v[0][0]))
+                    width = np.sqrt(w[0])*2
+                    height = np.sqrt(w[1])*2
+                    
+                    e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.YlOrBr((l+3)/6), lw=3)
+                    plt.gca().add_artist(e)
+                
+                if (vary=='potential') | (vary=='halo'):
+                    plt.xlim(-ylim[i],ylim[i])
+                    plt.ylim(-ylim[j], ylim[j])
+                
+                if j==Nvar-1:
+                    plt.xlabel(params[i])
+                
+                if i==0:
+                    plt.ylabel(params[j])
+        
+        plt.sca(ax[0][Nvar-2])
+        plt.plot(np.linspace(-200,-100,10), '-', color=mpl.cm.YlOrBr((l+3)/6), lw=3, label=labels[l])
+        plt.legend(frameon=False, fontsize='medium', handlelength=1)
+    
+    # turn off unused axes
+    for i in range(0,Nvar-1):
+        for j in range(i+1,Nvar-1):
+            plt.sca(ax[i][j])
+            plt.axis('off')
+    
+    plt.tight_layout(h_pad=0.0, w_pad=0.0)
+    plt.savefig('../plots/talk/triangle_{}.png'.format(reveal))
+
+def talk_crb_triangle_data(n=-1, vary='halo', combined=0):
+    """Produce a triangle plot of 2D Cramer-Rao bounds for all model parameters using a given stream"""
+    
+    pid, dp = get_varied_pars(vary)
+    Nvar = len(pid)
+    
+    columns = ['GD-1', 'Pal 5', 'Triangulum', 'ATLAS']
+    name = columns[int(np.abs(n)-1)]
+    
+    labels = ['RA, Dec, d', 'RA, Dec, d,\n$V_r$', 'RA, Dec, d,\n$V_r$, $\mu_\\alpha$, $\mu_\\delta$']
+    labels_c = ['all streams\nRA, Dec, d', 'combined RA,\nDec, d, $V_r$', 'combined RA,\nDec, d, $V_r$,\n$\mu_\\alpha$, $\mu_\\delta$']
+    params0 = ['$V_h$ (km/s)', '$R_h$ (kpc)', '$q_1$', '$q_z$', '$M_{LMC}$', '$X_p$', '$Y_p$', '$Z_p$', '$V_{xp}$', '$V_{yp}$', '$V_{zp}$']
+    params = ['$\Delta$ '+x for x in params0]
+    ylim = [150, 20, 0.5, 0.5, 5e11]
+    ylim = [20, 10, 0.1, 0.1]
+    
+    cxi_all = np.zeros((3,4,4))
+    
+    plt.close()
+    fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(8,8), sharex='col', sharey='row')
+    
+    # plot 2d bounds in a triangle fashion
+    for l, Ndim in enumerate([3,4,6]):
+        cxi = np.load('../data/crb/bspline_cxi_{:d}_{:d}.npy'.format(n, Ndim))
+        cxi = cxi[:Nvar,:Nvar]
+        cx = np.linalg.inv(cxi)
+        
+        for i in range(0,Nvar-1):
+            for j in range(i+1,Nvar):
+                plt.sca(ax[j-1][i])
+                cx_2d = np.array([[cx[i][i], cx[i][j]], [cx[j][i], cx[j][j]]])
+                
+                w, v = np.linalg.eig(cx_2d)
+                if np.all(np.isreal(v)):
+                    theta = np.degrees(np.arccos(v[0][0]))
+                    width = np.sqrt(w[0])*2
+                    height = np.sqrt(w[1])*2
+                    
+                    e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.PuBu((l+3)/6), lw=3)
+                    plt.gca().add_artist(e)
+                
+                if (vary=='potential') | (vary=='halo'):
+                    plt.xlim(-ylim[i],ylim[i])
+                    plt.ylim(-ylim[j], ylim[j])
+                
+                if j==Nvar-1:
+                    plt.xlabel(params[i])
+                
+                if i==0:
+                    plt.ylabel(params[j])
+        
+        plt.sca(ax[0][Nvar-2])
+        plt.plot(np.linspace(-200,-100,10), '-', color=mpl.cm.PuBu((l+3)/6), lw=3, label=labels[l])
+        plt.legend(frameon=False, fontsize='medium', handlelength=1)
+        
+    # All streams combined
+    if combined:
+        for l, Ndim in enumerate([3,]):
+            for n_ in [-1,-2,-3,-4]:
+                cxi = np.load('../data/crb/bspline_cxi_{:d}_{:d}.npy'.format(n_, Ndim))
+                cxi = cxi[:Nvar,:Nvar]
+                cxi_all[l] += cxi
+                cx = np.linalg.inv(cxi)
+            
+            cx_all = np.linalg.inv(cxi_all[l])
+
+            for i in range(0,Nvar-1):
+                for j in range(i+1,Nvar):
+                    plt.sca(ax[j-1][i])
+                    cx_all_2d = np.array([[cx_all[i][i], cx_all[i][j]], [cx_all[j][i], cx_all[j][j]]])
+                    
+                    w, v = np.linalg.eig(cx_all_2d)
+                    if np.all(np.isreal(v)):
+                        theta = np.degrees(np.arccos(v[0][0]))
+                        width = np.sqrt(w[0])*2
+                        height = np.sqrt(w[1])*2
+                        
+                        e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.Reds((l+4)/6), lw=3)
+                        plt.gca().add_artist(e)
+            
+            plt.sca(ax[0][Nvar-2])
+            plt.plot(np.linspace(-200,-100,10), '-', color=mpl.cm.Reds((l+4)/6), lw=3, label=labels_c[l])
+            plt.legend(frameon=False, fontsize='medium', handlelength=1)
+    
+    # turn off unused axes
+    for i in range(0,Nvar-1):
+        for j in range(i+1,Nvar-1):
+            plt.sca(ax[i][j])
+            plt.axis('off')
+    
+    plt.suptitle('{} stream'.format(name), fontsize='large')
+    plt.tight_layout(h_pad=0.0, w_pad=0.0, rect=[0,0,1,0.97])
+    plt.savefig('../plots/talk/triangle_data_{}_c{}.png'.format(n, combined))
 
 
