@@ -21,6 +21,8 @@
 \shorttitle{information in stellar streams}
 \shortauthors{bonaca et al.}
 
+\usepackage{amsmath}
+
 \begin{document}\sloppy\sloppypar\raggedbottom\frenchspacing % trust me
 
 \title{The information content in cold stellar streams}
@@ -98,38 +100,100 @@ observations that could be made of particular known streams.
 Numerous methods have been developed to estimate properties of a dark matter halo by modeling observations of stellar streams \citep[e.g.,][]{}.
 In this approach, the dark matter halo is usually described by an analytic model with a handful of free parameters.
 We define the information content in this context as the best-case uncertainties on our model parameters achievable using the observational data at hand.
-Formally, the lower bound on the variance of a deterministic parameter is given by the Cram\' er--Rao lower bound \citep[\CRLB][]{Cramer1946, Rao1945}.
+Formally, the lower bound on the variance of a deterministic parameter is given by the Cram\' er--Rao lower bound \citep[\CRLB,][]{Cramer1946, Rao1945}.
 
 For some data set $\vec{y}$ (e.g., a vector of position and velocity measurements of stars along a stream), the associated covariance matrix is $C_y$.
-Given the model parameters $\vec{x}$ (e.g., a vector with the mass and scale radius of a dark matter halo), the Cram\' er--Rao bound is given by the covariance matrix $C_x$.
+Given the model parameters $\vec{x}$ (e.g., a vector with the mass and scale radius of a dark matter halo), the Cram\' er--Rao bound is the covariance matrix $C_x$.
 The \CRLB\ is set by the inverse of a Fisher information matrix \citep{}:
 \begin{equation}
 C_x^{-1} = \left(\frac{d\vec{y}}{d\vec{x}}\right)^{T} C_y^{-1} \left(\frac{d\vec{y}}{d\vec{x}}\right)
 \label{eq:crlb}
 \end{equation}
-In the next two subsections, we describe individual terms of Equation~\ref{eq:crlb}: the change in stream observables $\vec{y}$ as a function of changes in the gravitational potential $\vec{x}$, i.e., the derivative $d\vec{y}/d\vec{x}$, in \S\ref{sec:derivatives}, and the adopted observational uncertainties, which set the covariance matrix $C_y$, in \S\ref{sec:datasets}.
+In the next two subsections, we describe individual terms of Equation~\ref{eq:crlb}: the change in stream observables $\vec{y}$ as a function of changes in the gravitational potential $\vec{x}$, i.e., the derivative $d\vec{y}/d\vec{x}$ (\S\ref{sec:derivatives}), and the adopted observational uncertainties, which set the covariance matrix $C_y$ ( \S\ref{sec:datasets}).
 
 \subsection{Calculating numerical derivatives for the \CRLB}
 \label{sec:derivatives}
-\begin{itemize}
- \item fiducial potential
- \item numerical derivative
- - regard only transverse direction, as longitudinal has a strong degeneracy with stream age
- - rotate to a system of where the equator is a best-fitting great circle to the stream
- - noisy data due to the particle nature of streams, tested time step small enough so that we're not introducing numerical noise that way
- - interested in a general shape of the stream, so we're fitting a bspline to the stream (more stable than polynomial)
- - choice of step size for numerical derivative such that the derivative converged
-\end{itemize}
+The variation of observed quantities with the model parameters is the main ingredient when calculating the Cram\' er--Rao bounds.
+Stellar streams are characterized by positions and velocities of their member stars, so their observed quantities are the on-sky positions, distances, radial velocities and proper motions.
+If we have the present-day position of the stream progenitor, and a representation of the gravitational potential, we can create a forward model of a cold stream.
+So, the parameters of our model are a combination of parameters that define the gravitational potential, which are the parameters of interest, and the 6D position of the progenitor, which we treat as hyperparameters.
+In what follows, we describe how we measure differences in stream models of different input parameters.
+
+Our model of the gravitational potential is a composite of a Hernquist bulge, a Miyamoto-Nagai disk and a NFW halo.
+The fiducial potential is similar to MWPotential2014 \citep{galpy}, which fits a range of observables in the Milky Way, and the used parameters are listed in Table~\ref{t:phi}.
+We keep the bulge and disk contributions fixed, and only explore variations induced by changes in the distribution of dark matter.
+The dark matter halo is defined by four parameters: two for setting the mass and concentration, and two for the shape of the halo ellipsoid.
+To form the streams, we use the following potential form:
+\begin{equation}
+\begin{aligned}
+& \Phi_{dm}(x, y, z) = -V_h^2\, \frac{R_h}{r}\, \ln\left(1 + \frac{r}{R_h}\right) \\
+& r^2 = x^2 + \left(\frac{y}{q_y^2}\right)^2 + \left(\frac{z}{q_z}\right)^2
+\end{aligned}
+\label{eq:nfw}
+\end{equation}
+where $V_h$ is the scale velocity, $R_h$ is the scale radius, and $q_y$ and $q_z$ are the $x/y$ and $x/z$ axis ratios, respectively.
+In the fiducial potential, the halo is given by $V_h = 430\,\rm km\,s^{-1}$, $R_h = 30\,\rm kpc$, $q_y = q_z = 1$.
+
+- progenitor position today (below described in detail)
+- using the streakline method \citep{bonaca}
+- timestep: tested time step small enough so that we're not introducing numerical noise that way
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=\textwidth]{../plots/observable_steps_-1_p0_Ns12.png}
+\caption{
+}
+\label{fig:derivative_steps}
+\end{center}
+\end{figure}
+
+Figure~\ref{fig:derivative_steps} outlines major steps in our calculation of the numerical derivatives.
+We start by creating two stream models, where we change parameter $x_i$, $x_i = x_{i,0} \pm \Delta x_i$, and keep the rest of the parameters at their fiducial values.
+The first row of Figure~\ref{fig:derivative_steps} shows models of the GD-1 stream with different offsets $\Delta V_{h,i}$ from the fiducial scale velocity (color-coded such that the positive offsets are in shades of red, and negative in shades of blue).
+Each observable is shown as a function of longitudinal position along the stream, $\xi$, in a separate column in the order from left to right: transverse on-sky position, $\eta$, distance, $d$, radial velocity, $V_r$, and the two proper motion components, $\mu_{\alpha*}$ and $\mu_\delta$.
+For each stream, the on-sky positions are rotated to a system in which the great circle best-fitting of the stream track is on the equator.
+We describe how we fit these great circles, and provide rotation matrices from the equatorial system to this stream coordinates in Appendix~\ref{}.
+- differences shown in the second row
+
+- the derivative: at fixed stream longitude, $\xi_i$, difference the observable in two models, $\Delta y|_{\xi_i}$.
+- regard only transverse direction, as longitudinal has a strong degeneracy with stream age
+- noisy data due to the particle nature of streams, interested in a general shape of the stream, so we're fitting a bspline to the stream (more stable than polynomial)
+- difference of bsplines from the fiducial for different step sizes in third row
+- difference of bsplines divided by the step size in fourth row -- small steps have larger deviations, but these derivatives agree at larger step sizes
+To be more robust, we define the derivative of observable $y_i$ with respect to model parameter $x_i$ using symmetrical offsets from the fiducial model:
+\begin{equation}
+\left.\frac{d y_i}{d x_j}\right\rvert_{\xi_k} = \left.\left(\frac{y_i(x_{0,j} + \Delta x_j) - y_i(x_{0,j} - \Delta x_j)}{2\Delta x_j}\right)\right\rvert_{\xi_k}
+\label{eq:derivative}
+\end{equation}
+for an observation made at the longitudinal position $\xi_k$.
+Thus defined derivatives are shown in the last row of Figure~\ref{fig:derivative_steps}, with darker colors corresponding to larger step sizes.
+- good agreement
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=\textwidth]{../plots/step_convergence_-1_Ns20_logTrue_l2.png}
+\caption{
+}
+\label{fig:derivative_conv}
+\end{center}
+\end{figure}
+
+- to quantify whether these have converged
+- choice of step size for numerical derivative such that the derivative converged
 
 \subsection{Sets of observational data}
+For simplicity, we assume that for each stream, there are 50 observations uniformly distributed along the length of the stream.
+
+
 \label{sec:datasets}
 \begin{itemize}
- \item fiducial
+ \item fiducial (3D, 4D and 6D)
  \item DESI-like
- \item Gaia DR2
- \item MM
  \item SDSS-5
+ \item Gaia DR2
  \item Gaia final
+ \item MM
+ \item Gaia final + MM
 \end{itemize}
 
 \subsection{Cold tidal streams in the Milky Way}
