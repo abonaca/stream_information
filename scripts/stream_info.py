@@ -833,7 +833,7 @@ def get_steps(Nstep=50, log=False):
     log - if True, steps are logarithmically spaced (default: False)"""
     
     if log:
-        step = np.logspace(-2, 1, Nstep)
+        step = np.logspace(-1.5, 1, Nstep)
     else:
         step = np.linspace(0.1, 10, Nstep)
     
@@ -1688,7 +1688,7 @@ def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', 
         rotmatrix = None
     
     pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
-    pid, dp = get_varied_pars(vary)
+    pid, dp, vlabel = get_varied_pars(vary)
     Np = len(pid)
     units = ['km/s', 'kpc', '', '']
     units = ['kpc', 'kpc', 'kpc', 'km/s', 'km/s', 'km/s']
@@ -1753,7 +1753,7 @@ def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', 
                     dev_der[p][i-layer] += np.sum((dydx[i][j] - dydx[i-l-1][j])**2)
                     dev_der[p][i-layer] += np.sum((dydx[i][j] - dydx[i+l+1][j])**2)
     
-    np.savez('../data/step_convergence_{}_Ns{}_log{}_l{}'.format(n, Nstep, log, layer), step=step_der, dev=dev_der)
+    np.savez('../data/step_convergence_{}_{}_Ns{}_log{}_l{}'.format(n, vlabel, Nstep, log, layer), step=step_der, dev=dev_der)
     
     if graph:
         plt.close()
@@ -1768,30 +1768,36 @@ def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', 
             plt.gca().set_yscale('log')
         
         plt.tight_layout()
-        plt.savefig('../plots/step_convergence_{}_Ns{}_log{}_l{}.png'.format(n, Nstep, log, layer))
+        plt.savefig('../plots/step_convergence_{}_{}_Ns{}_log{}_l{}.png'.format(n, vlabel, Nstep, log, layer))
 
 def choose_step(n, tolerance=2, Nstep=20, log=True, layer=2, vary='halo'):
     """"""
     
-    t = np.load('../data/step_convergence_{}_Ns{}_log{}_l{}.npz'.format(n, Nstep, log, layer))
+    pid, dp, vlabel = get_varied_pars(vary)
+    Np = len(pid)
+    plabels, units = get_parlabel(pid)
+    punits = ['({})'.format(x) if len(x) else '' for x in units]
+    
+    t = np.load('../data/step_convergence_{}_{}_Ns{}_log{}_l{}.npz'.format(n, vlabel, Nstep, log, layer))
     dev = t['dev']
     step = t['step']
     
-    pid, dp = get_varied_pars(vary)
-    Np = len(pid)
-    units = ['km/s', 'kpc', '', '']
-    units = ['deg', 'deg', 'kpc', 'km/s', 'mas/yr', 'mas/yr']
-    punits = ['({})'.format(x) if len(x) else '' for x in units]
-    
     best = np.empty(Np)
     
+    # plot setup
+    da = 4
+    if Np>6:
+        nrow = 2
+        ncol = np.int64(np.ceil(Np/2))
+    else:
+        nrow = 1
+        ncol = Np
+    
     plt.close()
-    fig, ax = plt.subplots(1,Np, figsize=(4*Np, 4))
+    fig, ax = plt.subplots(nrow, ncol, figsize=(da*ncol, da*nrow), squeeze=False)
     
     for p in range(Np):
-        plabel = get_parlabel(pid[p])
-        
-        plt.sca(ax[p])
+        plt.sca(ax[int(p/ncol)][int(p%ncol)])
         plt.plot(step[p], dev[p], 'ko')
         
         # choose step
@@ -1810,17 +1816,17 @@ def choose_step(n, tolerance=2, Nstep=20, log=True, layer=2, vary='halo'):
         
         plt.gca().set_yscale('log')
         plt.gca().set_xscale('log')
-        plt.xlabel('$\Delta$ {} {}'.format(plabel, punits[p]))
+        plt.xlabel('$\Delta$ {} {}'.format(plabels[p], punits[p]))
         plt.ylabel('Derivative deviation')
-        plt.title('{}'.format(plabel)+'$_{best}$ = '+'{:2.2g}'.format(opt_step), fontsize='small')
+        plt.title('{}'.format(plabels[p])+'$_{best}$ = '+'{:2.2g}'.format(opt_step), fontsize='small')
     
-    np.save('../data/optimal_step_{}_{}'.format(n, vary), best)
+    np.save('../data/optimal_step_{}_{}'.format(n, vlabel), best)
 
     plt.tight_layout()
-    plt.savefig('../plots/step_convergence_{}_Ns{}_log{}_l{}.png'.format(n, Nstep, log, layer))
+    plt.savefig('../plots/step_convergence_{}_{}_Ns{}_log{}_l{}.png'.format(n, vlabel, Nstep, log, layer))
 
 # crbs using bspline
-def bspline_crb(n, Ndim=6, istep=15, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=False):
+def bspline_crb(n, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True):
     """"""
     if align:
         rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
@@ -1833,21 +1839,17 @@ def bspline_crb(n, Ndim=6, istep=15, Nstep=20, log=True, dt=0.2*u.Myr, vary='hal
     sig_obs = np.array([0.1, 2, 5, 0.1, 0.1])
     
     # mock observations
-    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
+    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
     stream0 = stream_model(n, pparams0=pparams0, dt=dt, rotmatrix=rotmatrix)
     
     ra = np.linspace(np.min(stream0.obs[0])*1.05, np.max(stream0.obs[0])*0.95, Nobs)
     err = np.tile(sig_obs, Nobs).reshape(Nobs,-1)
 
     Nstep, step = get_steps(log=log, Nstep=Nstep)
-    pid, dp_fid = get_varied_pars(vary)
+    pid, dp_fid, vlabel = get_varied_pars(vary)
     Np = len(pid)
-    dp_opt = np.load('../data/optimal_step_{}_{}.npy'.format(n, vary))
+    dp_opt = np.load('../data/optimal_step_{}_{}.npy'.format(n, vlabel))
     dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
-
-    #Ndata = Nobs * (Ndim - 1)
-    #dydx = np.empty((Np, Ndata))
-    #cyd = np.empty(Ndata)
     
     k = 3
     
@@ -1876,10 +1878,8 @@ def bspline_crb(n, Ndim=6, istep=15, Nstep=20, log=True, dt=0.2*u.Myr, vary='hal
             for p in range(Np):
                 dy = fits_ex[p][0][j-1](ra) - fits_ex[p][1][j-1](ra)
                 dydx[p][(j-1)*Nobs:j*Nobs] = -dy / np.abs(2*dp[p].value)
-            
-            cyd[(j-1)*Nobs:j*Nobs] = err[:,j-1]**2
         
-        #print(dydx, cyd)
+            cyd[(j-1)*Nobs:j*Nobs] = err[:,j-1]**2
         
         cy = np.diag(cyd)
         cyi = np.linalg.inv(cy)
@@ -1895,7 +1895,7 @@ def bspline_crb(n, Ndim=6, istep=15, Nstep=20, log=True, dt=0.2*u.Myr, vary='hal
             print(np.linalg.det(cxi))
             print(np.allclose(cxi, cxi.T), np.allclose(cx, cx.T))
 
-        np.save('../data/crb/bspline_cxi{:s}_{:d}_{:d}'.format(alabel, n, Ndim), cxi)
+        np.save('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}'.format(alabel, n, vlabel, Ndim), cxi)
 
 
 ############################
@@ -2139,7 +2139,7 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
     vc_ = np.sqrt(G*mr/distance)
     vsun['vcirc'] = np.sqrt((198*u.km/u.s)**2 + vc_**2)
     
-    ##equatorial progenitor
+    ##galactocentric progenitor
     #params = {'generate': {'x0': x0*u.kpc, 'v0': v0*u.km/u.s, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mw_observer, 'footprint': footprint, 'rotmatrix': rotmatrix}}
 
     # observed progenitor
@@ -2206,31 +2206,37 @@ def model_excursions(n, Nex=1, vary='potential'):
             np.save('../data/models/stream_{:d}_{:d}_{:d}'.format(n, pid[i], k), stream.obs)
 
 def get_varied_pars(vary):
-    """Return indices and steps for a preset of varied parameters
+    """Return indices and steps for a preset of varied parameters, and a label for varied parameters
     Parameters:
-    vary - string setting the parameter combination to be varied, options: 'potential', 'progenitor', 'all'"""
+    vary - string setting the parameter combination to be varied, options: 'potential', 'progenitor', 'halo', or a list thereof"""
     
+    if type(vary) is not list:
+        vary = [vary]
+    
+    Nt = len(vary)
+    vlabel = '_'.join(vary)
+    
+    pid = []
+    dp = []
+    
+    for v in vary:
+        o1, o2 = get_varied_bytype(v)
+        pid += o1
+        dp += o2
+    
+    return (pid, dp, vlabel)
+
+def get_varied_bytype(vary):
+    """Get varied parameter of a particular type"""
     if vary=='potential':
         pid = [0,1,3,5,6]
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.4e11*u.Msun]
     if vary=='halo':
         pid = [0,1,3,5]
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
-        dp = [5*u.km/u.s, 1*u.kpc, 0.005*u.Unit(1), 0.01*u.Unit(1)] # used for talk
-        dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)] # large range
-        #dp = [20*u.km/u.s, 2*u.kpc, 0.1*u.Unit(1), 0.1*u.Unit(1)]
     elif vary=='progenitor':
         pid = [7,8,9,10,11,12]
-        dp = [0.05*u.kpc for x in range(3)] + [2*u.km/u.s for x in range(3)]
-        dp = [0.5*u.kpc for x in range(3)] + [10*u.km/u.s for x in range(3)]
         dp = [1*u.deg, 1*u.deg, 0.5*u.kpc, 20*u.km/u.s, 0.3*u.mas/u.yr, 0.3*u.mas/u.yr]
-    elif vary=='all':
-        pid = []
-        dp = []
-        for v in ['potential', 'progenitor']:
-            o1, o2 = get_varied_pars(v)
-            pid += o1
-            dp += o2
     else:
         pid = []
         dp = []
@@ -2243,16 +2249,20 @@ def get_parlabel(pid):
     pid - list of parameter ids"""
     
     master = ['$V_h$', '$R_h$', '$\phi$', '$q_1$', '$q_2$', '$q_z$', '$M_{lmc}$', '$RA_p$', '$Dec_p$', '$d_p$', '$V_{r_p}$', '$\mu_{\\alpha_p}$', '$\mu_{\delta_p}$']
+    master_units = ['km/s', 'kpc', 'rad', '', '', '', '$M_\odot$', 'deg', 'deg', 'kpc', 'km/s', 'mas/yr', 'mas/yr']
     
-    if pid is list:
+    if type(pid) is list:
         labels = []
+        units = []
         
         for i in pid:
             labels += [master[i]]
+            units += [master_units[i]]
     else:
         labels = master[pid]
+        units = master_units[pid]
     
-    return labels
+    return (labels, units)
 
 def plot_model(n, vary='potential'):
     """"""
@@ -2627,8 +2637,127 @@ def collate_individual_crb(vary='potential'):
     
     pp.close()
 
+
+# Plots
+
+def iterate():
+    """"""
+    
+    for i in [-1,-2,-3,-4]:
+        for nv in [10,]:
+            for c in [0,]:
+                crb_triangle_data(n=i, vary=['halo', 'progenitor'], align=True, Nvar=nv, combined=c)
+
+def crb_triangle_data(n=-1, vary='halo', combined=0, align=True, Nvar=2):
+    """Produce a triangle plot of 2D Cramer-Rao bounds for all model parameters using a given stream"""
+    
+    pid, dp, vlabel = get_varied_pars(vary)
+    plabel, punits = get_parlabel(pid)
+    
+    if align:
+        #rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
+        alabel = '_align'
+    else:
+        #rotmatrix = None
+        alabel = ''
+    
+    columns = ['GD-1', 'Pal 5', 'Triangulum', 'ATLAS']
+    name = columns[int(np.abs(n)-1)]
+    
+    labels = ['RA, Dec, d', 'RA, Dec, d,\n$V_r$', 'RA, Dec, d,\n$V_r$, $\mu_\\alpha$, $\mu_\\delta$']
+    labels_c = ['all streams\nRA, Dec, d', 'combined RA,\nDec, d, $V_r$', 'combined RA,\nDec, d, $V_r$,\n$\mu_\\alpha$, $\mu_\\delta$']
+    params0 = ['$V_h$ (km/s)', '$R_h$ (kpc)', '$q_1$', '$q_z$', '$M_{LMC}$', '$X_p$', '$Y_p$', '$Z_p$', '$V_{xp}$', '$V_{yp}$', '$V_{zp}$']
+    params = ['$\Delta$ '+x for x in params0]
+    #ylim = [150, 20, 0.5, 0.5, 5e11]
+    ylim = [20, 10, 0.1, 0.1, 0.5, 0.5, 1, 20, 0.5, 0.5]
+    
+    cxi_all = np.zeros((3,Nvar,Nvar))
+    
+    if Nvar>5:
+        df = 15
+    else:
+        df = 8
+    
+    plt.close()
+    fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(df, df), sharex='col', sharey='row')
+    
+    # plot 2d bounds in a triangle fashion
+    for l, Ndim in enumerate([3,4,6]):
+        cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+        #cxi = cxi[:Nvar,:Nvar]
+        cx = np.linalg.inv(cxi)
+        
+        for i in range(0,Nvar-1):
+            for j in range(i+1,Nvar):
+                plt.sca(ax[j-1][i])
+                cx_2d = np.array([[cx[i][i], cx[i][j]], [cx[j][i], cx[j][j]]])
+                
+                w, v = np.linalg.eig(cx_2d)
+                if np.all(np.isreal(v)):
+                    theta = np.degrees(np.arccos(v[0][0]))
+                    width = np.sqrt(w[0])*2
+                    height = np.sqrt(w[1])*2
+                    
+                    e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.PuBu((l+3)/6), lw=3)
+                    plt.gca().add_artist(e)
+                
+                if 'halo' in vlabel:
+                    plt.xlim(-ylim[i],ylim[i])
+                    plt.ylim(-ylim[j], ylim[j])
+                
+                if j==Nvar-1:
+                    plt.xlabel(plabel[i])
+                
+                if i==0:
+                    plt.ylabel(plabel[j])
+        
+        plt.sca(ax[0][Nvar-2])
+        plt.plot(np.linspace(-200,-100,10), '-', color=mpl.cm.PuBu((l+3)/6), lw=3, label=labels[l])
+        #plt.xlim(0,1)
+        #plt.ylim(0,1)
+        plt.legend(frameon=False, fontsize='medium', handlelength=1)
+        
+    # All streams combined
+    if combined:
+        for l, Ndim in enumerate([3,]):
+            for n_ in [-1,-2,-3,-4]:
+                cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n_, vlabel, Ndim))
+                cxi = cxi[:Nvar,:Nvar]
+                cxi_all[l] += cxi
+                cx = np.linalg.inv(cxi)
+            
+            cx_all = np.linalg.inv(cxi_all[l])
+
+            for i in range(0,Nvar-1):
+                for j in range(i+1,Nvar):
+                    plt.sca(ax[j-1][i])
+                    cx_all_2d = np.array([[cx_all[i][i], cx_all[i][j]], [cx_all[j][i], cx_all[j][j]]])
+                    
+                    w, v = np.linalg.eig(cx_all_2d)
+                    if np.all(np.isreal(v)):
+                        theta = np.degrees(np.arccos(v[0][0]))
+                        width = np.sqrt(w[0])*2
+                        height = np.sqrt(w[1])*2
+                        
+                        e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.Reds((l+4)/6), lw=3)
+                        plt.gca().add_artist(e)
+            
+            plt.sca(ax[0][Nvar-2])
+            plt.plot(np.linspace(-200,-100,10), '-', color=mpl.cm.Reds((l+4)/6), lw=3, label=labels_c[l])
+            plt.legend(frameon=False, fontsize='medium', handlelength=1)
+    
+    # turn off unused axes
+    for i in range(0,Nvar-1):
+        for j in range(i+1,Nvar-1):
+            plt.sca(ax[i][j])
+            plt.axis('off')
+    
+    plt.suptitle('{} stream'.format(name), fontsize='large')
+    plt.tight_layout(h_pad=0.0, w_pad=0.0, rect=[0,0,1,0.97])
+    plt.savefig('../plots/triangle_data_{}_N{}_c{}.png'.format(n, Nvar, combined))
+
+
 # residuals
-import scipy.interpolate
 def plot_residuals(n, potential='gal'):
     """"""
     
