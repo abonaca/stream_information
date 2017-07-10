@@ -833,7 +833,7 @@ def get_steps(Nstep=50, log=False):
     log - if True, steps are logarithmically spaced (default: False)"""
     
     if log:
-        step = np.logspace(-1, 1, Nstep)
+        step = np.logspace(-2, 1, Nstep)
     else:
         step = np.linspace(0.1, 10, Nstep)
     
@@ -1585,7 +1585,7 @@ def plot_steps(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=Fa
     else:
         rotmatrix = None
     
-    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
+    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
     pid, dp = get_varied_pars(vary)
     plabel = get_parlabel(pid[p])
 
@@ -1687,10 +1687,11 @@ def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', 
     else:
         rotmatrix = None
     
-    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
+    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
     pid, dp = get_varied_pars(vary)
     Np = len(pid)
     units = ['km/s', 'kpc', '', '']
+    units = ['kpc', 'kpc', 'kpc', 'km/s', 'km/s', 'km/s']
     punits = ['({})'.format(x) if len(x) else '' for x in units]
 
     Nstep, step = get_steps(Nstep=Nstep, log=log)
@@ -1779,6 +1780,7 @@ def choose_step(n, tolerance=2, Nstep=20, log=True, layer=2, vary='halo'):
     pid, dp = get_varied_pars(vary)
     Np = len(pid)
     units = ['km/s', 'kpc', '', '']
+    units = ['deg', 'deg', 'kpc', 'km/s', 'mas/yr', 'mas/yr']
     punits = ['({})'.format(x) if len(x) else '' for x in units]
     
     best = np.empty(Np)
@@ -1807,6 +1809,7 @@ def choose_step(n, tolerance=2, Nstep=20, log=True, layer=2, vary='halo'):
         plt.plot(step[p][opt_id], dev[p][opt_id], 'ro')
         
         plt.gca().set_yscale('log')
+        plt.gca().set_xscale('log')
         plt.xlabel('$\Delta$ {} {}'.format(plabel, punits[p]))
         plt.ylabel('Derivative deviation')
         plt.title('{}'.format(plabel)+'$_{best}$ = '+'{:2.2g}'.format(opt_step), fontsize='small')
@@ -2022,8 +2025,24 @@ def stream_track(n, dim=1, align=False):
     plt.tight_layout()
     plt.savefig('../plots/stream_track_{}.png'.format(n))
 
+def gal2eq(x, v, observer=mw_observer, vsun=vsun0):
+    """"""
+    # define reference frame
+    xgal = coord.Galactocentric(np.array(x)[:,np.newaxis]*u.kpc, **observer)
+    
+    # convert
+    xeq = xgal.transform_to(coord.ICRS)
+    veq = gc.vgal_to_hel(xeq, np.array(v)[:,np.newaxis]*u.km/u.s, **vsun)
+    
+    # store coordinates
+    units = [u.deg, u.deg, u.kpc, u.km/u.s, u.mas/u.yr, u.mas/u.yr]
+    xobs = [xeq.ra.to(units[0]), xeq.dec.to(units[1]), xeq.distance.to(units[2])]
+    vobs = [veq[2].to(units[3]), veq[0].to(units[4]), veq[1].to(units[5])]
+    
+    return(xobs, vobs)
+
 # plot model
-def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s], dt=1*u.Myr, rotmatrix=None, graph=False):
+def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr], dt=1*u.Myr, rotmatrix=None, graph=False):
     """"""
     
     obsmode = 'equatorial'
@@ -2089,10 +2108,14 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
     pparams = pfixed + pparams0[:7] + [x for x in xlmc]
     
     # progenitor parameters
+    x0_obs, v0_obs = gal2eq(x0, v0)
     for i in range(3):
-        x0[i] += pparams0[7+i].to(u.kpc).value
-        v0[i] += pparams0[10+i].to(u.km/u.s).value
-    pparams0[7:]
+        x0_obs[i] += pparams0[7+i]
+        v0_obs[i] += pparams0[10+i]
+    
+    #for i in range(3):
+        #x0[i] += pparams0[7+i].to(u.kpc).value
+        #v0[i] += pparams0[10+i].to(u.km/u.s).value
     
     # MWPotential2014
     #R0 ( kpc) 8 fixed
@@ -2116,7 +2139,11 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
     vc_ = np.sqrt(G*mr/distance)
     vsun['vcirc'] = np.sqrt((198*u.km/u.s)**2 + vc_**2)
     
-    params = {'generate': {'x0': x0*u.kpc, 'v0': v0*u.km/u.s, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mw_observer, 'footprint': footprint, 'rotmatrix': rotmatrix}}
+    ##equatorial progenitor
+    #params = {'generate': {'x0': x0*u.kpc, 'v0': v0*u.km/u.s, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mw_observer, 'footprint': footprint, 'rotmatrix': rotmatrix}}
+
+    # observed progenitor
+    params = {'generate': {'x0': x0_obs, 'v0': v0_obs, 'progenitor': {'coords': 'equatorial', 'observer': mw_observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mw_observer, 'footprint': footprint, 'rotmatrix': rotmatrix}}
     
     stream = Stream(**params['generate'])
     stream.generate()
@@ -2195,6 +2222,8 @@ def get_varied_pars(vary):
     elif vary=='progenitor':
         pid = [7,8,9,10,11,12]
         dp = [0.05*u.kpc for x in range(3)] + [2*u.km/u.s for x in range(3)]
+        dp = [0.5*u.kpc for x in range(3)] + [10*u.km/u.s for x in range(3)]
+        dp = [1*u.deg, 1*u.deg, 0.5*u.kpc, 20*u.km/u.s, 0.3*u.mas/u.yr, 0.3*u.mas/u.yr]
     elif vary=='all':
         pid = []
         dp = []
@@ -2213,7 +2242,7 @@ def get_parlabel(pid):
     Parameter:
     pid - list of parameter ids"""
     
-    master = ['$V_h$', '$R_h$', '$\phi$', '$q_1$', '$q_2$', '$q_z$', '$M_{lmc}$', '$X_p$', '$Y_p$', '$Z_p$', '$V_{x_p}$', '$V_{y_p}$', '$V_{z_p}$']
+    master = ['$V_h$', '$R_h$', '$\phi$', '$q_1$', '$q_2$', '$q_z$', '$M_{lmc}$', '$RA_p$', '$Dec_p$', '$d_p$', '$V_{r_p}$', '$\mu_{\\alpha_p}$', '$\mu_{\delta_p}$']
     
     if pid is list:
         labels = []
