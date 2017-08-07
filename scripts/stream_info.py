@@ -511,60 +511,7 @@ def load_tri(present, nobs=50, potential='gal'):
     
     return observed
 
-def gd1_coordinates(verbose=False):
-    """Find best fitting GD1 coordinates from single-stream chain"""
-    
-    x0 = [-12.7, 0.1, 6.7]
-    #v0 = [46, 73, -16]
-    #v0 = [-60, -210, -120]
-    v0 = [-100, -250, -100]
-    #v0 = [-57, -173, -114]
-    
-    return (x0, v0)
 
-def tri_coordinates():
-    """"""
-    
-    #x0 = [-27, 19, -17]
-    #v0 = [31, -135, -145]
-    
-    x = coord.SkyCoord(ra=22.38*u.deg, dec=30.26*u.deg, distance=35*u.kpc, **mw_observer)
-    x_ = x.galactocentric
-    x0 = [x_.x.value, x_.y.value, x_.z.value]
-    v0 = [-31, 135, 145]
-    
-    return (x0, v0)
-
-def pal5_coordinates(verbose=False):
-    """Print pal5 coordinates in different systems"""
-    
-    # sdss
-    ra = 229.0128*u.deg
-    dec = -0.1082*u.deg
-    # bob's rrlyrae
-    d = 21.7*u.kpc
-    #d = 23.2*u.kpc
-    d = 24*u.kpc
-    # odenkirchen 2002
-    vr = -58.7*u.km/u.s
-    # fritz & kallivayalil 2015
-    mua = -2.296*u.mas/u.yr
-    mud = -2.257*u.mas/u.yr
-    
-    x = coord.SkyCoord(ra=ra, dec=dec, distance=d, **mw_observer)
-    v = gc.vhel_to_gal(x.icrs, rv=vr, pm=[mua, mud], **vsun0)
-    
-    if verbose: print(x.galactocentric, v)
-    #v = np.array([ -32.98831945, -122.98597235,  -19.3962925 ])*u.km/u.s
-    
-    return (x.galactocentric, v)
-
-def pal5_coordinates2():
-    """Return pal5 cartesian coordinates in two lists"""
-
-    x0, v0 = pal5_coordinates()
-    
-    return ([x0.x.value, x0.y.value, x0.z.value], v0.value.tolist())
 
 def lmc_position():
     """"""
@@ -592,15 +539,7 @@ def lmc_properties():
     
     return (mass, xgal)
 
-def atlas_coordinates(observer=mw_observer):
-    """"""
-    
-    x = coord.SkyCoord(ra=20*u.deg, dec=-27*u.deg, distance=20*u.kpc, **observer)
-    x_ = x.galactocentric
-    x0 = [x_.x.value, x_.y.value, x_.z.value]
-    v0 = [40, 150, -120]
-    
-    return (x0, v0)
+
 
 def plot_atlas():
     """"""
@@ -2193,34 +2132,8 @@ def gal2eq(x, v, observer=mw_observer, vobs=vsun0):
     
     return(xobs, vobs)
 
-# make stream model
-def progenitor_params(n):
-    """Return progenitor parameters for a given stream"""
-    
-    if n==-1:
-        age = 1.8*u.Gyr
-        mi = 2e4*u.Msun
-        mf = 2e-1*u.Msun
-        x0, v0 = gd1_coordinates()
-    elif n==-3:
-        age = 5*u.Gyr
-        mi = 2e4*u.Msun
-        mf = 2e-1*u.Msun
-        x0, v0 = tri_coordinates()
-    elif n==-4:
-        age = 2*u.Gyr
-        mi = 2e4*u.Msun
-        mf = 2e-1*u.Msun
-        x0, v0 = atlas_coordinates(observer=mw_observer)
-    else:
-        age = 2.7*u.Gyr
-        mi = 1e5*u.Msun
-        mf = 2e4*u.Msun
-        x0, v0 = pal5_coordinates2()
-    
-    out = {'x0': x0, 'v0': v0, 'age': age, 'mi': mi, 'mf': mf}
-    
-    return out
+#####################
+# Make stream model #
 
 def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr], dt=1*u.Myr, rotmatrix=None, graph=False, observer=mw_observer, vobs=vsun):
     """"""
@@ -2265,12 +2178,14 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
         age = 2.7*u.Gyr
         mi = 1e5*u.Msun
         mf = 2e4*u.Msun
-        x0, v0 = pal5_coordinates2()
+        x0, v0 = pal5_coordinates()
         xlims = [[245, 225], [0, 350]]
         ylims = [[-4, 10], [21, 27], [-80, -20], [0, 250]]
         loc = 3
         name = 'Pal 5'
-        
+    
+    observed = load_stream(n)
+    
     ######################
     # Create mock stream
 
@@ -2287,32 +2202,12 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
     # free: halo + lmc mass ; fixed again: lmc position
     pparams = pfixed + pparams0[:7] + [x for x in xlmc]
     
-    # progenitor parameters
-    x0_obs, v0_obs = gal2eq(x0, v0, observer=observer, vobs=vobs)
+    # vary progenitor parameters
+    progenitor = progenitor_params(n)
+    x0_obs, v0_obs = gal2eq(progenitor['x0'], progenitor['v0'], observer=observer, vobs=vobs)
     for i in range(3):
         x0_obs[i] += pparams0[7+i]
         v0_obs[i] += pparams0[10+i]
-    
-    #for i in range(3):
-        #x0[i] += pparams0[7+i].to(u.kpc).value
-        #v0[i] += pparams0[10+i].to(u.km/u.s).value
-    
-    # MWPotential2014
-    #R0 ( kpc) 8 fixed
-    #vc(R0) ( km s-1
-    #) 220 fixed
-    #fb 0.05 . . .
-    #fd 0.60 . . .
-    #fh 0.35 . . .
-    #a ( kpc) 3.0 . . .
-    #b ( pc) 280 . . .
-    #Halo rs ( kpc) 16 . . .
-    #Mvir (1012 M) 0.8 . . .
-    #rvir ( kpc) 245
-    # pf = [0.5e10, 0.7, 6.8e10, 3, 0.28]
-    
-    # Licquia & Newman (2015)
-    #pf = [0.9e10, 5.2e10]
     
     distance = observer['galcen_distance']
     mr = pparams[5]**2 * pparams[6] / G * (np.log(1 + distance/pparams[6]) - distance/(distance + pparams[6]))
@@ -2321,12 +2216,9 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
         vobs['vcirc'] = np.sqrt((198*u.km/u.s)**2 + vc_**2)
     else:
         vobs['vcirc'] = vc_
-    
-    ##galactocentric progenitor
-    #params = {'generate': {'x0': x0*u.kpc, 'v0': v0*u.km/u.s, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mw_observer, 'footprint': footprint, 'rotmatrix': rotmatrix}}
 
     # observed progenitor
-    params = {'generate': {'x0': x0_obs, 'v0': v0_obs, 'progenitor': {'coords': 'equatorial', 'observer': mw_observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': rotmatrix}}
+    params = {'generate': {'x0': x0_obs, 'v0': v0_obs, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': progenitor['mi'], 'mfinal': progenitor['mf'], 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': progenitor['age'], 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': rotmatrix}}
     
     stream = Stream(**params['generate'])
     stream.generate()
@@ -2347,9 +2239,7 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
         for i in range(3):
             plt.sca(ax[i])
             
-            #plt.xlim(xlims[0][0], xlims[0][1])
-            #plt.ylim(ylims[i][0], ylims[i][1])
-            
+            plt.gca().invert_xaxis()
             plt.xlabel('R.A. (deg)')
             plt.ylabel(ylabel[i])
             
@@ -2366,9 +2256,103 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
                 plt.legend(frameon=False, handlelength=0.5, fontsize='small')
         
         plt.tight_layout()
-        plt.savefig('../plots/talk/fiducial_{}.png'.format(n))
     
     return stream
+
+def load_stream(n):
+    """Load stream observations"""
+    
+    if n==-1:
+        observed = load_gd1(present=[0,1,2,3])
+    elif n==-2:
+        observed = load_pal5(present=[0,1,2,3])
+    elif n==-3:
+        observed = load_tri(present=[0,1,2,3])
+    elif n==-4:
+        observed = load_atlas(present=[0,1,2,3])
+    
+    return observed
+
+def progenitor_params(n):
+    """Return progenitor parameters for a given stream"""
+    
+    if n==-1:
+        age = 1.6*u.Gyr
+        mi = 1e4*u.Msun
+        mf = 2e-1*u.Msun
+        x0, v0 = gd1_coordinates(observer=mw_observer)
+    elif n==-2:
+        age = 2.7*u.Gyr
+        mi = 1e5*u.Msun
+        mf = 2e4*u.Msun
+        x0, v0 = pal5_coordinates(observer=mw_observer, vobs=vsun0)
+    elif n==-3:
+        age = 3.5*u.Gyr
+        mi = 5e4*u.Msun
+        mf = 2e-1*u.Msun
+        x0, v0 = tri_coordinates(observer=mw_observer)
+    elif n==-4:
+        age = 2*u.Gyr
+        mi = 2e4*u.Msun
+        mf = 2e-1*u.Msun
+        x0, v0 = atlas_coordinates(observer=mw_observer)
+    
+    out = {'x0': x0, 'v0': v0, 'age': age, 'mi': mi, 'mf': mf}
+    
+    return out
+
+def gd1_coordinates(observer=mw_observer):
+    """Approximate GD-1 progenitor coordinates"""
+    
+    x = coord.SkyCoord(ra=154.377*u.deg, dec=41.5309*u.deg, distance=8.2*u.kpc, **observer)
+    x_ = x.galactocentric
+    x0 = [x_.x.value, x_.y.value, x_.z.value]
+    v0 = [-90, -250, -120]
+    
+    return (x0, v0)
+
+def pal5_coordinates(observer=mw_observer, vobs=vsun0):
+    """Pal5 coordinates"""
+    
+    # sdss
+    ra = 229.0128*u.deg
+    dec = -0.1082*u.deg
+    # bob's rrlyrae
+    d = 21.7*u.kpc
+    # harris
+    #d = 23.2*u.kpc
+    # odenkirchen 2002
+    vr = -58.7*u.km/u.s
+    # fritz & kallivayalil 2015
+    mua = -2.296*u.mas/u.yr
+    mud = -2.257*u.mas/u.yr
+    d = 24*u.kpc
+    
+    x = coord.SkyCoord(ra=ra, dec=dec, distance=d, **observer)
+    x0 = x.galactocentric
+    v0 = gc.vhel_to_gal(x.icrs, rv=vr, pm=[mua, mud], **vobs).to(u.km/u.s)
+
+    return ([x0.x.value, x0.y.value, x0.z.value], v0.value.tolist())
+
+def tri_coordinates(observer=mw_observer):
+    """Approximate Triangulum progenitor coordinates"""
+    
+    x = coord.SkyCoord(ra=22.38*u.deg, dec=30.26*u.deg, distance=33*u.kpc, **observer)
+    x_ = x.galactocentric
+    x0 = [x_.x.value, x_.y.value, x_.z.value]
+    v0 = [-40, 155, 155]
+    
+    return (x0, v0)
+
+def atlas_coordinates(observer=mw_observer):
+    """Approximate ATLAS progenitor coordinates"""
+    
+    x = coord.SkyCoord(ra=20*u.deg, dec=-27*u.deg, distance=20*u.kpc, **observer)
+    x_ = x.galactocentric
+    x0 = [x_.x.value, x_.y.value, x_.z.value]
+    v0 = [40, 150, -120]
+    
+    return (x0, v0)
 
 
 ################
