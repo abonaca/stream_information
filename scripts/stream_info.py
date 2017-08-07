@@ -4,8 +4,11 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import streakline
+import streakline2
+#import streakline2 as streakline
 import myutils
 import ffwd
 
@@ -19,6 +22,9 @@ import gala.coordinates as gc
 import scipy.interpolate
 import scipy.optimize
 
+import copy
+
+
 # observers
 vl2_observer = {'z_sun': 0.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_ra': 300*u.deg, 'galcen_dec': 20*u.deg}
 
@@ -26,6 +32,10 @@ vl2_observer = {'z_sun': 0.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg,
 mw_observer = {'z_sun': 27.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_ra': coord.Angle("17:45:37.224 hours"), 'galcen_dec': coord.Angle("-28:56:10.23 degrees")}
 vsun = {'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 vsun0 = {'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
+
+gc_observer = {'z_sun': 27.*u.pc, 'galcen_distance': 0.1*u.kpc, 'roll': 0*u.deg, 'galcen_ra': coord.Angle("17:45:37.224 hours"), 'galcen_dec': coord.Angle("-28:56:10.23 degrees")}
+vgc = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
+vgc0 = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 
 MASK = -9999
 
@@ -145,7 +155,7 @@ class Stream():
         self.trailing['x'] = stream[3:6]*u.m
         self.trailing['v'] = stream[9:12]*u.m/u.s
     
-    def observe(self, mode='cartesian', units=[], errors=[], nstars=-1, sequential=False, present=[], logerr=False, observer = {'z_sun': 0.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_ra': 300*u.deg, 'galcen_dec': 20*u.deg}, footprint='none', rotmatrix=None):
+    def observe(self, mode='cartesian', units=[], errors=[], nstars=-1, sequential=False, present=[], logerr=False, observer={'z_sun': 0.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_ra': 300*u.deg, 'galcen_dec': 20*u.deg}, vobs={'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}, footprint='none', rotmatrix=None):
         """Observe the stream
         stream.obs holds all observations
         stream.err holds all errors"""
@@ -192,7 +202,7 @@ class Stream():
             
             # convert
             xeq = xgal.transform_to(coord.ICRS)
-            veq = gc.vgal_to_hel(xeq, v, **vsun)
+            veq = gc.vgal_to_hel(xeq, v, **vobs)
             
             # store coordinates
             ra, dec, dist = [xeq.ra.to(units[0]), xeq.dec.to(units[1]), xeq.distance.to(units[2])]
@@ -582,10 +592,10 @@ def lmc_properties():
     
     return (mass, xgal)
 
-def atlas_coordinates():
+def atlas_coordinates(observer=mw_observer):
     """"""
     
-    x = coord.SkyCoord(ra=20*u.deg, dec=-27*u.deg, distance=20*u.kpc, **mw_observer)
+    x = coord.SkyCoord(ra=20*u.deg, dec=-27*u.deg, distance=20*u.kpc, **observer)
     x_ = x.galactocentric
     x0 = [x_.x.value, x_.y.value, x_.z.value]
     v0 = [40, 150, -120]
@@ -1203,7 +1213,7 @@ def crb_stepsize(n, Nobs=10, vary='potential', log=False, ylabels=False, Nstep=5
 ##############################
 # b-spline based derivatives #
 
-pparams_fid = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s]
+pparams_fid = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
 
 # fit b-spline to a stream model
 def fit_bspline(n, pparams=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.kpc, 0*u.kpc, 0*u.kpc, 0*u.km/u.s, 0*u.km/u.s, 0*u.km/u.s], dt=1*u.Myr, align=False, save='', graph=False, graphsave='', fiducial=False):
@@ -1577,7 +1587,7 @@ def optimal_stepsize(n, Nobs=10, log=True, Nstep=20, vary='halo'):
     #print(best_step, step[np.int64(best_step)])
     return best_step.astype(int)
     
-def plot_steps(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=False, align=True):
+def plot_steps(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=False, align=True, observer=mw_observer, vobs=vsun):
     """Plot stream for different values of a potential parameter"""
     
     if align:
@@ -1586,8 +1596,8 @@ def plot_steps(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=Fa
         rotmatrix = None
     
     pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
-    pid, dp = get_varied_pars(vary)
-    plabel = get_parlabel(pid[p])
+    pid, dp, vlabel = get_varied_pars(vary)
+    plabel, punit = get_parlabel(pid[p])
 
     Nstep, step = get_steps(Nstep=Nstep, log=log)
     
@@ -1595,7 +1605,7 @@ def plot_steps(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=Fa
     fig, ax = plt.subplots(5,5,figsize=(20,10), sharex=True, gridspec_kw = {'height_ratios':[3, 1, 1, 1, 1]})
     
     # fiducial model
-    stream0 = stream_model(n, pparams0=pparams0, dt=dt, rotmatrix=rotmatrix)
+    stream0 = stream_model(n, pparams0=pparams0, dt=dt, rotmatrix=rotmatrix, observer=observer, vobs=vobs)
     
     Nobs = 10
     k = 3
@@ -1807,12 +1817,12 @@ def choose_step(n, tolerance=2, Nstep=20, log=True, layer=2, vary='halo'):
         opt_id = step[p]==opt_step
         best[p] = opt_step
         
+        plt.axvline(opt_step, ls='-', color='r', lw=2)
+        plt.plot(step[p][opt_id], dev[p][opt_id], 'ro')
+        
         plt.axhline(dtol, ls='-', color='orange', lw=1)
         y0, y1 = plt.gca().get_ylim()
         plt.axhspan(y0, dtol, color='orange', alpha=0.3, zorder=0)
-        
-        plt.axvline(opt_step, ls='-', color='r', lw=2)
-        plt.plot(step[p][opt_id], dev[p][opt_id], 'ro')
         
         plt.gca().set_yscale('log')
         plt.gca().set_xscale('log')
@@ -1826,7 +1836,7 @@ def choose_step(n, tolerance=2, Nstep=20, log=True, layer=2, vary='halo'):
     plt.savefig('../plots/step_convergence_{}_{}_Ns{}_log{}_l{}.png'.format(n, vlabel, Nstep, log, layer))
 
 # crbs using bspline
-def bspline_crb(n, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True):
+def bspline_crb(n, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True):
     """"""
     if align:
         rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
@@ -1845,7 +1855,6 @@ def bspline_crb(n, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', Nobs=50, verbo
     ra = np.linspace(np.min(stream0.obs[0])*1.05, np.max(stream0.obs[0])*0.95, Nobs)
     err = np.tile(sig_obs, Nobs).reshape(Nobs,-1)
 
-    Nstep, step = get_steps(log=log, Nstep=Nstep)
     pid, dp_fid, vlabel = get_varied_pars(vary)
     Np = len(pid)
     dp_opt = np.load('../data/optimal_step_{}_{}.npy'.format(n, vlabel))
@@ -1882,22 +1891,165 @@ def bspline_crb(n, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', Nobs=50, verbo
             cyd[(j-1)*Nobs:j*Nobs] = err[:,j-1]**2
         
         cy = np.diag(cyd)
-        cyi = np.linalg.inv(cy)
+        cyi = np.diag(1. / cyd)
         
         cxi = np.matmul(dydx, np.matmul(cyi, dydx.T))
 
         cx = np.linalg.inv(cxi)
+        cx = np.matmul(np.linalg.inv(np.matmul(cx, cxi)), cx) # iteration of inverse improvement for large cond numbers
         sx = np.sqrt(np.diag(cx))
         
         if verbose:
             print(Ndim)
             print(np.diag(cxi))
             print(np.linalg.det(cxi))
-            print(np.allclose(cxi, cxi.T), np.allclose(cx, cx.T))
+            print(np.allclose(cxi, cxi.T), np.allclose(cx, cx.T), np.allclose(np.matmul(cx,cxi), np.eye(np.shape(cx)[0])))
+            print('condition {:g}'.format(np.linalg.cond(cxi)))
 
         np.save('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}'.format(alabel, n, vlabel, Ndim), cxi)
 
+def test_inversion(n, Ndim=6, vary=['halo', 'progenitor'], align=True):
+    """"""
+    pid, dp, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+        
+    cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+    
+    cx = np.linalg.inv(cxi)
+    cxi_ = np.linalg.inv(cx)
+    print(np.linalg.cond(cxi))
+    print(np.linalg.cond(cx))
+    print(np.linalg.det(cxi))
+    print(np.linalg.det(cx))
+    #print(np.linalg.norm(cxi)*np.linalg.norm(cx), np.linalg.norm(cxi), np.linalg.norm(cxi_))
+    #print(np.matmul(cx,cxi))
+    #print(cxi)
+    plt.close()
+    plt.figure()
+    
+    plt.hist(np.ravel(cxi), bins=np.logspace(-3,5,10))
+    plt.gca().set_xscale('log')
 
+#################
+# accelerations #
+
+def halo_accelerations(x, pu=[pparams_fid[j] for j in [0,1,3,5]]):
+    """Calculate derivatives of potential parameters q wrt (Cartesian) components of the acceleration vector a"""
+    
+    p = np.array([j.value for j in pu])
+    q = np.array([1, p[2], p[3]])
+    
+    # physical quantities
+    x = x.value
+    r = np.linalg.norm(x)
+    a = p[0]**2 * p[1] * r**-3 * (1/(1+p[1]/r) - np.log(1+r/p[1])) * x * q**-2
+    
+    #  derivatives
+    dmat = np.zeros((3, 4))
+    
+    # Vh
+    dmat[:,0] = ( 2*a/p[0] )**-1
+    
+    # Rh
+    dmat[:,1] = ( a/p[1] + p[0]**2 * p[1] * r**-3 * (1/(p[1]+p[1]**2/r) - 1/(r*(1+p[1]/r)**2)) * x * q**-2 )**-1
+    
+    # qy, qz
+    for i in [1,2]:
+        dmat[i,i+1] = ( -2*a[i]/q[i] )**-1
+    
+    return dmat
+
+def acc_nfw(x, p=[pparams_fid[j] for j in [0,1,3,5]]):
+    """"""
+    r = np.linalg.norm(x)*u.kpc
+    q = np.array([1*u.Unit(1), p[2], p[3]])
+    a = (p[0]**2 * p[1] * r**-3 * (1/(1+p[1]/r) - np.log(1+r/p[1])) * x * q**-2).to(u.pc*u.Myr**-2)
+    
+    return(a)
+
+def crb_ax(n, Ndim=6, vary=['halo', 'progenitor'], align=True):
+    """Calculate CRB inverse matrix for 3D acceleration at position x in a halo potential"""
+    
+    pid, dp, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    
+    # read in full inverse CRB for stream modeling
+    cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+    cx = np.linalg.inv(cxi)
+    
+    # subset halo parameters
+    Nhalo = 4
+    cq = cx[:Nhalo,:Nhalo]
+    cqi = np.linalg.inv(cq)
+    
+    xi = np.array([-8.3, 0.1, 0.1])*u.kpc
+    
+    x0, v0 = gd1_coordinates()
+    #xi = np.array(x0)*u.kpc
+    d = 100
+    Nb = 20
+    x = np.linspace(x0[0]-d, x0[0]+d, Nb)
+    y = np.linspace(x0[1]-d, x0[1]+d, Nb)
+    x = np.linspace(-d, d, Nb)
+    y = np.linspace(-d, d, Nb)
+    xv, yv = np.meshgrid(x, y)
+    
+    xf = np.ravel(xv)
+    yf = np.ravel(yv)
+    af = np.empty((Nb**2, 3))
+    
+    plt.close()
+    fig, ax = plt.subplots(3,3,figsize=(11,10))
+    
+    dimension = ['x', 'y', 'z']
+    xlabel = ['y', 'x', 'x']
+    ylabel = ['z', 'z', 'y']
+    
+    for j in range(3):
+        if j==0:
+            xin = np.array([np.repeat(x0[j], Nb**2), xf, yf]).T
+        elif j==1:
+            xin = np.array([xf, np.repeat(x0[j], Nb**2), yf]).T
+        elif j==2:
+            xin = np.array([xf, yf, np.repeat(x0[j], Nb**2)]).T
+        for i in range(Nb**2):
+            #xi = np.array([xf[i], yf[i], x0[2]])*u.kpc
+            xi = xin[i]*u.kpc
+            a = acc_nfw(xi)
+            
+            dqda = halo_accelerations(xi)
+            
+            cai = np.matmul(dqda, np.matmul(cqi, dqda.T))
+            ca = np.linalg.inv(cai)
+            a_crb = (np.sqrt(np.diag(ca)) * u.km**2 * u.kpc**-1 * u.s**-2).to(u.pc*u.Myr**-2)
+            #af[i] = np.abs(a_crb/a)
+            af[i] = a_crb
+
+        for i in range(3):
+            plt.sca(ax[j][i])
+            im = plt.imshow(af[:,i].reshape(Nb,Nb), extent=[-d, d, -d, d], cmap=mpl.cm.gray) #, norm=mpl.colors.LogNorm(), vmin=1e-2, vmax=0.1)
+            
+            plt.xlabel(xlabel[j]+' (kpc)')
+            plt.ylabel(ylabel[j]+' (kpc)')
+            
+            divider = make_axes_locatable(plt.gca())
+            cax = divider.append_axes("top", size="4%", pad=0.05)
+            plt.colorbar(im, cax=cax, orientation='horizontal')
+            
+            plt.gca().xaxis.set_ticks_position('top')
+            cax.tick_params(axis='x', labelsize='xx-small')
+            if j==0:
+                plt.title('a$_{}$'.format(dimension[i]), y=4)
+        
+    plt.tight_layout(rect=[0,0,1,0.95])
+    plt.savefig('../plots/acc_{}_{}_{}.png'.format(n, vlabel, Ndim))
+    
 ############################
 # great circle orientation #
 
@@ -2025,14 +2177,14 @@ def stream_track(n, dim=1, align=False):
     plt.tight_layout()
     plt.savefig('../plots/stream_track_{}.png'.format(n))
 
-def gal2eq(x, v, observer=mw_observer, vsun=vsun0):
+def gal2eq(x, v, observer=mw_observer, vobs=vsun0):
     """"""
     # define reference frame
     xgal = coord.Galactocentric(np.array(x)[:,np.newaxis]*u.kpc, **observer)
     
     # convert
     xeq = xgal.transform_to(coord.ICRS)
-    veq = gc.vgal_to_hel(xeq, np.array(v)[:,np.newaxis]*u.km/u.s, **vsun)
+    veq = gc.vgal_to_hel(xeq, np.array(v)[:,np.newaxis]*u.km/u.s, **vobs)
     
     # store coordinates
     units = [u.deg, u.deg, u.kpc, u.km/u.s, u.mas/u.yr, u.mas/u.yr]
@@ -2042,7 +2194,7 @@ def gal2eq(x, v, observer=mw_observer, vsun=vsun0):
     return(xobs, vobs)
 
 # plot model
-def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr], dt=1*u.Myr, rotmatrix=None, graph=False):
+def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr], dt=1*u.Myr, rotmatrix=None, graph=False, observer=mw_observer, vobs=vsun):
     """"""
     
     obsmode = 'equatorial'
@@ -2075,7 +2227,7 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
         age = 2*u.Gyr
         mi = 2e4*u.Msun
         mf = 2e-1*u.Msun
-        x0, v0 = atlas_coordinates()
+        x0, v0 = atlas_coordinates(observer=mw_observer)
         xlims = [[35, 10], [0, 350]]
         ylims = [[-40, -20], [15, 25], [50, 200], [0, 250]]
         loc = 3
@@ -2108,7 +2260,7 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
     pparams = pfixed + pparams0[:7] + [x for x in xlmc]
     
     # progenitor parameters
-    x0_obs, v0_obs = gal2eq(x0, v0)
+    x0_obs, v0_obs = gal2eq(x0, v0, observer=observer, vobs=vobs)
     for i in range(3):
         x0_obs[i] += pparams0[7+i]
         v0_obs[i] += pparams0[10+i]
@@ -2134,16 +2286,19 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
     # Licquia & Newman (2015)
     #pf = [0.9e10, 5.2e10]
     
-    distance = 8.3*u.kpc
+    distance = observer['galcen_distance']
     mr = pparams[5]**2 * pparams[6] / G * (np.log(1 + distance/pparams[6]) - distance/(distance + pparams[6]))
     vc_ = np.sqrt(G*mr/distance)
-    vsun['vcirc'] = np.sqrt((198*u.km/u.s)**2 + vc_**2)
+    if observer==mw_observer:
+        vobs['vcirc'] = np.sqrt((198*u.km/u.s)**2 + vc_**2)
+    else:
+        vobs['vcirc'] = vc_
     
     ##galactocentric progenitor
     #params = {'generate': {'x0': x0*u.kpc, 'v0': v0*u.km/u.s, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mw_observer, 'footprint': footprint, 'rotmatrix': rotmatrix}}
 
     # observed progenitor
-    params = {'generate': {'x0': x0_obs, 'v0': v0_obs, 'progenitor': {'coords': 'equatorial', 'observer': mw_observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mw_observer, 'footprint': footprint, 'rotmatrix': rotmatrix}}
+    params = {'generate': {'x0': x0_obs, 'v0': v0_obs, 'progenitor': {'coords': 'equatorial', 'observer': mw_observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': rotmatrix}}
     
     stream = Stream(**params['generate'])
     stream.generate()
@@ -2164,8 +2319,8 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
         for i in range(3):
             plt.sca(ax[i])
             
-            plt.xlim(xlims[0][0], xlims[0][1])
-            plt.ylim(ylims[i][0], ylims[i][1])
+            #plt.xlim(xlims[0][0], xlims[0][1])
+            #plt.ylim(ylims[i][0], ylims[i][1])
             
             plt.xlabel('R.A. (deg)')
             plt.ylabel(ylabel[i])
@@ -2183,9 +2338,378 @@ def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1
                 plt.legend(frameon=False, handlelength=0.5, fontsize='small')
         
         plt.tight_layout()
-        plt.savefig('../plots/talk/iducial_{}.png'.format(n))
+        plt.savefig('../plots/talk/fiducial_{}.png'.format(n))
     
     return stream
+
+
+################
+# Scaling test #
+
+def run_test(n):
+    """"""
+    stream_model_test(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr], dt=0.2*u.Myr, rotmatrix=None, graph=False, observer=mw_observer, vobs={'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s})
+
+def stream_model_test(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr], dt=0.2*u.Myr, rotmatrix=None, graph=False, observer=mw_observer, vobs={'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}):
+    """"""
+    obsmode = 'equatorial'
+    footprint = ''
+    
+    # Load streams
+    if n==-1:
+        observed = load_gd1(present=[0,1,2,3])
+        age = 3*u.Gyr
+        age = 1.8*u.Gyr
+        mi = 2e4*u.Msun
+        mf = 2e-1*u.Msun
+        x0, v0 = gd1_coordinates()
+        xlims = [[190, 130], [0, 350]]
+        ylims = [[15, 65], [5, 10], [-250, 150], [0, 250]]
+        loc = 2
+        name = 'GD-1'
+    elif n==-3:
+        observed = load_tri(present=[0,1,2,3])
+        age = 5*u.Gyr
+        mi = 2e4*u.Msun
+        mf = 2e-1*u.Msun
+        x0, v0 = tri_coordinates()
+        xlims = [[25, 19], [0, 350]]
+        ylims = [[10, 50], [20, 45], [-175, -50], [0, 250]]
+        loc = 1
+        name = 'Triangulum'
+    elif n==-4:
+        observed = load_atlas(present=[0,1,2,3])
+        age = 2*u.Gyr
+        mi = 2e4*u.Msun
+        mf = 2e-1*u.Msun
+        x0, v0 = atlas_coordinates(observer=mw_observer)
+        xlims = [[35, 10], [0, 350]]
+        ylims = [[-40, -20], [15, 25], [50, 200], [0, 250]]
+        loc = 3
+        name = 'ATLAS'
+    else:
+        observed = load_pal5(present=[0,1,2,3])
+        age = 2.7*u.Gyr
+        mi = 1e5*u.Msun
+        mf = 2e4*u.Msun
+        x0, v0 = pal5_coordinates2()
+        xlims = [[245, 225], [0, 350]]
+        ylims = [[-4, 10], [21, 27], [-80, -20], [0, 250]]
+        loc = 3
+        name = 'Pal 5'
+        
+    ######################
+    # Create mock stream
+
+    #potential parameters
+    potential = 'lmc'
+    mlmc, xlmc = lmc_properties()
+    # fixed: bulge and disk
+    # Kupper et al. (2015)
+    pf = [3.4e10, 0.7, 1e11, 6.5, 0.26]
+    # ~MWPotential2014
+    pf = [0.5e10, 0.7, 6.8e10, 3, 0.28]
+    pf = [0, 0.7, 0, 3, 0.28]
+    uf = [u.Msun, u.kpc, u.Msun, u.kpc, u.kpc]
+    pfixed = [x*y for x,y in zip(pf, uf)]
+    # free: halo + lmc mass ; fixed again: lmc position
+    pparams = pfixed + pparams0[:7] + [x for x in xlmc]
+    
+    # progenitor parameters
+    x0_obs, v0_obs = gal2eq(x0, v0, observer=observer, vobs=vobs)
+    for i in range(3):
+        x0_obs[i] += pparams0[7+i]
+        v0_obs[i] += pparams0[10+i]
+    
+    distance = observer['galcen_distance']
+    mr = pparams[5]**2 * pparams[6] / G * (np.log(1 + distance/pparams[6]) - distance/(distance + pparams[6]))
+    vc_ = np.sqrt(G*mr/distance)
+    vobs['vcirc'] = vc_
+    vobs['vlsr'] = [0,0,0]*u.km/u.s
+    print(vobs)
+
+    # observed progenitor
+    params = {'generate': {'x0': x0_obs, 'v0': v0_obs, 'progenitor': {'coords': 'equatorial', 'observer': mw_observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': rotmatrix}}
+    #print(pparams)
+    
+    nstep = int(age/dt)
+    nskip = int(nstep/400)
+    
+    stream = Stream(**params['generate'])
+    stream.generate()
+    stream.observe(**params['observe'])
+    
+    print(stream.obs[:,0])
+
+    # halo velocity scaling
+    eta = 1.1
+    pparams[5] *= eta
+    #pparams[6] *= eta
+    v0_obs = [x*eta for x in v0_obs]
+    mi *= eta**2
+    mf *= eta**2
+    #vobs['vcirc'] *= eta
+    #vobs['vlsr'] = [x*eta for x in vobs['vlsr']]
+    dt *= eta**-1
+    age = 0.5*np.shape(stream.obs)[1]*nskip*dt
+    
+    distance = observer['galcen_distance']
+    mr = pparams[5]**2 * pparams[6] / G * (np.log(1 + distance/pparams[6]) - distance/(distance + pparams[6]))
+    vc_ = np.sqrt(G*mr/distance)
+    vobs['vcirc'] = vc_
+    vobs['vlsr'] = [0,0,0]*u.km/u.s
+    print(vobs)
+    
+    #x0_obs, v0_obs = gal2eq(x0, [x*eta for x in v0], observer=observer, vobs=vobs)
+    
+    print(v0, [x*eta for x in v0])
+    
+    # observed progenitor
+    params = {'generate': {'x0': x0_obs, 'v0': v0_obs, 'progenitor': {'coords': 'equatorial', 'observer': mw_observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': rotmatrix}}
+    #print(pparams)
+    
+    nstep2 = int(age/dt)
+    nskip2 = int(nstep/400)
+    
+    #print(nstep, nstep2)
+    #print(nskip, nskip2)
+    
+    #print(params)
+    stream2 = Stream(**params['generate'])
+    stream2.generate()
+    stream2.observe(**params['observe'])
+    
+    #print(np.shape(stream.trailing['v']), np.shape(stream2.trailing['v']))
+    print(np.shape(stream.obs), np.shape(stream2.obs))
+    print(stream2.obs[:,0])
+    plt.close()
+    fig, ax = plt.subplots(1, 5, figsize=(15,3))
+    
+    
+    ylabel = ['R.A. (deg)', 'Dec (deg)', 'd (kpc)', '$V_r$ (km/s)', '$\mu_\\alpha$ (mas/yr)', '$\mu_\delta$ (mas/yr)']
+    for i in range(5):
+        plt.sca(ax[i])
+        
+        plt.xlabel('R.A. (deg)', fontsize='small')
+        plt.ylabel(ylabel[i+1], fontsize='small')
+        
+        plt.plot(stream.obs[0], stream.obs[i+1], 'o', color='k', mec='none', ms=4, label='Fiducial model')
+        plt.plot(stream2.obs[0], stream2.obs[i+1], 'o', color='r', mec='none', ms=4, label='$V_h$ = {}'.format(eta)+'$V_{h, fid}$')
+    
+        if i==0:
+            plt.legend(frameon=False, fontsize='x-small', handlelength=0.5)
+    
+    plt.tight_layout()
+    plt.savefig('../plots/halo_scaling_{}.png'.format(n))
+
+def compare_integrators(n=-1, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr], dt=0.2*u.Myr, rotmatrix=None, graph=False, observer=mw_observer, vobs={'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}):
+    """"""
+    
+    observed = load_gd1(present=[0,1,2,3])
+    age = 3*u.Gyr
+    age = 1.8*u.Gyr
+    mi = 2e4*u.Msun
+    mf = 2e-1*u.Msun
+    x0, v0 = gd1_coordinates()
+    obsmode = 'equatorial'
+    footprint = ''
+    
+    #potential parameters
+    potential = 'lmc'
+    mlmc, xlmc = lmc_properties()
+    # fixed: bulge and disk
+    pf = [0.5e10, 0.7, 6.8e10, 3, 0.28]
+    uf = [u.Msun, u.kpc, u.Msun, u.kpc, u.kpc]
+    pfixed = [x*y for x,y in zip(pf, uf)]
+    # free: halo + lmc mass ; fixed again: lmc position
+    pparams = pfixed + pparams0[:7] + [x for x in xlmc]
+    
+    # progenitor parameters
+    x0_obs, v0_obs = gal2eq(x0, v0, observer=observer, vobs=vobs)
+    for i in range(3):
+        x0_obs[i] += pparams0[7+i]
+        v0_obs[i] += pparams0[10+i]
+    
+    distance = observer['galcen_distance']
+    mr = pparams[5]**2 * pparams[6] / G * (np.log(1 + distance/pparams[6]) - distance/(distance + pparams[6]))
+    vc_ = np.sqrt(G*mr/distance)
+    vobs['vcirc'] = vc_
+    vobs['vlsr'] = [0,0,0]*u.km/u.s
+
+    # observed progenitor
+    params = {'generate': {'x0': x0_obs, 'v0': v0_obs, 'progenitor': {'coords': 'equatorial', 'observer': mw_observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': rotmatrix}}
+    #print(pparams)
+    
+    stream = Stream(**params['generate'])
+    print(" &x0_obj, &v0_obj, &par_obj, &offset_obj, &potential, &integrator, &N, &M, &mcli, &mclf, &rcl, &dt_")
+    print(stream.st_params)
+    
+    orbit = streakline.orbit(stream.st_params[0], stream.st_params[1], stream.st_params[2], stream.st_params[4], stream.st_params[5], stream.st_params[6], stream.st_params[11], -1)
+    orbit2 = streakline2.orbit(stream.st_params[0], stream.st_params[1], stream.st_params[2], stream.st_params[4], stream.st_params[5], stream.st_params[6], stream.st_params[11], -1)
+    print(np.shape(orbit), np.shape(orbit2))
+    
+    print('orbit')
+    for i in range(6):
+        print(i, np.sum(orbit[i] - orbit2[i]))
+    
+    st = streakline.stream(*stream.st_params)
+    st2 = streakline2.stream(*stream.st_params)
+    
+    print(np.shape(st), np.shape(st2))
+    
+    print('stream')
+    for i in range(12):
+        print(i, np.sum(st[i] - st2[i]))
+
+def test_scaling(Nstep=1, potential='dm', scale_bary=True):
+    """"""
+    print(" &x0_obj, &v0_obj, &par_obj, &offset_obj, &potential, &integrator, &N, &M, &mcli, &mclf, &rcl, &dt_")
+    print("for orbit: &x0_obj, &v0_obj, &par_obj, &potential, &integrator, &N, &dt_, &direction")
+
+    params_fid = [np.array([[ -3.91881053e+20], [  3.08567758e+18], [  2.06740398e+20]]), np.array([[-100000.], [-250000.], [-100000.]]), [9.945499999999999e+39, 2.159974307027034e+19, 1.352588e+41, 9.257032744401574e+19, 8.639897228108137e+18, 430000.0, 9.257032744401576e+20, 1.57, 1.0, 1.0, 1.0, 0e+41, -2.5096547166389023e+19, -1.265331150526274e+21, -8.319850498177284e+20], [0.0, 0.0], 6, 0, Nstep, 22, 3.9782e+34, 3.9782e+29, 6.171355162934383e+17, 6311520000000.0]
+    
+    if potential=='dm':
+        params_fid[2][0] = 0
+        params_fid[2][2] = 0
+    
+    orbit_fid = streakline2.orbit(params_fid[0], params_fid[1], params_fid[2], params_fid[4], params_fid[5], params_fid[6], params_fid[11], -1)
+    
+    # halo scaling
+    params_sc = copy.deepcopy(params_fid)
+    
+    eta = 1.05
+    params_sc[1] *= eta
+    if scale_bary:
+        params_sc[2][0] *= eta**2
+        params_sc[2][2] *= eta**2
+    params_sc[2][5] *= eta
+    params_sc[11] *= eta**-1
+    orbit_sc = streakline2.orbit(params_sc[0], params_sc[1], params_sc[2], params_sc[4], params_sc[5], params_sc[6], params_sc[11], -1)
+    
+    colors = ['k', 'orange']
+    labels = ['Fiducial', '{:g} Scaled'.format(eta)]
+    
+    plt.close()
+    fig, ax = plt.subplots(2,3,figsize=(15,6), sharex='col', gridspec_kw = {'height_ratios':[4, 1]})
+    
+    plt.sca(ax[0][0])
+    for i, o in enumerate([orbit_fid, orbit_sc]):
+        plt.plot(o[0], o[1], 'o', color=colors[i], label=labels[i])
+    plt.ylabel('y (m)')
+    plt.legend(fontsize='small', frameon=False)
+    
+    plt.sca(ax[1][0])
+    plt.axhline(0, color='k', lw=2)
+    plt.plot(orbit_fid[0], orbit_fid[0]-orbit_sc[0], 'o', color='orange')
+    plt.xlabel('x (m)')
+    plt.ylabel('$\Delta$ x(m)')
+    
+    plt.sca(ax[0][1])
+    for i, o in enumerate([orbit_fid, orbit_sc]):
+        plt.plot(o[1], o[2], 'o', color=colors[i])
+    plt.ylabel('z (m)')
+    
+    plt.sca(ax[1][1])
+    plt.axhline(0, color='k', lw=2)
+    plt.plot(orbit_fid[1], orbit_fid[1]-orbit_sc[1], 'o', color='orange')
+    plt.xlabel('y (m)')
+    plt.ylabel('$\Delta$ y(m)')
+    
+    plt.sca(ax[0][2])
+    for i, o in enumerate([orbit_fid, orbit_sc]):
+        plt.plot(o[2], o[0], 'o', color=colors[i])
+    plt.ylabel('x (m)')
+    
+    plt.sca(ax[1][2])
+    plt.axhline(0, color='k', lw=2)
+    plt.plot(orbit_fid[2], orbit_fid[2]-orbit_sc[2], 'o', color='orange')
+    plt.xlabel('z (m)')
+    plt.ylabel('$\Delta$ z(m)')
+    
+    plt.tight_layout()
+    plt.savefig('../plots/scaling_orbit_{}{}.png'.format(potential, int(scale_bary)))
+
+def test_scaling_stream(Nskip=1000, potential='dm', scale_bary=True):
+    """"""
+    
+    print(" &x0_obj, &v0_obj, &par_obj, &offset_obj, &potential, &integrator, &N, &M, &mcli, &mclf, &rcl, &dt_")
+    print("for orbit: &x0_obj, &v0_obj, &par_obj, &potential, &integrator, &N, &dt_, &direction")
+
+    params_fid = [np.array([[ -3.91881053e+20], [  3.08567758e+18], [  2.06740398e+20]]), np.array([[-100000.], [-250000.], [-100000.]]), [9.945499999999999e+39, 2.159974307027034e+19, 1.352588e+41, 9.257032744401574e+19, 8.639897228108137e+18, 430000.0, 9.257032744401576e+20, 1.57, 1.0, 1.0, 1.0, 0e+41, -2.5096547166389023e+19, -1.265331150526274e+21, -8.319850498177284e+20], [0.0, 0.0], 6, 0, 9000, Nskip, 3.9782e+34, 3.9782e+29, 6.171355162934383e+17, 6311520000000.0]
+    
+    if potential=='dm':
+        params_fid[2][0] = 0
+        params_fid[2][2] = 0
+    
+    stream_fid = streakline2.stream(*params_fid)
+    
+    # halo scaling
+    params_sc = copy.deepcopy(params_fid)
+    
+    eta = 1.05
+    params_sc[1] *= eta
+    if scale_bary:
+        params_sc[2][0] *= eta**2
+        params_sc[2][2] *= eta**2
+    params_sc[2][5] *= eta
+    params_sc[8] *= eta**2
+    params_sc[9] *= eta**2
+    params_sc[11] *= eta**-1
+    
+    stream_sc = streakline2.stream(*params_sc)
+    
+    #print(np.shape(stream_fid), np.shape(stream_sc))
+    #print(stream_fid[0])
+    #print(stream_sc[0])
+    
+    colors = ['k', 'orange']
+    labels = ['Fiducial', '{:g} Scaled'.format(eta)]
+    
+    plt.close()
+    fig, ax = plt.subplots(2,3,figsize=(15,6), sharex='col', gridspec_kw = {'height_ratios':[4, 1]})
+    
+    plt.sca(ax[0][0])
+    for i, o in enumerate([stream_fid, stream_sc]):
+        for j in [0,3]:
+            plt.plot(o[0+j], o[1+j], 'o', color=colors[i])
+    plt.ylabel('y (m)')
+    plt.legend(fontsize='small', frameon=False)
+    
+    plt.sca(ax[1][0])
+    plt.axhline(0, color='k', lw=2)
+    plt.plot(stream_fid[0], stream_fid[0]-stream_sc[0], 'o', color='orange')
+    plt.plot(stream_fid[3], stream_fid[3]-stream_sc[3], 'o', color='orange')
+    plt.xlabel('x (m)')
+    plt.ylabel('$\Delta$ x(m)')
+    
+    plt.sca(ax[0][1])
+    for i, o in enumerate([stream_fid, stream_sc]):
+        for j in [0,3]:
+            plt.plot(o[1+j], o[2+j], 'o', color=colors[i])
+    plt.ylabel('z (m)')
+    
+    plt.sca(ax[1][1])
+    plt.axhline(0, color='k', lw=2)
+    plt.plot(stream_fid[1], stream_fid[1]-stream_sc[1], 'o', color='orange')
+    plt.plot(stream_fid[4], stream_fid[4]-stream_sc[4], 'o', color='orange')
+    plt.xlabel('y (m)')
+    plt.ylabel('$\Delta$ y(m)')
+    
+    plt.sca(ax[0][2])
+    for i, o in enumerate([stream_fid, stream_sc]):
+        for j in [0,3]:
+            plt.plot(o[2+j], o[0+j], 'o', color=colors[i])
+    plt.ylabel('x (m)')
+    
+    plt.sca(ax[1][2])
+    plt.axhline(0, color='k', lw=2)
+    plt.plot(stream_fid[2], stream_fid[2]-stream_sc[2], 'o', color='orange')
+    plt.plot(stream_fid[5], stream_fid[5]-stream_sc[5], 'o', color='orange')
+    plt.xlabel('z (m)')
+    plt.ylabel('$\Delta$ z(m)')
+    
+    plt.tight_layout()
+    plt.savefig('../plots/scaling_stream_{}{}.png'.format(potential, int(scale_bary)))
 
 def model_excursions(n, Nex=1, vary='potential'):
     """Create models around a fiducial halo potential"""
@@ -2648,7 +3172,7 @@ def iterate():
             for c in [0,]:
                 crb_triangle_data(n=i, vary=['halo', 'progenitor'], align=True, Nvar=nv, combined=c)
 
-def crb_triangle_data(n=-1, vary='halo', combined=0, align=True, Nvar=2):
+def crb_triangle_data(n=-1, vary=['halo','progenitor'], combined=0, align=True, Nvar=2):
     """Produce a triangle plot of 2D Cramer-Rao bounds for all model parameters using a given stream"""
     
     pid, dp, vlabel = get_varied_pars(vary)
@@ -2684,7 +3208,6 @@ def crb_triangle_data(n=-1, vary='halo', combined=0, align=True, Nvar=2):
     # plot 2d bounds in a triangle fashion
     for l, Ndim in enumerate([3,4,6]):
         cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
-        #cxi = cxi[:Nvar,:Nvar]
         cx = np.linalg.inv(cxi)
         
         for i in range(0,Nvar-1):

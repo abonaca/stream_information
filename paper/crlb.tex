@@ -140,7 +140,7 @@ In the fiducial potential, the halo is given by $V_h = 430\,\rm km\,s^{-1}$, $R_
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=\textwidth]{../plots/observable_steps_-1_p0_Ns12.png}
+\includegraphics[width=\textwidth]{../plots/observable_steps_-1_p0_Ns6.png}
 \caption{
 }
 \label{fig:derivative_steps}
@@ -148,12 +148,14 @@ In the fiducial potential, the halo is given by $V_h = 430\,\rm km\,s^{-1}$, $R_
 \end{figure}
 
 Figure~\ref{fig:derivative_steps} outlines major steps in our calculation of the numerical derivatives.
-We start by creating two stream models, where we change parameter $x_i$, $x_i = x_{i,0} \pm \Delta x_i$, and keep the rest of the parameters at their fiducial values.
-The first row of Figure~\ref{fig:derivative_steps} shows models of the GD-1 stream with different offsets $\Delta V_{h,i}$ from the fiducial scale velocity (color-coded such that the positive offsets are in shades of red, and negative in shades of blue).
+We start by creating a pair of stream models, where we change parameter $x_i$ to $x_i = x_{i,0} \pm \Delta x_i$, and keep the rest of the parameters at their fiducial values, $x_j = x_{j,0}$ for $j\neq i$.
+The first row of Figure~\ref{fig:derivative_steps} shows models of the GD-1 stream with different offsets $\Delta V_{h}$ from the fiducial scale velocity (color-coded such that the positive offsets are in shades of red, and negative in shades of blue).
 Each observable is shown as a function of longitudinal position along the stream, $\xi$, in a separate column in the order from left to right: transverse on-sky position, $\eta$, distance, $d$, radial velocity, $V_r$, and the two proper motion components, $\mu_{\alpha*}$ and $\mu_\delta$.
 For each stream, the on-sky positions are rotated to a system in which the great circle best-fitting of the stream track is on the equator.
-We describe how we fit these great circles, and provide rotation matrices from the equatorial system to this stream coordinates in Appendix~\ref{}.
-- differences shown in the second row
+We describe how we fit these great circles, and provide rotation matrices from the equatorial system to the stream coordinates in Appendix~\ref{}.
+Stream models with different scale velocities appear different in all of the observables.
+To highlight these differences, we show deviations from the fiducial stream track in the second row.
+
 
 - the derivative: at fixed stream longitude, $\xi_i$, difference the observable in two models, $\Delta y|_{\xi_i}$.
 - regard only transverse direction, as longitudinal has a strong degeneracy with stream age
@@ -171,7 +173,7 @@ Thus defined derivatives are shown in the last row of Figure~\ref{fig:derivative
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=\textwidth]{../plots/step_convergence_-1_Ns20_logTrue_l2.png}
+\includegraphics[width=\textwidth]{../plots/step_convergence_-1_halo_progenitor_Ns20_logTrue_l2.png}
 \caption{
 }
 \label{fig:derivative_conv}
@@ -182,7 +184,7 @@ Thus defined derivatives are shown in the last row of Figure~\ref{fig:derivative
 - choice of step size for numerical derivative such that the derivative converged
 
 \subsection{Sets of observational data}
-For simplicity, we assume that for each stream, there are 50 observations uniformly distributed along the length of the stream.
+For simplicity, we assume that there are 50 observations uniformly distributed along the length of each stream.
 
 
 \label{sec:datasets}
