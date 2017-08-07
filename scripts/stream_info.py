@@ -26,14 +26,14 @@ import copy
 
 
 # observers
-vl2_observer = {'z_sun': 0.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_ra': 300*u.deg, 'galcen_dec': 20*u.deg}
+vl2_observer = {'z_sun': 0.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_coord': coord.SkyCoord(ra=300*u.deg, dec=20*u.deg, frame='icrs')}
 
-# defaults taken as in astropy v1.1 icrs
-mw_observer = {'z_sun': 27.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_ra': coord.Angle("17:45:37.224 hours"), 'galcen_dec': coord.Angle("-28:56:10.23 degrees")}
+# defaults taken as in astropy v2.0 icrs
+mw_observer = {'z_sun': 27.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_coord': coord.SkyCoord(ra=266.4051*u.deg, dec=-28.936175*u.deg, frame='icrs')}
 vsun = {'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 vsun0 = {'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 
-gc_observer = {'z_sun': 27.*u.pc, 'galcen_distance': 0.1*u.kpc, 'roll': 0*u.deg, 'galcen_ra': coord.Angle("17:45:37.224 hours"), 'galcen_dec': coord.Angle("-28:56:10.23 degrees")}
+gc_observer = {'z_sun': 27.*u.pc, 'galcen_distance': 0.1*u.kpc, 'roll': 0*u.deg, 'galcen_coord': coord.SkyCoord(ra=266.4051*u.deg, dec=-28.936175*u.deg, frame='icrs')}
 vgc = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 vgc0 = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 
@@ -2193,7 +2193,35 @@ def gal2eq(x, v, observer=mw_observer, vobs=vsun0):
     
     return(xobs, vobs)
 
-# plot model
+# make stream model
+def progenitor_params(n):
+    """Return progenitor parameters for a given stream"""
+    
+    if n==-1:
+        age = 1.8*u.Gyr
+        mi = 2e4*u.Msun
+        mf = 2e-1*u.Msun
+        x0, v0 = gd1_coordinates()
+    elif n==-3:
+        age = 5*u.Gyr
+        mi = 2e4*u.Msun
+        mf = 2e-1*u.Msun
+        x0, v0 = tri_coordinates()
+    elif n==-4:
+        age = 2*u.Gyr
+        mi = 2e4*u.Msun
+        mf = 2e-1*u.Msun
+        x0, v0 = atlas_coordinates(observer=mw_observer)
+    else:
+        age = 2.7*u.Gyr
+        mi = 1e5*u.Msun
+        mf = 2e4*u.Msun
+        x0, v0 = pal5_coordinates2()
+    
+    out = {'x0': x0, 'v0': v0, 'age': age, 'mi': mi, 'mf': mf}
+    
+    return out
+
 def stream_model(n, pparams0=[430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr], dt=1*u.Myr, rotmatrix=None, graph=False, observer=mw_observer, vobs=vsun):
     """"""
     
