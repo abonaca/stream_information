@@ -842,10 +842,16 @@ def get_varied_bytype(vary):
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1), 0.4e11*u.Msun]
     elif vary=='bary':
         pid = [0,1,2,3,4]
-        dp = [0.4e9*u.Msun, 0.05*u.kpc, 0.5e10*u.Msun, 0.2*u.kpc, 0.02*u.kpc]
+        # gd1
+        dp = [0.4e7*u.Msun, 0.005*u.kpc, 0.9e9*u.Msun, 0.002*u.kpc, 0.002*u.kpc]
+        ## atlas & triangulum
+        #dp = [0.4e5*u.Msun, 0.0005*u.kpc, 0.5e6*u.Msun, 0.0002*u.kpc, 0.002*u.kpc]
+        ## pal5
+        #dp = [0.4e3*u.Msun, 0.000005*u.kpc, 0.5e4*u.Msun, 0.000002*u.kpc, 0.00002*u.kpc]
     elif vary=='halo':
         pid = [5,6,8,10]
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
+        dp = [30*u.km/u.s, 2.9*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
     elif vary=='progenitor':
         pid = [12,13,14,15,16,17]
         dp = [1*u.deg, 1*u.deg, 0.5*u.kpc, 20*u.km/u.s, 0.3*u.mas/u.yr, 0.3*u.mas/u.yr]
@@ -883,7 +889,7 @@ def get_steps(Nstep=50, log=False):
     log - if True, steps are logarithmically spaced (default: False)"""
     
     if log:
-        step = np.logspace(-1.5, 1, Nstep)
+        step = np.logspace(-2, 1, Nstep)
     else:
         step = np.linspace(0.1, 10, Nstep)
     
@@ -1100,6 +1106,16 @@ def iterate_steps(n):
         step_convergence(n, Nstep=10, vary=vary)
         choose_step(n, Nstep=10, vary=vary)
 
+def iterate_plotsteps(n):
+    """Plot stream models for a variety of model parameters"""
+    
+    for vary in ['bary', 'halo', 'progenitor']:
+        print(n, vary)
+        pid, dp, vlabel = get_varied_pars(vary)
+        for p in range(len(pid)):
+            plot_steps(n, p=p, Nstep=5, vary=vary, log=False)
+        
+
 def plot_steps(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=False, align=True, observer=mw_observer, vobs=vsun):
     """Plot stream for different values of a potential parameter"""
     
@@ -1138,7 +1154,7 @@ def plot_steps(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=Fa
         pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
         stream = stream_model(n, pparams0=pparams, dt=dt, rotmatrix=rotmatrix)
         color = mpl.cm.RdBu(i/(2*Nstep-1))
-        print(i, dp[p], pparams)
+        #print(i, dp[p], pparams)
         
         # fits
         iexsort = np.argsort(stream.obs[0])
@@ -1200,7 +1216,7 @@ def plot_steps(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=Fa
     
     #plt.suptitle('Varying {}'.format(plabel), fontsize='small')
     plt.tight_layout()
-    plt.savefig('../plots/observable_steps_{:d}_p{:d}_Ns{:d}.png'.format(n, p, Nstep))
+    plt.savefig('../plots/observable_steps_{:d}_{:s}_p{:d}_Ns{:d}.png'.format(n, vlabel, p, Nstep))
 
 def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', align=True, graph=False):
     """Check deviations in numerical derivatives for consecutive step sizes"""
@@ -1347,6 +1363,254 @@ def choose_step(n, tolerance=2, Nstep=20, log=True, layer=1, vary='halo'):
 
     plt.tight_layout()
     plt.savefig('../plots/step_convergence_{}_{}_Ns{}_log{}_l{}.png'.format(n, vlabel, Nstep, log, layer))
+
+def read_optimal_step(n, vary):
+    """Return optimal steps for a range of parameter types"""
+    
+    if type(vary) is not list:
+        vary = [vary]
+    
+    Nt = len(vary)
+    dp = np.empty(0)
+    
+    for v in vary:
+        dp_opt = np.load('../data/optimal_step_{}_{}.npy'.format(n, v))
+        dp = np.concatenate([dp, dp_opt])
+    
+    return dp
+
+# crbs using bspline
+def bspline_crb(n, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True):
+    """"""
+    if align:
+        rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
+        alabel = '_align'
+    else:
+        rotmatrix = None
+        alabel = ''
+        
+    # typical uncertainties
+    sig_obs = np.array([0.1, 2, 5, 0.1, 0.1])
+    
+    # mock observations
+    pparams0 = pparams_fid
+    stream0 = stream_model(n, pparams0=pparams0, dt=dt, rotmatrix=rotmatrix)
+    
+    ra = np.linspace(np.min(stream0.obs[0])*1.05, np.max(stream0.obs[0])*0.95, Nobs)
+    err = np.tile(sig_obs, Nobs).reshape(Nobs,-1)
+
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    Np = len(pid)
+    #dp_opt = np.load('../data/optimal_step_{}_{}.npy'.format(n, vlabel))
+    dp_opt = read_optimal_step(n, vary)
+    dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
+    
+    k = 3
+    
+    fits_ex = [[[None]*5 for x in range(2)] for y in range(Np)]
+
+    for p in range(Np):
+        for i, s in enumerate([-1, 1]):
+            pparams = [x for x in pparams0]
+            pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
+            stream = stream_model(n, pparams0=pparams, dt=dt, rotmatrix=rotmatrix)
+            
+            # fits
+            iexsort = np.argsort(stream.obs[0])
+            raex = np.linspace(np.percentile(stream.obs[0], 10), np.percentile(stream.obs[0], 90), Nobs)
+            tex = np.r_[(stream.obs[0][iexsort][0],)*(k+1), raex, (stream.obs[0][iexsort][-1],)*(k+1)]
+            
+            for j in range(5):
+                fits_ex[p][i][j] = scipy.interpolate.make_lsq_spline(stream.obs[0][iexsort], stream.obs[j+1][iexsort], tex, k=k)
+    
+    for Ndim in [3,4,6]:
+        Ndata = Nobs * (Ndim - 1)
+        cyd = np.empty(Ndata)
+        dydx = np.empty((Np, Ndata))
+        
+        for j in range(1, Ndim):
+            for p in range(Np):
+                dy = fits_ex[p][0][j-1](ra) - fits_ex[p][1][j-1](ra)
+                dydx[p][(j-1)*Nobs:j*Nobs] = -dy / np.abs(2*dp[p].value)
+        
+            cyd[(j-1)*Nobs:j*Nobs] = err[:,j-1]**2
+        
+        cy = np.diag(cyd)
+        cyi = np.diag(1. / cyd)
+        
+        cxi = np.matmul(dydx, np.matmul(cyi, dydx.T))
+
+        cx = np.linalg.inv(cxi)
+        cx = np.matmul(np.linalg.inv(np.matmul(cx, cxi)), cx) # iteration of inverse improvement for large cond numbers
+        sx = np.sqrt(np.diag(cx))
+        
+        if verbose:
+            print(Ndim)
+            print(np.diag(cxi))
+            print(np.linalg.det(cxi))
+            print(np.allclose(cxi, cxi.T), np.allclose(cx, cx.T), np.allclose(np.matmul(cx,cxi), np.eye(np.shape(cx)[0])))
+            print('condition {:g}'.format(np.linalg.cond(cxi)))
+
+        np.save('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}'.format(alabel, n, vlabel, Ndim), cxi)
+
+def test_inversion(n, Ndim=6, vary=['halo', 'progenitor'], align=True):
+    """"""
+    pid, dp, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+        
+    cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+    
+    cx = np.linalg.inv(cxi)
+    cxi_ = np.linalg.inv(cx)
+    print(np.linalg.cond(cxi))
+    print(np.linalg.cond(cx))
+    print(np.linalg.det(cxi))
+    print(np.linalg.det(cx))
+    print(np.linalg.norm(cxi)*np.linalg.norm(cx), np.linalg.norm(cxi), np.linalg.norm(cxi_))
+    #print(np.matmul(cx,cxi))
+    #print(cxi)
+    plt.close()
+    plt.figure()
+    
+    plt.hist(np.ravel(cxi), bins=np.logspace(-3,5,10))
+    plt.gca().set_xscale('log')
+
+def crb_triangle(n, vary, Ndim=6, align=True, plot='all'):
+    """"""
+    
+    pid, dp, vlabel = get_varied_pars(vary)
+    plabels, units = get_parlabel(pid)
+    params = ['$\Delta$' + x + '({})'.format(y) for x,y in zip(plabels, units)]
+    
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+        
+    cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+    cx = np.linalg.inv(cxi)
+    print(cx[0][0])
+    
+    if plot=='halo':
+        cx = cx[:4, :4]
+        params = params[:4]
+    elif plot=='bary':
+        cx = cx[4:9, 4:9]
+        params = params[4:9]
+    elif plot=='progenitor':
+        cx = cx[9:, 9:]
+        params = params[9:]
+    
+    Nvar = len(params)
+    
+    plt.close()
+    dax = 2
+    fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(dax*Nvar, dax*Nvar), sharex='col', sharey='row')
+    
+    for i in range(0,Nvar-1):
+        for j in range(i+1,Nvar):
+            plt.sca(ax[j-1][i])
+            cx_2d = np.array([[cx[i][i], cx[i][j]], [cx[j][i], cx[j][j]]])
+            
+            w, v = np.linalg.eig(cx_2d)
+            if np.all(np.isreal(v)):
+                theta = np.degrees(np.arccos(v[0][0]))
+                width = np.sqrt(w[0])*2
+                height = np.sqrt(w[1])*2
+                
+                e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.bone(0.5), lw=2)
+                plt.gca().add_patch(e)
+            plt.gca().autoscale_view()
+            
+            #plt.xlim(-ylim[i],ylim[i])
+            #plt.ylim(-ylim[j], ylim[j])
+            
+            if j==Nvar-1:
+                plt.xlabel(params[i])
+                
+            if i==0:
+                plt.ylabel(params[j])
+    
+    # turn off unused axes
+    for i in range(0,Nvar-1):
+        for j in range(i+1,Nvar-1):
+            plt.sca(ax[i][j])
+            plt.axis('off')
+    
+    plt.tight_layout()
+    plt.savefig('../plots/crb_triangle_{:s}_{:d}_{:s}_{:d}_{:s}.pdf'.format(alabel, n, vlabel, Ndim, plot))
+
+def crb_triangle_alldim(n, vary, align=True, plot='all'):
+    """"""
+    
+    pid, dp, vlabel = get_varied_pars(vary)
+    plabels, units = get_parlabel(pid)
+    params = ['$\Delta$' + x + '({})'.format(y) for x,y in zip(plabels, units)]
+    
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    
+    if plot=='halo':
+        i0 = 0
+        i1 = 4
+    elif plot=='bary':
+        i0 = 4
+        i1 = 9
+    elif plot=='progenitor':
+        i0 = 9
+        i1 = len(params)
+    else:
+        i0 = 0
+        i1 = len(params)
+    
+    Nvar = i1 - i0
+    params = params[i0:i1]
+    
+    plt.close()
+    dax = 2
+    fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(dax*Nvar, dax*Nvar), sharex='col', sharey='row')
+    
+    for l, Ndim in enumerate([3, 4, 6]):
+        cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+        cx = np.linalg.inv(cxi)
+        cx = cx[i0:i1,i0:i1]
+        
+        for i in range(0,Nvar-1):
+            for j in range(i+1,Nvar):
+                plt.sca(ax[j-1][i])
+                cx_2d = np.array([[cx[i][i], cx[i][j]], [cx[j][i], cx[j][j]]])
+                
+                w, v = np.linalg.eig(cx_2d)
+                if np.all(np.isreal(v)):
+                    theta = np.degrees(np.arccos(v[0][0]))
+                    width = np.sqrt(w[0])*2
+                    height = np.sqrt(w[1])*2
+                    
+                    e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.bone(l/4), lw=2)
+                    plt.gca().add_patch(e)
+                
+                if l==2:
+                    plt.gca().autoscale_view()
+                
+                if j==Nvar-1:
+                    plt.xlabel(params[i])
+                    
+                if i==0:
+                    plt.ylabel(params[j])
+        
+        # turn off unused axes
+        for i in range(0,Nvar-1):
+            for j in range(i+1,Nvar-1):
+                plt.sca(ax[i][j])
+                plt.axis('off')
+    
+    plt.tight_layout()
+    plt.savefig('../plots/crb_triangle_alldim_{:s}_{:d}_{:s}_{:s}.pdf'.format(alabel, n, vlabel, plot))
 
 
 # fit bspline for a range of integration time steps
@@ -1552,105 +1816,6 @@ def optimal_stepsize(n, Nobs=10, log=True, Nstep=20, vary='halo'):
     return best_step.astype(int)
     
 
-
-
-# crbs using bspline
-def bspline_crb(n, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True):
-    """"""
-    if align:
-        rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
-        alabel = '_align'
-    else:
-        rotmatrix = None
-        alabel = ''
-        
-    # typical uncertainties
-    sig_obs = np.array([0.1, 2, 5, 0.1, 0.1])
-    
-    # mock observations
-    pparams0 = [430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
-    stream0 = stream_model(n, pparams0=pparams0, dt=dt, rotmatrix=rotmatrix)
-    
-    ra = np.linspace(np.min(stream0.obs[0])*1.05, np.max(stream0.obs[0])*0.95, Nobs)
-    err = np.tile(sig_obs, Nobs).reshape(Nobs,-1)
-
-    pid, dp_fid, vlabel = get_varied_pars(vary)
-    Np = len(pid)
-    dp_opt = np.load('../data/optimal_step_{}_{}.npy'.format(n, vlabel))
-    dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
-    
-    k = 3
-    
-    fits_ex = [[[None]*5 for x in range(2)] for y in range(Np)]
-
-    for p in range(Np):
-        for i, s in enumerate([-1, 1]):
-            pparams = [x for x in pparams0]
-            pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
-            stream = stream_model(n, pparams0=pparams, dt=dt, rotmatrix=rotmatrix)
-            
-            # fits
-            iexsort = np.argsort(stream.obs[0])
-            raex = np.linspace(np.percentile(stream.obs[0], 10), np.percentile(stream.obs[0], 90), Nobs)
-            tex = np.r_[(stream.obs[0][iexsort][0],)*(k+1), raex, (stream.obs[0][iexsort][-1],)*(k+1)]
-            
-            for j in range(5):
-                fits_ex[p][i][j] = scipy.interpolate.make_lsq_spline(stream.obs[0][iexsort], stream.obs[j+1][iexsort], tex, k=k)
-    
-    for Ndim in [3,4,6]:
-        Ndata = Nobs * (Ndim - 1)
-        cyd = np.empty(Ndata)
-        dydx = np.empty((Np, Ndata))
-        
-        for j in range(1, Ndim):
-            for p in range(Np):
-                dy = fits_ex[p][0][j-1](ra) - fits_ex[p][1][j-1](ra)
-                dydx[p][(j-1)*Nobs:j*Nobs] = -dy / np.abs(2*dp[p].value)
-        
-            cyd[(j-1)*Nobs:j*Nobs] = err[:,j-1]**2
-        
-        cy = np.diag(cyd)
-        cyi = np.diag(1. / cyd)
-        
-        cxi = np.matmul(dydx, np.matmul(cyi, dydx.T))
-
-        cx = np.linalg.inv(cxi)
-        cx = np.matmul(np.linalg.inv(np.matmul(cx, cxi)), cx) # iteration of inverse improvement for large cond numbers
-        sx = np.sqrt(np.diag(cx))
-        
-        if verbose:
-            print(Ndim)
-            print(np.diag(cxi))
-            print(np.linalg.det(cxi))
-            print(np.allclose(cxi, cxi.T), np.allclose(cx, cx.T), np.allclose(np.matmul(cx,cxi), np.eye(np.shape(cx)[0])))
-            print('condition {:g}'.format(np.linalg.cond(cxi)))
-
-        np.save('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}'.format(alabel, n, vlabel, Ndim), cxi)
-
-def test_inversion(n, Ndim=6, vary=['halo', 'progenitor'], align=True):
-    """"""
-    pid, dp, vlabel = get_varied_pars(vary)
-    if align:
-        alabel = '_align'
-    else:
-        alabel = ''
-        
-    cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
-    
-    cx = np.linalg.inv(cxi)
-    cxi_ = np.linalg.inv(cx)
-    print(np.linalg.cond(cxi))
-    print(np.linalg.cond(cx))
-    print(np.linalg.det(cxi))
-    print(np.linalg.det(cx))
-    #print(np.linalg.norm(cxi)*np.linalg.norm(cx), np.linalg.norm(cxi), np.linalg.norm(cxi_))
-    #print(np.matmul(cx,cxi))
-    #print(cxi)
-    plt.close()
-    plt.figure()
-    
-    plt.hist(np.ravel(cxi), bins=np.logspace(-3,5,10))
-    plt.gca().set_xscale('log')
 
 #################
 # accelerations #
