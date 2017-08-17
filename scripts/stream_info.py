@@ -1698,6 +1698,52 @@ def bary_accelerations(x, pu=[pparams_fid[j] for j in range(5)]):
     
     return dmat
 
+def bulge_accelerations(x, pu=[pparams_fid[j] for j in range(2)]):
+    """Calculate derivarives of a Hernquist bulge potential parameters wrt (Cartesian) components of the acceleration vector a"""
+    
+    # coordinates
+    r = np.linalg.norm(x)*u.kpc
+    
+    # accelerations
+    ab = acc_bulge(x, p=pu[:2])
+    
+    #  derivatives
+    dmat = np.zeros((3, 2))
+    
+    # Mb
+    dmat[:,0] = ab/pu[0]
+    
+    # ab
+    dmat[:,1] = 2 * ab / (r + pu[1])
+    
+    return dmat
+
+def disk_accelerations(x, pu=[pparams_fid[j] for j in range(2,5)]):
+    """Calculate derivarives of a Miyamoto-Nagai disk potential parameters wrt (Cartesian) components of the acceleration vector a"""
+    
+    # coordinates
+    R = np.linalg.norm(x[:2])*u.kpc
+    z = x[2]
+    aux = np.sqrt(z**2 + pu[2]**2)
+    
+    # accelerations
+    ad = acc_disk(x, p=pu)
+    
+    #  derivatives
+    dmat = np.zeros((3, 3))
+    
+    # Md
+    dmat[:,0] = ad / pu[0]
+    
+    # ad
+    dmat[:,1] = 3 * ad * (pu[1] + aux) / (R**2 + (pu[1] + aux)**2)
+    
+    # bd
+    dmat[:2,2] = 3 * ad[:2] * (pu[1] + aux) / (R**2 + (pu[1] + aux)**2) * pu[2] / aux
+    dmat[2,2] = (3 * ad[2] * (pu[1] + aux) / (R**2 + (pu[1] + aux)**2) * pu[2] / aux - G * pu[0] * z * (R**2 + (pu[1] + aux)**2)**-1.5 * z**2 * (pu[2]**2 + z**2)**-1.5).value
+    
+    return dmat
+
 def acc_bulge(x, p=[pparams_fid[j] for j in range(2)]):
     """"""
     r = np.linalg.norm(x)*u.kpc
@@ -1802,5 +1848,114 @@ def crb_ax(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True):
     plt.tight_layout(rect=[0,0,1,0.95])
     plt.savefig('../plots/acc_{}_{}_{}.png'.format(n, vlabel, Ndim))
     
+
+# cylindrical coordinates
+def acc_cyl(x, p=pparams_fid):
+    """"""
+    
+    acart = np.zeros(3) * u.pc*u.Myr**-2
+    acyl = np.zeros(2) * u.pc*u.Myr**-2
+    
+    for acc in [acc_disk, acc_bulge, acc_nfw]:
+        acart += acc(x)
+    
+    acyl[0] = np.sqrt(acart[0]**2 + acart[1]**2)
+    acyl[1] = acart[2]
+    
+    return acyl
+
+def ader_cyl(x):
+    """"""
+    
+    acyl = np.zeros(2) * u.pc*u.Myr**-2
+    dacyl = np.empty((2,0))
+    
+    accelerations = [acc_nfw, acc_bulge, acc_disk]
+    derivatives = [halo_accelerations, bulge_accelerations, disk_accelerations]
+    
+    for acc, ader in zip(accelerations, derivatives):
+        a_ = acc(x)
+        da_ = ader(x)
+        
+        acyl[0] = np.sqrt(a_[0]**2 + a_[1]**2)
+        acyl[1] = a_[2]
+    
+        da_cyl = np.empty((2,np.shape(da_)[1]))
+        da_cyl[1] = da_[2]
+        da_cyl[0] = a_[0]/acyl[0]*da_[0] + a_[1]/acyl[0]*da_[1]
+        
+        dacyl = np.hstack((dacyl, da_cyl))
+    
+    return dacyl
+    
+def crb_acyl(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True):
+    """"""
+    pid, dp, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    
+    # read in full inverse CRB for stream modeling
+    cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+    cx = np.linalg.inv(cxi)
+    
+    # subset potential parameters
+    Npot = 9
+    cq = cx[:Npot,:Npot]
+    cqi = np.linalg.inv(cq)
+    
+    d = 20
+    Nb = 30
+    x = np.linspace(0.1, 2*d, 2*Nb)**2 * 0.5
+    y = np.linspace(0.1, d, Nb)
+    xv, yv = np.meshgrid(x, y)
+    
+    xf = np.ravel(xv)
+    yf = np.ravel(yv)
+    Npix = np.size(xf)
+    af = np.empty((Npix, 2))
+    
+    xin = np.array([np.sqrt(xf), np.sqrt(yf), yf]).T
+    
+    for i in range(Npix):
+        xi = xin[i]*u.kpc
+        a = acc_cyl(xi)
+        
+        dqda = ader_cyl(xi)
+        
+        cai = np.matmul(dqda, np.matmul(cqi, dqda.T))
+        ca = np.linalg.inv(cai)
+        a_crb = (np.sqrt(np.diag(ca)) * u.km**2 * u.kpc**-1 * u.s**-2).to(u.pc*u.Myr**-2)
+        #af[i] = np.abs(a_crb/a)
+        af[i] = a_crb
+    
+    x0, v0 = gd1_coordinates()
+    Rp = np.linalg.norm(x0[:2])
+    zp = x0[2]
+    
+    plt.close()
+    fig, ax = plt.subplots(2,1,figsize=(9,9))
+    
+    xg = [np.sqrt(xf), yf]
+    label = ['$\Delta$ $a_R$', '$\Delta$ $a_Z$']
+    
+    for i in range(2):
+        plt.sca(ax[i])
+        im = plt.imshow(af[:,i].reshape(Nb, 2*Nb), origin='lower', extent=[0.1, 2*d, 0.1, d], cmap=mpl.cm.gray, norm=mpl.colors.LogNorm(), vmin=1e-4, vmax=1e-1)
+        plt.plot(Rp, zp, 'r*', ms=10)
+        #im = plt.imshow(xg[i].reshape(Nb, 2*Nb), origin='lower', extent=[0.1, 2*d, 0.1, d], cmap=mpl.cm.gray)
+        
+        plt.xlabel('R (kpc)')
+        plt.ylabel('|Z| (kpc)')
+        
+        divider = make_axes_locatable(plt.gca())
+        cax = divider.append_axes("right", size="3%", pad=0.1)
+        plt.colorbar(im, cax=cax)
+        
+        plt.ylabel(label[i])
+        
+    plt.tight_layout()
+    plt.savefig('../plots/crb_acc_cyl{:s}_{:d}_{:s}_{:d}.png'.format(alabel, n, vlabel, Ndim))
 
 
