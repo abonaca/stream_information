@@ -1639,13 +1639,12 @@ def crb_triangle_alldim(n, vary, align=True, plot='all'):
 def halo_accelerations(x, pu=[pparams_fid[j] for j in [5,6,8,10]]):
     """Calculate derivatives of halo potential parameters wrt (Cartesian) components of the acceleration vector a"""
     
-    p = np.array([j.value for j in pu])
+    p = pu
     q = np.array([1, p[2], p[3]])
     
     # physical quantities
-    x = x.value
-    r = np.linalg.norm(x)
-    a = p[0]**2 * p[1] * r**-3 * (1/(1+p[1]/r) - np.log(1+r/p[1])) * x * q**-2
+    r = np.linalg.norm(x)*u.kpc
+    a = acc_nfw(x, p=pu)
     
     #  derivatives
     dmat = np.zeros((3, 4))
@@ -1658,43 +1657,7 @@ def halo_accelerations(x, pu=[pparams_fid[j] for j in [5,6,8,10]]):
     
     # qy, qz
     for i in [1,2]:
-        dmat[i,i+1] = ( -2*a[i]/q[i] )**-1
-    
-    return dmat
-
-def bary_accelerations(x, pu=[pparams_fid[j] for j in range(5)]):
-    """Calculate derivarives of bulge + disk potential parameters wrt (Cartesian) components of the acceleration vector a"""
-    
-    p = np.array([j.value for j in pu])
-    
-    # physical quantities
-    #x = x.value
-    r = np.linalg.norm(x)*u.kpc
-    R = np.linalg.norm(x[:2])*u.kpc
-    z = x[2]
-    aux = np.sqrt(z**2 + pu[4]**2)
-    
-    ab = acc_bulge(x, p=pu[:2])
-    ad = acc_disk(x, p=pu[2:])
-    
-    #  derivatives
-    dmat = np.zeros((3, 5))
-    
-    # Mb
-    dmat[:,0] = ab/pu[0]
-    
-    # ab
-    dmat[:,1] = 2 * ab / (r + pu[1])
-    
-    # Md
-    dmat[:,2] = ad / pu[2]
-    
-    # ad
-    dmat[:,3] = 3 * ad * (pu[3] + aux) / (R**2 + (pu[3] + aux)**2)
-    
-    # bd
-    dmat[:2,4] = 3 * ad[:2] * (pu[3] + aux) / (R**2 + (pu[3] + aux)**2) * pu[4] / aux
-    dmat[2,4] = (3 * ad[2] * (pu[3] + aux) / (R**2 + (pu[3] + aux)**2) * pu[4] / aux - G * pu[2] * z * (R**2 + (pu[3] + aux)**2)**-1.5 * z**2 * (pu[4]**2 + z**2)**-1.5).value
+        dmat[i,i+1] = (( -2*a[i]/q[i] )**-1).value
     
     return dmat
 
@@ -1850,6 +1813,7 @@ def crb_ax(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True):
     
 
 # cylindrical coordinates
+
 def acc_cyl(x, p=pparams_fid):
     """"""
     
@@ -1906,7 +1870,7 @@ def crb_acyl(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True):
     cqi = np.linalg.inv(cq)
     
     d = 20
-    Nb = 30
+    Nb = 50
     x = np.linspace(0.1, 2*d, 2*Nb)**2 * 0.5
     y = np.linspace(0.1, d, Nb)
     xv, yv = np.meshgrid(x, y)
@@ -1916,7 +1880,7 @@ def crb_acyl(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True):
     Npix = np.size(xf)
     af = np.empty((Npix, 2))
     
-    xin = np.array([np.sqrt(xf), np.sqrt(yf), yf]).T
+    xin = np.array([np.sqrt(xf), np.sqrt(xf), yf]).T
     
     for i in range(Npix):
         xi = xin[i]*u.kpc
@@ -1926,9 +1890,13 @@ def crb_acyl(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True):
         
         cai = np.matmul(dqda, np.matmul(cqi, dqda.T))
         ca = np.linalg.inv(cai)
-        a_crb = (np.sqrt(np.diag(ca)) * u.km**2 * u.kpc**-1 * u.s**-2).to(u.pc*u.Myr**-2)
-        #af[i] = np.abs(a_crb/a)
-        af[i] = a_crb
+        #a_crb = (np.sqrt(np.diag(ca)) * u.km**2 * u.kpc**-1 * u.s**-2).to(u.pc*u.Myr**-2)
+        a_crb = np.sqrt(np.diag(ca)) * u.pc * u.Myr**-2
+        af[i] = np.abs(a_crb/a)
+        #af[i] = a_crb
+    
+    # save
+    np.savez('../data/crb_acyl{:s}_{:d}_{:s}_{:d}_m_{:d}_{:d}'.format(alabel, n, vlabel, Ndim, d, Nb), acc=af, x=xin)
     
     x0, v0 = gd1_coordinates()
     Rp = np.linalg.norm(x0[:2])
@@ -1942,12 +1910,61 @@ def crb_acyl(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True):
     
     for i in range(2):
         plt.sca(ax[i])
-        im = plt.imshow(af[:,i].reshape(Nb, 2*Nb), origin='lower', extent=[0.1, 2*d, 0.1, d], cmap=mpl.cm.gray, norm=mpl.colors.LogNorm(), vmin=1e-4, vmax=1e-1)
+        im = plt.imshow(af[:,i].reshape(Nb, 2*Nb), origin='lower', extent=[0.1, 2*d, 0.1, d], cmap=mpl.cm.gray, norm=mpl.colors.LogNorm()) #, vmin=1e-4, vmax=1e-1)
         plt.plot(Rp, zp, 'r*', ms=10)
         #im = plt.imshow(xg[i].reshape(Nb, 2*Nb), origin='lower', extent=[0.1, 2*d, 0.1, d], cmap=mpl.cm.gray)
         
         plt.xlabel('R (kpc)')
+        plt.ylabel('Z (kpc)')
+        
+        divider = make_axes_locatable(plt.gca())
+        cax = divider.append_axes("right", size="3%", pad=0.1)
+        plt.colorbar(im, cax=cax)
+        
+        plt.ylabel(label[i] + ' (pc Myr$^{-2}$)')
+        
+    plt.tight_layout()
+    plt.savefig('../plots/crb_acc_cyl{:s}_{:d}_{:s}_{:d}.png'.format(alabel, n, vlabel, Ndim))
+
+def acc_orbit(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True, d=20, Nb=20):
+    """"""
+    pid, dp, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    
+    # constraints
+    data = np.load('../data/crb_acyl{:s}_{:d}_{:s}_{:d}_m_{:d}_{:d}.npz'.format(alabel, n, vlabel, Ndim, d, Nb))
+    print(np.median(data['acc'], axis=0))
+    
+    # orbit
+    orbit = stream_orbit(n)
+    R = np.linalg.norm(orbit['x'][:2,:].to(u.kpc), axis=0)
+    z = orbit['x'][2].to(u.kpc)
+    c = np.arange(np.size(z))
+    
+    # progenitor
+    x0, v0 = gd1_coordinates()
+    Rp = np.linalg.norm(x0[:2])
+    zp = x0[2]
+    
+    plt.close()
+    fig, ax = plt.subplots(2,1,figsize=(9,9))
+    
+    label = ['$\Delta$ $a_R$ / $a_R$', '$\Delta$ $a_Z$ / $a_Z$']
+    
+    for i in range(2):
+        plt.sca(ax[i])
+        im = plt.imshow(data['acc'][:,i].reshape(Nb, 2*Nb), origin='lower', extent=[0.1, 2*d, 0.1, d], cmap=mpl.cm.gray, norm=mpl.colors.LogNorm(), vmin=1e-2, vmax=1)
+        #plt.plot(Rp, zp, 'r*', ms=10)
+        
+        plt.scatter(R[::-1], np.abs(z[::-1]), c=c[::-1], cmap=mpl.cm.Reds_r, s=15)
+        
+        plt.xlabel('R (kpc)')
         plt.ylabel('|Z| (kpc)')
+        plt.xlim(0.1, 2*d)
+        plt.ylim(0.1, d)
         
         divider = make_axes_locatable(plt.gca())
         cax = divider.append_axes("right", size="3%", pad=0.1)
@@ -1956,6 +1973,67 @@ def crb_acyl(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True):
         plt.ylabel(label[i])
         
     plt.tight_layout()
-    plt.savefig('../plots/crb_acc_cyl{:s}_{:d}_{:s}_{:d}.png'.format(alabel, n, vlabel, Ndim))
+    plt.savefig('../plots/crb_acc_prog{:s}_{:d}_{:s}_{:d}.png'.format(alabel, n, vlabel, Ndim))
 
+# progenitor's orbit
 
+def prog_orbit(n):
+    """"""
+    
+    orbit = stream_orbit(n)
+    #orbit['x'].to(u.kpc)
+    #print(np.shape(orbit['x']))
+    R = np.linalg.norm(orbit['x'][:2,:].to(u.kpc), axis=0)
+    z = orbit['x'][2].to(u.kpc)
+    
+    x0, v0 = gd1_coordinates()
+    Rp = np.linalg.norm(x0[:2])
+    zp = x0[2]
+    
+    c = np.arange(np.size(z))
+    
+    plt.close()
+    plt.figure()
+    
+    plt.scatter(R[::-1], z[::-1], c=c[::-1], cmap=mpl.cm.gray)
+    #plt.plot(Rp, zp, 'ko', ms=10)
+    
+    plt.xlim(0,40)
+    plt.ylim(-20,20)
+
+def stream_orbit(n, pparams0=[0.5e10*u.Msun, 0.7*u.kpc, 6.8e10*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr], dt=0.2*u.Myr, rotmatrix=None, graph=False, observer=mw_observer, vobs=vsun, footprint='', obsmode='equatorial'):
+    """Create a streakline model of a stream
+    baryonic component as in kupper+2015: 3.4e10*u.Msun, 0.7*u.kpc, 1e11*u.Msun, 6.5*u.kpc, 0.26*u.kpc"""
+    
+    # vary potential parameters
+    potential = 'gal'
+    pparams = pparams0[:11]
+    
+    # adjust circular velocity in this halo
+    r = observer['galcen_distance']
+    # nfw halo
+    mr = pparams[5]**2 * pparams[6] / G * (np.log(1 + r/pparams[6]) - r/(r + pparams[6]))
+    vch2 = G*mr/r
+    # hernquist bulge
+    vcb2 = G * pparams[0] * r * (r + pparams[1])**-2
+    # miyamoto-nagai disk
+    vcd2 = G * pparams[2] * r**2 * (r**2 + (pparams[3] + pparams[4])**2)**-1.5
+    
+    vobs['vcirc'] = np.sqrt(vch2 + vcb2 + vcd2)
+    
+    # vary progenitor parameters
+    progenitor = progenitor_params(n)
+    x0_obs, v0_obs = gal2eq(progenitor['x0'], progenitor['v0'], observer=observer, vobs=vobs)
+    for i in range(3):
+        x0_obs[i] += pparams0[12+i]
+        v0_obs[i] += pparams0[15+i]
+    
+    # stream model parameters
+    params = {'generate': {'x0': x0_obs, 'v0': v0_obs, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': progenitor['mi'], 'mfinal': progenitor['mf'], 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': progenitor['age'], 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': rotmatrix}}
+    
+    stream = Stream(**params['generate'])
+    #stream.generate()
+    #stream.observe(**params['observe'])
+    stream.prog_orbit()
+    
+    return stream.orbit
