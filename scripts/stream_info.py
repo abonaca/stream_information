@@ -7,7 +7,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import streakline
-import streakline2
+#import streakline2
 import myutils
 import ffwd
 
@@ -20,6 +20,7 @@ import gala.coordinates as gc
 
 import scipy.interpolate
 import scipy.optimize
+import zscale
 
 import copy
 
@@ -1479,23 +1480,36 @@ def test_inversion(n, Ndim=6, vary=['halo', 'progenitor'], align=True):
         alabel = ''
         
     cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+    N = np.shape(cxi)[0]
     
-    cx = np.linalg.inv(cxi)
-    cxi_ = np.linalg.inv(cx)
-    print(np.linalg.cond(cxi))
-    print(np.linalg.cond(cx))
-    print(np.linalg.det(cxi))
-    print(np.linalg.det(cx))
-    print(np.linalg.norm(cxi)*np.linalg.norm(cx), np.linalg.norm(cxi), np.linalg.norm(cxi_))
-    #print(np.matmul(cx,cxi))
-    #print(cxi)
-    plt.close()
-    plt.figure()
+    cx_ = np.linalg.inv(cxi)
     
-    plt.hist(np.ravel(cxi), bins=np.logspace(-3,5,10))
-    plt.gca().set_xscale('log')
+    cx = stable_inverse(cxi)
+    print(cx_)
+    print(cx)
+    print(np.sum(np.abs(cx_ - cx)))
+    print(np.allclose(cxi*cx, np.eye(N)))
+    print(np.allclose(cxi*cx_, np.eye(N)))
 
-def crb_triangle(n, vary, Ndim=6, align=True, plot='all'):
+def stable_inverse(a, maxiter=20, verbose=False):
+    """Invert a matrix with a bad condition number"""
+    N = np.shape(a)[0]
+    
+    # guess
+    q = np.linalg.inv(a)
+    
+    # iterate
+    for i in range(maxiter):
+        qa = q*a
+        if verbose: print(i, np.sum(qa - np.eye(N)), np.allclose(qa, np.eye(N)))
+        qai = np.linalg.inv(qa)
+        q = qai*q
+        if np.allclose(qa, np.eye(N)):
+            return q
+    
+    return q
+
+def crb_triangle(n, vary, Ndim=6, align=True, plot='all', fast=False):
     """"""
     
     pid, dp, vlabel = get_varied_pars(vary)
@@ -1508,7 +1522,10 @@ def crb_triangle(n, vary, Ndim=6, align=True, plot='all'):
         alabel = ''
         
     cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
-    cx = np.linalg.inv(cxi)
+    if fast:
+        cx = np.linalg.inv(cxi)
+    else:
+        cx = stable_inverse(cxi)
     print(cx[0][0])
     
     if plot=='halo':
@@ -1560,7 +1577,7 @@ def crb_triangle(n, vary, Ndim=6, align=True, plot='all'):
     plt.tight_layout()
     plt.savefig('../plots/crb_triangle_{:s}_{:d}_{:s}_{:d}_{:s}.pdf'.format(alabel, n, vlabel, Ndim, plot))
 
-def crb_triangle_alldim(n, vary, align=True, plot='all'):
+def crb_triangle_alldim(n, vary, align=True, plot='all', fast=False):
     """"""
     
     pid, dp, vlabel = get_varied_pars(vary)
@@ -1595,7 +1612,10 @@ def crb_triangle_alldim(n, vary, align=True, plot='all'):
     
     for l, Ndim in enumerate([3, 4, 6]):
         cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
-        cx = np.linalg.inv(cxi)
+        if fast:
+            cx = np.linalg.inv(cxi)
+        else:
+            cx = stable_inverse(cxi)
         cx = cx[i0:i1,i0:i1]
         
         for i in range(0,Nvar-1):
@@ -1731,7 +1751,7 @@ def acc_nfw(x, p=[pparams_fid[j] for j in [5,6,8,10]]):
     
     return a
 
-def crb_ax(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True):
+def crb_ax(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True, fast=False):
     """Calculate CRB inverse matrix for 3D acceleration at position x in a halo potential"""
     
     pid, dp, vlabel = get_varied_pars(vary)
@@ -1742,12 +1762,18 @@ def crb_ax(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True):
     
     # read in full inverse CRB for stream modeling
     cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
-    cx = np.linalg.inv(cxi)
+    if fast:
+        cx = np.linalg.inv(cxi)
+    else:
+        cx = stable_inverse(cxi)
     
     # subset halo parameters
     Nhalo = 4
     cq = cx[:Nhalo,:Nhalo]
-    cqi = np.linalg.inv(cq)
+    if fast:
+        cqi = np.linalg.inv(cq)
+    else:
+        cqi = stable_inverse(cq)
     
     xi = np.array([-8.3, 0.1, 0.1])*u.kpc
     
@@ -1787,7 +1813,10 @@ def crb_ax(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True):
             dqda = halo_accelerations(xi)
             
             cai = np.matmul(dqda, np.matmul(cqi, dqda.T))
-            ca = np.linalg.inv(cai)
+            if fast:
+                ca = np.linalg.inv(cai)
+            else:
+                ca = stable_inverse(cai)
             a_crb = (np.sqrt(np.diag(ca)) * u.km**2 * u.kpc**-1 * u.s**-2).to(u.pc*u.Myr**-2)
             af[i] = np.abs(a_crb/a)
             af[i] = a_crb
@@ -1852,7 +1881,7 @@ def ader_cyl(x):
     
     return dacyl
     
-def crb_acyl(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True):
+def crb_acyl(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True, d=20, Nb=50, fast=False):
     """"""
     pid, dp, vlabel = get_varied_pars(vary)
     if align:
@@ -1862,15 +1891,19 @@ def crb_acyl(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True):
     
     # read in full inverse CRB for stream modeling
     cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
-    cx = np.linalg.inv(cxi)
+    if fast:
+        cx = np.linalg.inv(cxi)
+    else:
+        cx = stable_inverse(cxi)
     
     # subset potential parameters
     Npot = 9
     cq = cx[:Npot,:Npot]
-    cqi = np.linalg.inv(cq)
+    if fast:
+        cqi = np.linalg.inv(cq)
+    else:
+        cqi = stable_inverse(cq)
     
-    d = 20
-    Nb = 50
     x = np.linspace(0.1, 2*d, 2*Nb)**2 * 0.5
     y = np.linspace(0.1, d, Nb)
     xv, yv = np.meshgrid(x, y)
@@ -1879,6 +1912,7 @@ def crb_acyl(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True):
     yf = np.ravel(yv)
     Npix = np.size(xf)
     af = np.empty((Npix, 2))
+    derf = np.empty((Npix, 2, 9))
     
     xin = np.array([np.sqrt(xf), np.sqrt(xf), yf]).T
     
@@ -1887,16 +1921,18 @@ def crb_acyl(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True):
         a = acc_cyl(xi)
         
         dqda = ader_cyl(xi)
+        derf[i] = dqda
         
         cai = np.matmul(dqda, np.matmul(cqi, dqda.T))
-        ca = np.linalg.inv(cai)
-        #a_crb = (np.sqrt(np.diag(ca)) * u.km**2 * u.kpc**-1 * u.s**-2).to(u.pc*u.Myr**-2)
+        if fast:
+            ca = np.linalg.inv(cai)
+        else:
+            ca = stable_inverse(cai)
         a_crb = np.sqrt(np.diag(ca)) * u.pc * u.Myr**-2
         af[i] = np.abs(a_crb/a)
-        #af[i] = a_crb
     
     # save
-    np.savez('../data/crb_acyl{:s}_{:d}_{:s}_{:d}_m_{:d}_{:d}'.format(alabel, n, vlabel, Ndim, d, Nb), acc=af, x=xin)
+    np.savez('../data/crb_acyl{:s}_{:d}_{:s}_{:d}_{:d}_{:d}'.format(alabel, n, vlabel, Ndim, d, Nb), acc=af, x=xin, der=derf)
     
     x0, v0 = gd1_coordinates()
     Rp = np.linalg.norm(x0[:2])
@@ -1926,7 +1962,7 @@ def crb_acyl(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True):
     plt.tight_layout()
     plt.savefig('../plots/crb_acc_cyl{:s}_{:d}_{:s}_{:d}.png'.format(alabel, n, vlabel, Ndim))
 
-def acc_orbit(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True, d=20, Nb=20):
+def acc_orbit(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True, d=20, Nb=50):
     """"""
     pid, dp, vlabel = get_varied_pars(vary)
     if align:
@@ -1935,8 +1971,8 @@ def acc_orbit(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True, d=20, 
         alabel = ''
     
     # constraints
-    data = np.load('../data/crb_acyl{:s}_{:d}_{:s}_{:d}_m_{:d}_{:d}.npz'.format(alabel, n, vlabel, Ndim, d, Nb))
-    print(np.median(data['acc'], axis=0))
+    data = np.load('../data/crb_acyl{:s}_{:d}_{:s}_{:d}_{:d}_{:d}.npz'.format(alabel, n, vlabel, Ndim, d, Nb))
+    #print(np.median(data['acc'], axis=0))
     
     # orbit
     orbit = stream_orbit(n)
@@ -1959,7 +1995,7 @@ def acc_orbit(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True, d=20, 
         im = plt.imshow(data['acc'][:,i].reshape(Nb, 2*Nb), origin='lower', extent=[0.1, 2*d, 0.1, d], cmap=mpl.cm.gray, norm=mpl.colors.LogNorm(), vmin=1e-2, vmax=1)
         #plt.plot(Rp, zp, 'r*', ms=10)
         
-        plt.scatter(R[::-1], np.abs(z[::-1]), c=c[::-1], cmap=mpl.cm.Reds_r, s=15)
+        plt.scatter(R[::-1], np.abs(z[::-1]), c=c[::-1], cmap=mpl.cm.YlGn_r, s=15)
         
         plt.xlabel('R (kpc)')
         plt.ylabel('|Z| (kpc)')
@@ -1974,6 +2010,122 @@ def acc_orbit(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True, d=20, 
         
     plt.tight_layout()
     plt.savefig('../plots/crb_acc_prog{:s}_{:d}_{:s}_{:d}.png'.format(alabel, n, vlabel, Ndim))
+
+def acc_radialdep(n, Ndim=6, alldim=False, vary=['halo', 'bary', 'progenitor'], align=True, d=20, Nb=50):
+    """Show radial dependence of the acceleration constraints"""
+    pid, dp, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    
+    # plot constraints from a single observational setup
+    if alldim==False:
+        data = np.load('../data/crb_acyl{:s}_{:d}_{:s}_{:d}_{:d}_{:d}.npz'.format(alabel, n, vlabel, Ndim, d, Nb))
+        
+        plt.close()
+        fig, ax = plt.subplots(2,1,figsize=(7,7), sharex=True, sharey=True)
+        
+        plt.sca(ax[0])
+        plt.plot(np.linalg.norm(data['x'][:,:2], axis=1), np.tanh(data['acc'][:,0]), 'ko', ms=2)
+        plt.ylim(0, 0.5)
+        plt.ylabel('$\Delta$ $a_R$ / $|a_R|$')
+        
+        plt.sca(ax[1])
+        plt.plot(np.linalg.norm(data['x'][:,:2], axis=1), np.tanh(data['acc'][:,1]), 'ko', ms=2)
+        plt.xlabel('R (kpc)')
+        plt.ylabel('$\Delta$ $a_z$ / $|a_z|$')
+        
+        plt.tight_layout()
+        plt.savefig('../plots/crb_acc_radial{:s}_{:d}_{:s}_{:d}.png'.format(alabel, n, vlabel, Ndim))
+    else:
+        plt.close()
+        fig, ax = plt.subplots(2,1,figsize=(7,7), sharex=True, sharey=True)
+        
+        labels = ['RA, Dec, d', 'RA, Dec, d, $V_r$', 'RA, Dec, d, $V_r$, $\mu_\\alpha$, $\mu_\delta$']
+        colors = [mpl.cm.magma(x/3) for x in range(3)]
+        
+        for i, Ndim in enumerate([3,4,6]):
+            data = np.load('../data/crb_acyl{:s}_{:d}_{:s}_{:d}_m_{:d}_{:d}.npz'.format(alabel, n, vlabel, Ndim, d, Nb))
+            
+            plt.sca(ax[0])
+            plt.plot(np.linalg.norm(data['x'][:,:2], axis=1), np.tanh(data['acc'][:,0]), 'o', ms=2, color=colors[i], label=labels[i])
+            
+            plt.sca(ax[1])
+            plt.plot(np.linalg.norm(data['x'][:,:2], axis=1), np.tanh(data['acc'][:,1]), 'o', ms=2, color=colors[i])
+        
+        plt.sca(ax[0])
+        plt.ylim(0, 0.5)
+        plt.ylabel('$\Delta$ $a_R$ / $|a_R|$')
+        plt.legend(loc=1, frameon=False, fontsize='small', handlelength=0.5, markerscale=2.5)
+        
+        plt.sca(ax[1])
+        plt.xlabel('R (kpc)')
+        plt.ylabel('$\Delta$ $a_z$ / $|a_z|$')
+        
+        plt.tight_layout()
+        plt.savefig('../plots/crb_acc_radial{:s}_{:d}_{:s}_alldim.png'.format(alabel, n, vlabel))
+
+def acc_derivatives(vary=['halo', 'bary', 'progenitor'], n=-1, Ndim=6, align=True, d=20, Nb=50):
+    """"""
+    pid, dp, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    
+    # constraints
+    data = np.load('../data/crb_acyl{:s}_{:d}_{:s}_{:d}_{:d}_{:d}.npz'.format(alabel, n, vlabel, Ndim, d, Nb))
+    #print(np.median(data['acc'], axis=0))
+    
+    # orbit
+    orbit = stream_orbit(n)
+    R = np.linalg.norm(orbit['x'][:2,:].to(u.kpc), axis=0)
+    z = orbit['x'][2].to(u.kpc)
+    c = np.arange(np.size(z))
+    
+    # progenitor
+    x0, v0 = gd1_coordinates()
+    Rp = np.linalg.norm(x0[:2])
+    zp = x0[2]
+    
+    plt.close()
+    fig, ax = plt.subplots(9,2,figsize=(7,14))
+    
+    label = ['$a_R$', '$a_Z$']
+    ylabel = ['$V_h$', '$R_h$', '$q_1$', '$q_z$', '$M_b$', '$a_b$', '$M_d$', '$a_d$', '$b_d$']
+    
+    for j in range(2):
+        for i in range(9):
+            plt.sca(ax[i][j])
+
+            z1, z2 = zscale.zscale(data['der'][:,j,i].reshape(Nb, 2*Nb))
+            im = plt.imshow(data['der'][:,j,i].reshape(Nb, 2*Nb), origin='lower', extent=[0.1, 2*d, 0.1, d], cmap=mpl.cm.Blues, vmin=z1, vmax=z2)
+            
+            plt.xlim(0.1, 2*d)
+            plt.ylim(0.1, d)
+            plt.text(0.9, 0.9, 'd{:s} / d{:s}'.format(label[j], ylabel[i]), fontsize='small', ha='right', va='top', transform=plt.gca().transAxes)
+            
+            if i==8:
+                plt.xlabel('R (kpc)', fontsize='small')
+                plt.setp(plt.gca().get_xticklabels(), fontsize='small')
+            else:
+                plt.setp(plt.gca().get_xticklabels(), visible=False)
+            
+            if j==0:
+                plt.ylabel('|Z| (kpc)', fontsize='small')
+                plt.setp(plt.gca().get_yticklabels(), fontsize='small')
+            else:
+                plt.setp(plt.gca().get_yticklabels(), visible=False)
+            
+            divider = make_axes_locatable(plt.gca())
+            cax = divider.append_axes("right", size="3%", pad=0.1)
+            plt.colorbar(im, cax=cax)
+            plt.setp(plt.gca().get_yticklabels(), fontsize='x-small')
+            
+        
+    plt.tight_layout(h_pad=0)
+    plt.savefig('../plots/acc_derivatives_{:d}_{:s}_{:d}_{:d}.png'.format(n, vlabel, d, Nb))
 
 # progenitor's orbit
 

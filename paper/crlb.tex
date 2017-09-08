@@ -224,5 +224,22 @@ Even if only limited observational data is available for multiple streams, the o
 \bibliographystyle{aasjournal}
 \bibliography{crlb}
 
+\appendix
+\section{Robust matrix inversion}
+Inverting a Fisher matrix is a core operation in calculating Cram\' er--Rao lower bounds and thus measuring the information content in stellar streams. 
+Often, this problem is ill-conditioned, i.e. if the input Fisher matrix $I$ is modified only slightly, the standard numerical algorithms, such as that employed in \texttt{numpy.linalg.inv}, return a very different inverse $I^{-1}$.
+We adopt an iterative approach of rescaling the problem to ensure a robust inverse is obtained, and outline it below.
+
+Starting with matrix $A$, which may have a large condition number, we are looking for a matrix $Q$, such that $Q A = I$.
+If we have a guess for $Q$, and the guess is good, then the matrix $QA$ has a low condition number, and can be reliably inverted using the standard algorithm for numerical inversion.
+Then it follows:
+\begin{equation*}
+(QA)^{-1} Q = A^{-1} Q^{-1} Q = A^{-1}
+\end{equation*}
+We have just obtained a better guess for the inverse of the original matrix $A$, and adopt it as matrix $Q$ in the next iteration.
+This procedure is repeated until $Q$ converges to $A^{-1}$, i.e., $Q A = I$ to machine precision.
+
+In our current implementation, we use the standard, unreliable inverse as the starting guess $Q$, and convergence is typically obtained after $\sim\;10$ iterations.
+
 \end{document}
 
