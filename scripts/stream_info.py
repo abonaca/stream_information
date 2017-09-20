@@ -35,7 +35,7 @@ vgc = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 vgc0 = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 
 MASK = -9999
-pparams_fid = [0.5e10*u.Msun, 0.7*u.kpc, 6.8e10*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
+pparams_fid = [0.5e10*u.Msun, 0.7*u.kpc, 6.8e10*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
 
 
 class Stream():
@@ -108,6 +108,8 @@ class Stream():
             self.setup_aux['paux'] = 6
         elif self.setup['potential']=='dipole':
             self.setup_aux['paux'] = 8
+        elif self.setup['potential']=='quad':
+            self.setup_aux['paux'] = 9
             
     def format_input(self):
         """Format input parameters for streakline.stream"""
@@ -411,13 +413,13 @@ class Stream():
 
 # make a streakline model of a stream
 
-def stream_model(n, pparams0=[0.5e10*u.Msun, 0.7*u.kpc, 6.8e10*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr], dt=1*u.Myr, rotmatrix=None, graph=False, observer=mw_observer, vobs=vsun, footprint='', obsmode='equatorial'):
+def stream_model(n, pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=None, graph=False, observer=mw_observer, vobs=vsun, footprint='', obsmode='equatorial'):
     """Create a streakline model of a stream
     baryonic component as in kupper+2015: 3.4e10*u.Msun, 0.7*u.kpc, 1e11*u.Msun, 6.5*u.kpc, 0.26*u.kpc"""
     
     # vary potential parameters
-    potential = 'dipole'
-    pparams = pparams0[:14]
+    potential = 'quad'
+    pparams = pparams0[:19]
     
     # adjust circular velocity in this halo
     r = observer['galcen_distance']
@@ -435,8 +437,8 @@ def stream_model(n, pparams0=[0.5e10*u.Msun, 0.7*u.kpc, 6.8e10*u.Msun, 3*u.kpc, 
     progenitor = progenitor_params(n)
     x0_obs, v0_obs = gal2eq(progenitor['x0'], progenitor['v0'], observer=observer, vobs=vobs)
     for i in range(3):
-        x0_obs[i] += pparams0[14+i]
-        v0_obs[i] += pparams0[17+i]
+        x0_obs[i] += pparams0[19+i]
+        v0_obs[i] += pparams0[22+i]
     
     # stream model parameters
     params = {'generate': {'x0': x0_obs, 'v0': v0_obs, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': progenitor['mi'], 'mfinal': progenitor['mf'], 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': progenitor['age'], 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': rotmatrix}}
@@ -872,12 +874,15 @@ def get_varied_bytype(vary):
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
         dp = [30*u.km/u.s, 2.9*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
     elif vary=='progenitor':
-        pid = [14,15,16,17,18,19]
+        pid = [19,20,21,22,23,24]
         dp = [1*u.deg, 1*u.deg, 0.5*u.kpc, 20*u.km/u.s, 0.3*u.mas/u.yr, 0.3*u.mas/u.yr]
     elif vary=='dipole':
         pid = [11,12,13]
         #dp = [1e-11*u.Unit(1), 1e-11*u.Unit(1), 1e-11*u.Unit(1)]
         dp = [0.3*u.pc/u.Myr**2, 0.3*u.pc/u.Myr**2, 0.3*u.pc/u.Myr**2]
+    elif vary=='quad':
+        pid = [14,15,16,17,18]
+        dp = [2*u.Gyr**-2 for x in range(5)]
     else:
         pid = []
         dp = []
@@ -889,8 +894,8 @@ def get_parlabel(pid):
     Parameter:
     pid - list of parameter ids"""
     
-    master = ['$M_b$', '$a_b$', '$M_d$', '$a_d$', '$b_d$', '$V_h$', '$R_h$', '$\phi$', '$q_1$', '$q_2$', '$q_z$', '$a_{1,-1}$', '$a_{1,0}$', '$a_{1,1}$', '$RA_p$', '$Dec_p$', '$d_p$', '$V_{r_p}$', '$\mu_{\\alpha_p}$', '$\mu_{\delta_p}$']
-    master_units = ['$M_\odot$', 'kpc', '$M_\odot$', 'kpc', 'kpc', 'km/s', 'kpc', 'rad', '', '', '', 'pc/Myr$^2$', 'pc/Myr$^2$', 'pc/Myr$^2$', 'deg', 'deg', 'kpc', 'km/s', 'mas/yr', 'mas/yr']
+    master = ['$M_b$', '$a_b$', '$M_d$', '$a_d$', '$b_d$', '$V_h$', '$R_h$', '$\phi$', '$q_1$', '$q_2$', '$q_z$', '$a_{1,-1}$', '$a_{1,0}$', '$a_{1,1}$', '$a_{2,-2}$', '$a_{2,-1}$', '$a_{2,0}$', '$a_{2,1}$', '$a_{2,2}$', '$RA_p$', '$Dec_p$', '$d_p$', '$V_{r_p}$', '$\mu_{\\alpha_p}$', '$\mu_{\delta_p}$']
+    master_units = ['$M_\odot$', 'kpc', '$M_\odot$', 'kpc', 'kpc', 'km/s', 'kpc', 'rad', '', '', '', 'pc/Myr$^2$', 'pc/Myr$^2$', 'pc/Myr$^2$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'deg', 'deg', 'kpc', 'km/s', 'mas/yr', 'mas/yr']
     
     if type(pid) is list:
         labels = []
@@ -1240,7 +1245,7 @@ def plot_steps(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=Fa
     plt.tight_layout()
     plt.savefig('../plots/observable_steps_{:d}_{:s}_p{:d}_Ns{:d}.png'.format(n, vlabel, p, Nstep))
 
-def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', align=True, graph=False):
+def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', align=True, graph=False, verbose=False):
     """Check deviations in numerical derivatives for consecutive step sizes"""
     
     if align:
@@ -1275,11 +1280,13 @@ def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', 
     
     for p in range(Np):
         plabel = get_parlabel(pid[p])
+        if verbose: print(p, plabel)
         
         # excursions
         stream_fits = [[None] * 5 for x in range(2 * Nstep)]
         
         for i, s in enumerate(step[:]):
+            if verbose: print(i, s)
             pparams = [x for x in pparams0]
             pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
             stream = stream_model(n, pparams0=pparams, dt=dt, rotmatrix=rotmatrix)
@@ -1431,7 +1438,7 @@ def bspline_crb(n, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True
     if scale:
         dp_unit = unity_scale(dp)
         dps = [x*y for x,y in zip(dp, dp_unit)]
-
+    
     k = 3
     
     fits_ex = [[[None]*5 for x in range(2)] for y in range(Np)]
@@ -1465,6 +1472,7 @@ def bspline_crb(n, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True
                     dydx[p][(j-1)*Nobs:j*Nobs] = -dy / np.abs(2*dps[p].value)
                 else:
                     dydx[p][(j-1)*Nobs:j*Nobs] = -dy / np.abs(2*dp[p].value)
+                print('{:d},{:d} {:s} min{:.1e} max{:1e} med{:.1e}'.format(j, p, get_parlabel(pid[p])[0], np.min(np.abs(dydx[p][(j-1)*Nobs:j*Nobs][positive])), np.max(np.abs(dydx[p][(j-1)*Nobs:j*Nobs])), np.median(np.abs(dydx[p][(j-1)*Nobs:j*Nobs]))))
         
             cyd[(j-1)*Nobs:j*Nobs] = err[:,j-1]**2
         
@@ -1493,7 +1501,9 @@ def bspline_crb(n, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True
 
 def unity_scale(dp):
     """"""
-    dim_scale = 10**np.array([2, 3, 3, 1, 3, 2, 5, 5, 3, 5, 5, 2, 2, 4, 4, 3, 3, 3])
+    dim_scale = 10**np.array([2, 3, 3, 2, 4, 3, 7, 7, 5, 7, 7, 4, 4, 4, 4, 3, 3, 3, 4, 3, 4, 4, 4])
+    #dim_scale = 10**np.array([2, 3, 3, 1, 3, 2, 5, 5, 3, 5, 5, 2, 2, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3])
+    #dim_scale = 10**np.array([2, 3, 3, 1, 3, 2, 5, 5, 3, 5, 5, 2, 2, 4, 4, 3, 3, 3])
     dp_unit = [(dim_scale[x]*dp[x].value)**-1 for x in range(len(dp))]
     
     return dp_unit
@@ -1606,7 +1616,7 @@ def crb_triangle(n, vary, Ndim=6, align=True, plot='all', fast=False):
     plt.tight_layout()
     plt.savefig('../plots/crb_triangle_{:s}_{:d}_{:s}_{:d}_{:s}.pdf'.format(alabel, n, vlabel, Ndim, plot))
 
-def crb_triangle_alldim(n, vary, align=True, plot='all', fast=False, scale=True):
+def crb_triangle_alldim(n, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], align=True, plot='all', fast=False, scale=True):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
     dp_opt = read_optimal_step(n, vary)
@@ -1639,11 +1649,11 @@ def crb_triangle_alldim(n, vary, align=True, plot='all', fast=False, scale=True)
     params = params[i0:i1]
     if scale:
         dp_unit = unity_scale(dp)
-        print(dp_unit)
+        #print(dp_unit)
         dp_unit = dp_unit[i0:i1]
         pid = pid[i0:i1]
     
-    print(params, dp_unit, Nvar, len(pid), len(dp_unit))
+    #print(params, dp_unit, Nvar, len(pid), len(dp_unit))
     label = ['RA, Dec, d', 'RA, Dec, d, $V_r$', 'RA, Dec, d, $V_r$, $\mu_\\alpha$, $\mu_\delta$']
 
     plt.close()
@@ -1675,7 +1685,7 @@ def crb_triangle_alldim(n, vary, align=True, plot='all', fast=False, scale=True)
                     e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.bone(0.1+l/4), lw=2, label=label[l])
                     plt.gca().add_patch(e)
                 
-                if l==2:
+                if l==1:
                     plt.gca().autoscale_view()
                 
                 if j==Nvar-1:
