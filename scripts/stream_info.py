@@ -35,7 +35,7 @@ vgc = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 vgc0 = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 
 MASK = -9999
-pparams_fid = [0.5e10*u.Msun, 0.7*u.kpc, 6.8e10*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
+pparams_fid = [0.5e10*u.Msun, 0.7*u.kpc, 6.8e10*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
 
 
 class Stream():
@@ -106,6 +106,8 @@ class Stream():
             self.setup_aux['paux'] = 4
         elif self.setup['potential']=='lmc':
             self.setup_aux['paux'] = 6
+        elif self.setup['potential']=='dipole':
+            self.setup_aux['paux'] = 8
             
     def format_input(self):
         """Format input parameters for streakline.stream"""
@@ -409,13 +411,13 @@ class Stream():
 
 # make a streakline model of a stream
 
-def stream_model(n, pparams0=[0.5e10*u.Msun, 0.7*u.kpc, 6.8e10*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr], dt=1*u.Myr, rotmatrix=None, graph=False, observer=mw_observer, vobs=vsun, footprint='', obsmode='equatorial'):
+def stream_model(n, pparams0=[0.5e10*u.Msun, 0.7*u.kpc, 6.8e10*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr], dt=1*u.Myr, rotmatrix=None, graph=False, observer=mw_observer, vobs=vsun, footprint='', obsmode='equatorial'):
     """Create a streakline model of a stream
     baryonic component as in kupper+2015: 3.4e10*u.Msun, 0.7*u.kpc, 1e11*u.Msun, 6.5*u.kpc, 0.26*u.kpc"""
     
     # vary potential parameters
-    potential = 'gal'
-    pparams = pparams0[:11]
+    potential = 'dipole'
+    pparams = pparams0[:14]
     
     # adjust circular velocity in this halo
     r = observer['galcen_distance']
@@ -433,8 +435,8 @@ def stream_model(n, pparams0=[0.5e10*u.Msun, 0.7*u.kpc, 6.8e10*u.Msun, 3*u.kpc, 
     progenitor = progenitor_params(n)
     x0_obs, v0_obs = gal2eq(progenitor['x0'], progenitor['v0'], observer=observer, vobs=vobs)
     for i in range(3):
-        x0_obs[i] += pparams0[12+i]
-        v0_obs[i] += pparams0[15+i]
+        x0_obs[i] += pparams0[14+i]
+        v0_obs[i] += pparams0[17+i]
     
     # stream model parameters
     params = {'generate': {'x0': x0_obs, 'v0': v0_obs, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': progenitor['mi'], 'mfinal': progenitor['mf'], 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': progenitor['age'], 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': rotmatrix}}
@@ -870,8 +872,12 @@ def get_varied_bytype(vary):
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
         dp = [30*u.km/u.s, 2.9*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
     elif vary=='progenitor':
-        pid = [12,13,14,15,16,17]
+        pid = [14,15,16,17,18,19]
         dp = [1*u.deg, 1*u.deg, 0.5*u.kpc, 20*u.km/u.s, 0.3*u.mas/u.yr, 0.3*u.mas/u.yr]
+    elif vary=='dipole':
+        pid = [11,12,13]
+        #dp = [1e-11*u.Unit(1), 1e-11*u.Unit(1), 1e-11*u.Unit(1)]
+        dp = [0.3*u.pc/u.Myr**2, 0.3*u.pc/u.Myr**2, 0.3*u.pc/u.Myr**2]
     else:
         pid = []
         dp = []
@@ -883,8 +889,8 @@ def get_parlabel(pid):
     Parameter:
     pid - list of parameter ids"""
     
-    master = ['$M_b$', '$a_b$', '$M_d$', '$a_d$', '$b_d$', '$V_h$', '$R_h$', '$\phi$', '$q_1$', '$q_2$', '$q_z$', '$M_{lmc}$', '$RA_p$', '$Dec_p$', '$d_p$', '$V_{r_p}$', '$\mu_{\\alpha_p}$', '$\mu_{\delta_p}$']
-    master_units = ['$M_\odot$', 'kpc', '$M_\odot$', 'kpc', 'kpc', 'km/s', 'kpc', 'rad', '', '', '', '$M_\odot$', 'deg', 'deg', 'kpc', 'km/s', 'mas/yr', 'mas/yr']
+    master = ['$M_b$', '$a_b$', '$M_d$', '$a_d$', '$b_d$', '$V_h$', '$R_h$', '$\phi$', '$q_1$', '$q_2$', '$q_z$', '$a_{1,-1}$', '$a_{1,0}$', '$a_{1,1}$', '$RA_p$', '$Dec_p$', '$d_p$', '$V_{r_p}$', '$\mu_{\\alpha_p}$', '$\mu_{\delta_p}$']
+    master_units = ['$M_\odot$', 'kpc', '$M_\odot$', 'kpc', 'kpc', 'km/s', 'kpc', 'rad', '', '', '', 'pc/Myr$^2$', 'pc/Myr$^2$', 'pc/Myr$^2$', 'deg', 'deg', 'kpc', 'km/s', 'mas/yr', 'mas/yr']
     
     if type(pid) is list:
         labels = []
@@ -1398,7 +1404,7 @@ def read_optimal_step(n, vary):
 
 # crbs using bspline
 
-def bspline_crb(n, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True):
+def bspline_crb(n, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True, scale=True):
     """"""
     if align:
         rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
@@ -1419,10 +1425,13 @@ def bspline_crb(n, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True
 
     pid, dp_fid, vlabel = get_varied_pars(vary)
     Np = len(pid)
-    #dp_opt = np.load('../data/optimal_step_{}_{}.npy'.format(n, vlabel))
     dp_opt = read_optimal_step(n, vary)
     dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
     
+    if scale:
+        dp_unit = unity_scale(dp)
+        dps = [x*y for x,y in zip(dp, dp_unit)]
+
     k = 3
     
     fits_ex = [[[None]*5 for x in range(2)] for y in range(Np)]
@@ -1442,6 +1451,7 @@ def bspline_crb(n, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True
                 fits_ex[p][i][j] = scipy.interpolate.make_lsq_spline(stream.obs[0][iexsort], stream.obs[j+1][iexsort], tex, k=k)
     
     for Ndim in [3,4,6]:
+    #for Ndim in [6,]:
         Ndata = Nobs * (Ndim - 1)
         cyd = np.empty(Ndata)
         dydx = np.empty((Np, Ndata))
@@ -1449,18 +1459,28 @@ def bspline_crb(n, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True
         for j in range(1, Ndim):
             for p in range(Np):
                 dy = fits_ex[p][0][j-1](ra) - fits_ex[p][1][j-1](ra)
-                dydx[p][(j-1)*Nobs:j*Nobs] = -dy / np.abs(2*dp[p].value)
+                positive = np.abs(dy)>0
+                print('{:d},{:d} {:s} min{:.1e} max{:1e} med{:.1e}'.format(j, p, get_parlabel(pid[p])[0], np.min(np.abs(dy[positive])), np.max(np.abs(dy)), np.median(np.abs(dy))))
+                if scale:
+                    dydx[p][(j-1)*Nobs:j*Nobs] = -dy / np.abs(2*dps[p].value)
+                else:
+                    dydx[p][(j-1)*Nobs:j*Nobs] = -dy / np.abs(2*dp[p].value)
         
             cyd[(j-1)*Nobs:j*Nobs] = err[:,j-1]**2
         
         cy = np.diag(cyd)
         cyi = np.diag(1. / cyd)
         
-        cxi = np.matmul(dydx, np.matmul(cyi, dydx.T))
+        caux = np.matmul(cyi, dydx.T)
+        cxi = np.matmul(dydx, caux)
 
         cx = np.linalg.inv(cxi)
         cx = np.matmul(np.linalg.inv(np.matmul(cx, cxi)), cx) # iteration of inverse improvement for large cond numbers
         sx = np.sqrt(np.diag(cx))
+        
+        for i, m in enumerate([cy, cyi, dydx, caux, cxi]):
+            positive = m>0
+            print('{:d} {:g} {:g}'.format(i, np.min(m[positive]), np.max(m)))
         
         if verbose:
             print(Ndim)
@@ -1470,6 +1490,13 @@ def bspline_crb(n, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True
             print('condition {:g}'.format(np.linalg.cond(cxi)))
 
         np.save('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}'.format(alabel, n, vlabel, Ndim), cxi)
+
+def unity_scale(dp):
+    """"""
+    dim_scale = 10**np.array([2, 3, 3, 1, 3, 2, 5, 5, 3, 5, 5, 2, 2, 4, 4, 3, 3, 3])
+    dp_unit = [(dim_scale[x]*dp[x].value)**-1 for x in range(len(dp))]
+    
+    return dp_unit
 
 def test_inversion(n, Ndim=6, vary=['halo', 'progenitor'], align=True):
     """"""
@@ -1484,12 +1511,13 @@ def test_inversion(n, Ndim=6, vary=['halo', 'progenitor'], align=True):
     
     cx_ = np.linalg.inv(cxi)
     
-    cx = stable_inverse(cxi)
-    print(cx_)
-    print(cx)
-    print(np.sum(np.abs(cx_ - cx)))
-    print(np.allclose(cxi*cx, np.eye(N)))
-    print(np.allclose(cxi*cx_, np.eye(N)))
+    cx = stable_inverse(cxi, verbose=True)
+    cx_ii = stable_inverse(cx, verbose=True)
+    
+    print('condition {:g}'.format(np.linalg.cond(cxi)))
+    print('stable inverse', np.allclose(np.matmul(cx,cxi), np.eye(N)))
+    print('linalg inverse', np.allclose(np.matmul(cx_,cxi), np.eye(N)))
+    print('inverse inverse', np.allclose(cx_ii, cxi))
 
 def stable_inverse(a, maxiter=20, verbose=False):
     """Invert a matrix with a bad condition number"""
@@ -1497,15 +1525,16 @@ def stable_inverse(a, maxiter=20, verbose=False):
     
     # guess
     q = np.linalg.inv(a)
+    qa = np.matmul(q,a)
     
     # iterate
     for i in range(maxiter):
-        qa = q*a
-        if verbose: print(i, np.sum(qa - np.eye(N)), np.allclose(qa, np.eye(N)))
-        qai = np.linalg.inv(qa)
-        q = qai*q
+        if verbose: print(i, np.sqrt(np.sum((qa - np.eye(N))**2)), np.allclose(qa, np.eye(N)))
         if np.allclose(qa, np.eye(N)):
             return q
+        qai = np.linalg.inv(qa)
+        q = np.matmul(qai,q)
+        qa = np.matmul(q,a)
     
     return q
 
@@ -1526,7 +1555,7 @@ def crb_triangle(n, vary, Ndim=6, align=True, plot='all', fast=False):
         cx = np.linalg.inv(cxi)
     else:
         cx = stable_inverse(cxi)
-    print(cx[0][0])
+    #print(cx[0][0])
     
     if plot=='halo':
         cx = cx[:4, :4]
@@ -1577,10 +1606,11 @@ def crb_triangle(n, vary, Ndim=6, align=True, plot='all', fast=False):
     plt.tight_layout()
     plt.savefig('../plots/crb_triangle_{:s}_{:d}_{:s}_{:d}_{:s}.pdf'.format(alabel, n, vlabel, Ndim, plot))
 
-def crb_triangle_alldim(n, vary, align=True, plot='all', fast=False):
+def crb_triangle_alldim(n, vary, align=True, plot='all', fast=False, scale=True):
     """"""
-    
-    pid, dp, vlabel = get_varied_pars(vary)
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    dp_opt = read_optimal_step(n, vary)
+    dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
     plabels, units = get_parlabel(pid)
     params = ['$\Delta$' + x + '({})'.format(y) for x,y in zip(plabels, units)]
     
@@ -1590,13 +1620,16 @@ def crb_triangle_alldim(n, vary, align=True, plot='all', fast=False):
         alabel = ''
     
     if plot=='halo':
-        i0 = 0
-        i1 = 4
+        i0 = 11
+        i1 = 15
     elif plot=='bary':
-        i0 = 4
-        i1 = 9
+        i0 = 6
+        i1 = 11
     elif plot=='progenitor':
-        i0 = 9
+        i0 = 0
+        i1 = 6
+    elif plot=='dipole':
+        i0 = 15
         i1 = len(params)
     else:
         i0 = 0
@@ -1604,8 +1637,15 @@ def crb_triangle_alldim(n, vary, align=True, plot='all', fast=False):
     
     Nvar = i1 - i0
     params = params[i0:i1]
-    label = ['RA, Dec, d', 'RA, Dec, d, $V_r$', 'RA, Dec, d, $V_r$, $\mu_\\alpha$, $\mu_\delta$']
+    if scale:
+        dp_unit = unity_scale(dp)
+        print(dp_unit)
+        dp_unit = dp_unit[i0:i1]
+        pid = pid[i0:i1]
     
+    print(params, dp_unit, Nvar, len(pid), len(dp_unit))
+    label = ['RA, Dec, d', 'RA, Dec, d, $V_r$', 'RA, Dec, d, $V_r$, $\mu_\\alpha$, $\mu_\delta$']
+
     plt.close()
     dax = 2
     fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(dax*Nvar, dax*Nvar), sharex='col', sharey='row')
@@ -1621,7 +1661,10 @@ def crb_triangle_alldim(n, vary, align=True, plot='all', fast=False):
         for i in range(0,Nvar-1):
             for j in range(i+1,Nvar):
                 plt.sca(ax[j-1][i])
-                cx_2d = np.array([[cx[i][i], cx[i][j]], [cx[j][i], cx[j][j]]])
+                if scale:
+                    cx_2d = np.array([[cx[i][i]/dp_unit[i]**2, cx[i][j]/(dp_unit[i]*dp_unit[j])], [cx[j][i]/(dp_unit[j]*dp_unit[i]), cx[j][j]/dp_unit[j]**2]])
+                else:
+                    cx_2d = np.array([[cx[i][i], cx[i][j]], [cx[j][i], cx[j][j]]])
                 
                 w, v = np.linalg.eig(cx_2d)
                 if np.all(np.isreal(v)):
@@ -1656,7 +1699,7 @@ def crb_triangle_alldim(n, vary, align=True, plot='all', fast=False):
 
 # accelerations
 
-def halo_accelerations(x, pu=[pparams_fid[j] for j in [5,6,8,10]]):
+def der_nfw(x, pu=[pparams_fid[j] for j in [5,6,8,10]]):
     """Calculate derivatives of halo potential parameters wrt (Cartesian) components of the acceleration vector a"""
     
     p = pu
@@ -1681,7 +1724,7 @@ def halo_accelerations(x, pu=[pparams_fid[j] for j in [5,6,8,10]]):
     
     return dmat
 
-def bulge_accelerations(x, pu=[pparams_fid[j] for j in range(2)]):
+def der_bulge(x, pu=[pparams_fid[j] for j in range(2)]):
     """Calculate derivarives of a Hernquist bulge potential parameters wrt (Cartesian) components of the acceleration vector a"""
     
     # coordinates
@@ -1701,7 +1744,7 @@ def bulge_accelerations(x, pu=[pparams_fid[j] for j in range(2)]):
     
     return dmat
 
-def disk_accelerations(x, pu=[pparams_fid[j] for j in range(2,5)]):
+def der_disk(x, pu=[pparams_fid[j] for j in range(2,5)]):
     """Calculate derivarives of a Miyamoto-Nagai disk potential parameters wrt (Cartesian) components of the acceleration vector a"""
     
     # coordinates
@@ -1727,6 +1770,23 @@ def disk_accelerations(x, pu=[pparams_fid[j] for j in range(2,5)]):
     
     return dmat
 
+def der_dipole(x, pu=[pparams_fid[j] for j in range(11,14)]):
+    """Calculate derivatives of dipole potential parameters wrt (Cartesian) components of the acceleration vector a"""
+    
+    # shape: 3, Npar
+    dmat = np.zeros((3,3))
+    
+    f = np.sqrt(3/(4*np.pi))
+    #dmat[2,0] = f
+    #dmat[0,1] = f
+    #dmat[1,2] = f
+    
+    dmat[0,2] = f
+    dmat[1,0] = f
+    dmat[2,1] = f
+    
+    return dmat
+
 def acc_bulge(x, p=[pparams_fid[j] for j in range(2)]):
     """"""
     r = np.linalg.norm(x)*u.kpc
@@ -1748,6 +1808,14 @@ def acc_nfw(x, p=[pparams_fid[j] for j in [5,6,8,10]]):
     r = np.linalg.norm(x)*u.kpc
     q = np.array([1*u.Unit(1), p[2], p[3]])
     a = (p[0]**2 * p[1] * r**-3 * (1/(1+p[1]/r) - np.log(1+r/p[1])) * x * q**-2).to(u.pc*u.Myr**-2)
+    
+    return a
+
+def acc_dipole(x, p=[pparams_fid[j] for j in range(11,14)]):
+    """Acceleration due to outside dipole perturbation"""
+    
+    pv = [x.value for x in p]
+    a = np.sqrt(3/(4*np.pi)) * np.array([pv[2], pv[0], pv[1]])*u.pc*u.Myr**-2
     
     return a
 
@@ -1843,13 +1911,18 @@ def crb_ax(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True, fast=Fals
 
 # cylindrical coordinates
 
-def acc_cyl(x, p=pparams_fid):
+def acc_cyl(x, p=pparams_fid, components=['bary', 'halo', 'dipole']):
     """"""
     
     acart = np.zeros(3) * u.pc*u.Myr**-2
     acyl = np.zeros(2) * u.pc*u.Myr**-2
     
-    for acc in [acc_disk, acc_bulge, acc_nfw]:
+    dict_acc = {'bary': [acc_bulge, acc_disk], 'halo': [acc_nfw], 'dipole': [acc_dipole]}
+    accelerations = []
+    for c in components:
+        accelerations += dict_acc[c]
+    
+    for acc in accelerations:
         acart += acc(x)
     
     acyl[0] = np.sqrt(acart[0]**2 + acart[1]**2)
@@ -1857,14 +1930,21 @@ def acc_cyl(x, p=pparams_fid):
     
     return acyl
 
-def ader_cyl(x):
+def ader_cyl(x, components=['bary', 'halo', 'dipole']):
     """"""
     
     acyl = np.zeros(2) * u.pc*u.Myr**-2
     dacyl = np.empty((2,0))
     
-    accelerations = [acc_nfw, acc_bulge, acc_disk]
-    derivatives = [halo_accelerations, bulge_accelerations, disk_accelerations]
+    dict_acc = {'bary': [acc_bulge, acc_disk], 'halo': [acc_nfw], 'dipole': [acc_dipole]}
+    dict_der = {'bary': [der_bulge, der_disk], 'halo': [der_nfw], 'dipole': [der_dipole]}
+    
+    accelerations = []
+    derivatives = []
+    
+    for c in components:
+        accelerations += dict_acc[c]
+        derivatives += dict_der[c]
     
     for acc, ader in zip(accelerations, derivatives):
         a_ = acc(x)
@@ -1875,19 +1955,35 @@ def ader_cyl(x):
     
         da_cyl = np.empty((2,np.shape(da_)[1]))
         da_cyl[1] = da_[2]
-        da_cyl[0] = a_[0]/acyl[0]*da_[0] + a_[1]/acyl[0]*da_[1]
+        if acyl[0]!=0:
+            da_cyl[0] = a_[0]/acyl[0]*da_[0] + a_[1]/acyl[0]*da_[1]
+        else:
+            #da_cyl[0] = np.zeros(np.shape(da_)[1])
+            da_cyl[0] = np.sqrt(da_[0]**2 + da_[1]**2)
+            #print(x, da_[2])
+            #print(x, da_cyl[0])
         
         dacyl = np.hstack((dacyl, da_cyl))
     
     return dacyl
     
-def crb_acyl(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True, d=20, Nb=50, fast=False):
+def crb_acyl(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole'], component='all', align=True, d=20, Nb=50, fast=False, scale=True, relative=True):
     """"""
-    pid, dp, vlabel = get_varied_pars(vary)
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    dp_opt = read_optimal_step(n, vary)
+    dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
     if align:
         alabel = '_align'
     else:
         alabel = ''
+    if relative:
+        vmin = 1e-2
+        vmax = 1
+        rlabel = ' / a'
+    else:
+        vmin = 1e-3
+        vmax = 1e5
+        rlabel =  ' (pc Myr$^{-2}$)'
     
     # read in full inverse CRB for stream modeling
     cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
@@ -1896,31 +1992,52 @@ def crb_acyl(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True, d=20, N
     else:
         cx = stable_inverse(cxi)
     
-    # subset potential parameters
-    Npot = 9
-    cq = cx[:Npot,:Npot]
+    # choose the appropriate components:
+    Nprog, Nbary, Nhalo, Ndipole = [6, 5, 4, 3]
+    nstart = {'bary': Nprog, 'halo': Nprog + Nbary, 'dipole': Nprog + Nbary + Nhalo, 'all': Nprog}
+    nend = {'bary': Nprog + Nbary, 'halo': Nprog + Nbary + Nhalo, 'dipole': Nprog + Nbary + Nhalo + Ndipole, 'all': np.shape(cx)[0]}
+    
+    if component in ['bary', 'halo', 'dipole']:
+        components = [component]
+    else:
+        components = [x for x in vary if x!='progenitor']
+    cq = cx[nstart[component]:nend[component], nstart[component]:nend[component]]
+    Npot = np.shape(cq)[0]
+    
     if fast:
         cqi = np.linalg.inv(cq)
     else:
         cqi = stable_inverse(cq)
+
+    if scale:
+        scale_vec = np.array([x.value for x in dp[nstart[component]:nend[component]]])
+        scale_mat = np.outer(scale_vec, scale_vec)
+        cqi *= scale_mat
+
+    x0, v0 = gd1_coordinates()
+    Rp = np.linalg.norm(x0[:2])
+    zp = x0[2]
     
-    x = np.linspace(0.1, 2*d, 2*Nb)**2 * 0.5
-    y = np.linspace(0.1, d, Nb)
-    xv, yv = np.meshgrid(x, y)
+    R = np.linspace(-2*d, 2*d, 2*Nb)
+    k = x0[1]/x0[0]
+    x = R/np.sqrt(1+k**2)
+    y = k * x
     
-    xf = np.ravel(xv)
-    yf = np.ravel(yv)
-    Npix = np.size(xf)
+    z = np.linspace(-d, d, Nb)
+    
+    xv, zv = np.meshgrid(x, z)
+    yv, zv = np.meshgrid(y, z)
+    xin = np.array([np.ravel(xv), np.ravel(yv), np.ravel(zv)]).T
+
+    Npix = np.size(xv)
     af = np.empty((Npix, 2))
-    derf = np.empty((Npix, 2, 9))
-    
-    xin = np.array([np.sqrt(xf), np.sqrt(xf), yf]).T
+    derf = np.empty((Npix, 2, Npot))
     
     for i in range(Npix):
         xi = xin[i]*u.kpc
-        a = acc_cyl(xi)
+        a = acc_cyl(xi, components=components)
         
-        dqda = ader_cyl(xi)
+        dqda = ader_cyl(xi, components=components)
         derf[i] = dqda
         
         cai = np.matmul(dqda, np.matmul(cqi, dqda.T))
@@ -1929,24 +2046,23 @@ def crb_acyl(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True, d=20, N
         else:
             ca = stable_inverse(cai)
         a_crb = np.sqrt(np.diag(ca)) * u.pc * u.Myr**-2
-        af[i] = np.abs(a_crb/a)
+        if relative:
+            af[i] = np.abs(a_crb/a)
+        else:
+            af[i] = a_crb
     
     # save
-    np.savez('../data/crb_acyl{:s}_{:d}_{:s}_{:d}_{:d}_{:d}'.format(alabel, n, vlabel, Ndim, d, Nb), acc=af, x=xin, der=derf)
-    
-    x0, v0 = gd1_coordinates()
-    Rp = np.linalg.norm(x0[:2])
-    zp = x0[2]
+    np.savez('../data/crb_acyl{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}'.format(alabel, n, vlabel, component, Ndim, d, Nb, relative), acc=af, x=xin, der=derf)
     
     plt.close()
     fig, ax = plt.subplots(2,1,figsize=(9,9))
     
-    xg = [np.sqrt(xf), yf]
     label = ['$\Delta$ $a_R$', '$\Delta$ $a_Z$']
     
     for i in range(2):
         plt.sca(ax[i])
-        im = plt.imshow(af[:,i].reshape(Nb, 2*Nb), origin='lower', extent=[0.1, 2*d, 0.1, d], cmap=mpl.cm.gray, norm=mpl.colors.LogNorm()) #, vmin=1e-4, vmax=1e-1)
+        #im = plt.imshow(1 - af[:,i].reshape(Nb, 2*Nb)/np.flipud(af[:,i].reshape(Nb, 2*Nb)), origin='lower', extent=[-2*d, 2*d, -d, d], cmap=mpl.cm.RdBu, vmin=-1, vmax=1)
+        im = plt.imshow(af[:,i].reshape(Nb, 2*Nb), origin='lower', extent=[-2*d, 2*d, -d, d], cmap=mpl.cm.gray, norm=mpl.colors.LogNorm(), vmin=vmin, vmax=vmax)
         plt.plot(Rp, zp, 'r*', ms=10)
         #im = plt.imshow(xg[i].reshape(Nb, 2*Nb), origin='lower', extent=[0.1, 2*d, 0.1, d], cmap=mpl.cm.gray)
         
@@ -1957,10 +2073,10 @@ def crb_acyl(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True, d=20, N
         cax = divider.append_axes("right", size="3%", pad=0.1)
         plt.colorbar(im, cax=cax)
         
-        plt.ylabel(label[i] + ' (pc Myr$^{-2}$)')
+        plt.ylabel(label[i] + rlabel)
         
     plt.tight_layout()
-    plt.savefig('../plots/crb_acc_cyl{:s}_{:d}_{:s}_{:d}.png'.format(alabel, n, vlabel, Ndim))
+    plt.savefig('../plots/crb_acc_cyl{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}.png'.format(alabel, n, vlabel, component, Ndim, d, Nb, relative))
 
 def acc_orbit(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True, d=20, Nb=50):
     """"""
@@ -2010,6 +2126,58 @@ def acc_orbit(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True, d=20, 
         
     plt.tight_layout()
     plt.savefig('../plots/crb_acc_prog{:s}_{:d}_{:s}_{:d}.png'.format(alabel, n, vlabel, Ndim))
+
+def acc_symmetries(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole'], align=True, d=20, Nb=50, relative=True):
+    """Visualize whether CRBs on the acceleration field are N-S and E-W symmetric"""
+    
+    pid, dp, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    data = np.load('../data/crb_acyl{:s}_{:d}_{:s}_all_{:d}_{:d}_{:d}_{:d}.npz'.format(alabel, n, vlabel, Ndim, d, Nb, relative))
+    
+    x0, v0 = gd1_coordinates()
+    Rp = np.linalg.norm(x0[:2])
+    zp = x0[2]
+    
+    plt.close()
+    fig, ax = plt.subplots(2,2,figsize=(9,6), sharex='col', sharey=True)
+    
+    label = ['$\Delta$ $a_R$ / $a_R$', '$\Delta$ $a_Z$ / $a_Z$']
+    
+    for i in range(2):
+        plt.sca(ax[i][0])
+        im = plt.imshow((1 - data['acc'][:,i].reshape(Nb, 2*Nb)/np.flipud(data['acc'][:,i].reshape(Nb, 2*Nb))), origin='lower', extent=[-2*d, 2*d, -d, d], cmap=mpl.cm.RdBu, vmin=-1, vmax=1)
+        plt.plot(Rp, zp, 'r*', ms=10)
+        
+        plt.xlim(-2*d, 2*d)
+        plt.ylim(-d, d)
+        
+        if i==0:
+            plt.title('N - S residuals', fontsize='medium')
+        plt.sca(ax[i][1])
+        im = plt.imshow((1 - data['acc'][:,i].reshape(Nb, 2*Nb)/np.fliplr(data['acc'][:,i].reshape(Nb, 2*Nb))), origin='lower', extent=[-2*d, 2*d, -d, d], cmap=mpl.cm.RdBu, vmin=-1, vmax=1)
+        plt.plot(Rp, zp, 'r*', ms=10)
+        
+        plt.xlim(-2*d, 2*d)
+        plt.ylim(-d, d)
+        
+        if i==0:
+            plt.title('E - W residuals', fontsize='medium')
+    
+    plt.sca(ax[0][0])
+    plt.ylabel('Z (kpc)')
+    
+    plt.sca(ax[1][0])
+    plt.xlabel('R (kpc)')
+    plt.ylabel('Z (kpc)')
+    
+    plt.sca(ax[1][1])
+    plt.xlabel('R (kpc)')
+    
+    plt.tight_layout()
+    plt.savefig('../plots/crb_acc_symmetry{:s}_{:d}_{:s}_{:d}_{:d}_{:d}_{:d}.png'.format(alabel, n, vlabel, Ndim, d, Nb, relative))
 
 def acc_radialdep(n, Ndim=6, alldim=False, vary=['halo', 'bary', 'progenitor'], align=True, d=20, Nb=50):
     """Show radial dependence of the acceleration constraints"""
