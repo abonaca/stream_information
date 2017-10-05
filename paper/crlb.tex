@@ -239,7 +239,8 @@ Then it follows:
 We have just obtained a better guess for the inverse of the original matrix $A$, and adopt it as matrix $Q$ in the next iteration.
 This procedure is repeated until $Q$ converges to $A^{-1}$, i.e., $Q A = I$ to machine precision.
 
-In our current implementation, we use the standard, unreliable inverse as the starting guess $Q$, and convergence is typically obtained after $\sim\;10$ iterations.
+In our current implementation, we use the standard, unreliable inverse as the starting guess $Q$. 
+Convergence to the true inverse is typically obtained after $\sim\;10$ iterations.
 
 \end{document}
 
