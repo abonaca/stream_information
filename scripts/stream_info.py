@@ -18,6 +18,7 @@ from astropy.table import Table
 import astropy.coordinates as coord
 import gala.coordinates as gc
 
+import scipy.linalg as la
 import scipy.interpolate
 import scipy.optimize
 import zscale
@@ -1727,7 +1728,7 @@ def acc_kepler(x, p=1*u.Msun):
 def acc_bulge(x, p=[pparams_fid[j] for j in range(2)]):
     """"""
     r = np.linalg.norm(x)*u.kpc
-    a = (-G*p[0]*x/(r * (r + p[1])**2)).to(u.pc*u.Myr**-2)
+    a = -(G*p[0]*x/(r * (r + p[1])**2)).to(u.pc*u.Myr**-2)
     
     return a
 
@@ -1735,8 +1736,8 @@ def acc_disk(x, p=[pparams_fid[j] for j in range(2,5)]):
     """"""
     R = np.linalg.norm(x[:2])*u.kpc
     z = x[2]
-    a = (G*p[0]*x * (R**2 + (p[1] + np.sqrt(z**2 + p[2]**2))**2)**-1.5).to(u.pc*u.Myr**-2)
-    a[2] *= 1 + p[2]/np.sqrt(z**2 + p[2]**2)
+    a = -(G*p[0]*x * (R**2 + (p[1] + np.sqrt(z**2 + p[2]**2))**2)**-1.5).to(u.pc*u.Myr**-2)
+    a[2] *= (1 + p[2]/np.sqrt(z**2 + p[2]**2))
     
     return a
 
@@ -1779,8 +1780,17 @@ def der_kepler(x, p=1*u.Msun):
     
     return dmat.value
 
-def der_nfw(x, pu=[pparams_fid[j] for j in [5,6,8,10]]):
-    """Calculate derivatives of halo potential parameters wrt (Cartesian) components of the acceleration vector a"""
+def pder_kepler(x, p=1*u.Msun):
+    """Derivative of cartesian components of the acceleration wrt to Kepler potential parameter"""
+    r = np.linalg.norm(x)*u.kpc
+    
+    dmat = np.zeros((3,1)) * u.pc * u.Myr**-2 * u.Msun**-1
+    dmat[:,0] = (-G*x*r**-3).to(u.pc * u.Myr**-2 * u.Msun**-1) * 1e11
+    
+    return dmat.value
+
+def pder_nfw(x, pu=[pparams_fid[j] for j in [5,6,8,10]]):
+    """Calculate derivatives of cartesian components of the acceleration wrt halo potential parameters"""
     
     p = pu
     q = np.array([1, p[2], p[3]])
@@ -1793,19 +1803,19 @@ def der_nfw(x, pu=[pparams_fid[j] for j in [5,6,8,10]]):
     dmat = np.zeros((3, 4))
     
     # Vh
-    dmat[:,0] = ( 2*a/p[0] )**-1
+    dmat[:,0] = 2*a/p[0]
     
     # Rh
-    dmat[:,1] = ( a/p[1] + p[0]**2 * p[1] * r**-3 * (1/(p[1]+p[1]**2/r) - 1/(r*(1+p[1]/r)**2)) * x * q**-2 )**-1
+    dmat[:,1] = a/p[1] + p[0]**2 * p[1] * r**-3 * (1/(p[1]+p[1]**2/r) - 1/(r*(1+p[1]/r)**2)) * x * q**-2
     
     # qy, qz
     for i in [1,2]:
-        dmat[i,i+1] = (( -2*a[i]/q[i] )**-1).value
+        dmat[i,i+1] = (-2*a[i]/q[i]).value
     
     return dmat
 
-def der_bulge(x, pu=[pparams_fid[j] for j in range(2)]):
-    """Calculate derivarives of a Hernquist bulge potential parameters wrt (Cartesian) components of the acceleration vector a"""
+def pder_bulge(x, pu=[pparams_fid[j] for j in range(2)]):
+    """Calculate derivarives of cartesian components of the acceleration wrt Hernquist bulge potential parameters"""
     
     # coordinates
     r = np.linalg.norm(x)*u.kpc
@@ -1824,8 +1834,8 @@ def der_bulge(x, pu=[pparams_fid[j] for j in range(2)]):
     
     return dmat
 
-def der_disk(x, pu=[pparams_fid[j] for j in range(2,5)]):
-    """Calculate derivarives of a Miyamoto-Nagai disk potential parameters wrt (Cartesian) components of the acceleration vector a"""
+def pder_disk(x, pu=[pparams_fid[j] for j in range(2,5)]):
+    """Calculate derivarives of cartesian components of the acceleration wrt Miyamoto-Nagai disk potential parameters"""
     
     # coordinates
     R = np.linalg.norm(x[:2])*u.kpc
@@ -1864,6 +1874,20 @@ def der_dipole(x, pu=[pparams_fid[j] for j in range(11,14)]):
     
     return dmat
 
+def pder_dipole(x, pu=[pparams_fid[j] for j in range(11,14)]):
+    """Calculate derivatives of (Cartesian) components of the acceleration vector a wrt dipole potential parameters"""
+    
+    # shape: 3, Npar
+    dmat = np.zeros((3,3))
+    
+    f = np.sqrt(3/(4*np.pi))
+    
+    dmat[0,2] = f
+    dmat[1,0] = f
+    dmat[2,1] = f
+    
+    return dmat
+
 def der_quad(x, p=[pparams_fid[j] for j in range(14,19)]):
     """Caculate derivatives of quadrupole potential parameters wrt (Cartesian) components of the acceleration vector a"""
     
@@ -1876,6 +1900,21 @@ def der_quad(x, p=[pparams_fid[j] for j in range(14,19)]):
     dmat[0] = np.array([x[1], 0, -s*x[0], x[2], x[0]])
     dmat[1] = np.array([x[0], x[2], -s*x[1], 0, -x[1]])
     dmat[2] = np.array([0, x[1], 0.5*s*x[2], x[0], 0])
+    
+    return dmat
+
+def pder_quad(x, p=[pparams_fid[j] for j in range(14,19)]):
+    """Caculate derivatives of (Cartesian) components of the acceleration vector a wrt quadrupole potential parameters"""
+    
+    f = 0.5*np.sqrt(15/np.pi)
+    s = 1/np.sqrt(3)
+    x = [1e-3*i.value for i in x]
+    
+    dmat = np.ones((3,5)) * f
+    
+    dmat[0] = np.array([x[1], 0, -s*x[0], x[2], x[0]])
+    dmat[1] = np.array([x[0], x[2], -s*x[1], 0, -x[1]])
+    dmat[2] = np.array([0, x[1], 2*s*x[2], x[0], 0])
     
     return dmat
 
@@ -1998,6 +2037,21 @@ def ader_cart(x, components=['bary', 'halo', 'dipole']):
     
     return dacart
 
+def apder_cart(x, components=['bary', 'halo', 'dipole']):
+    """"""
+    dacart = np.empty((3,0))
+    dict_der = {'bary': [pder_bulge, pder_disk], 'halo': [pder_nfw], 'dipole': [pder_dipole], 'quad': [pder_quad], 'point': [pder_kepler]}
+    derivatives = []
+    
+    for c in components:
+        derivatives += dict_der[c]
+    
+    for ader in derivatives:
+        da_ = ader(x)
+        dacart = np.hstack((dacart, da_))
+    
+    return dacart
+
 def crb_acart(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', align=True, d=20, Nb=50, fast=False, scale=True, relative=True, progenitor=False):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
@@ -2010,10 +2064,8 @@ def crb_acart(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], 
         vmax = 1
         rlabel = ' / a'
     else:
-        vmin = 5e-2
-        vmax = 1e0
-        vmin = 1e-2
-        vmax = 1e0
+        vmin = 3e-1
+        vmax = 1e1
         rlabel =  ' (pc Myr$^{-2}$)'
     
     # read in full inverse CRB for stream modeling
@@ -2080,23 +2132,11 @@ def crb_acart(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], 
         xi = xin[i]*u.kpc
         a = acc_cart(xi, components=components)
         
-        dqda = ader_cart(xi, components=components)
-        derf[i] = dqda
+        dadq = apder_cart(xi, components=components)
+        derf[i] = dadq
         
-        if Npot>1:
-            cai = np.matmul(dqda, np.matmul(cqi, dqda.T))
-            #cai = np.matmul(np.matmul(dqda, cqi), dqda.T)
-            #cai = np.matmul(dqda, cqi)
-            #print(cai)
-            if fast:
-                ca = np.linalg.inv(cai)
-            else:
-                ca = stable_inverse(cai)
-            a_crb = np.sqrt(np.diag(ca)) * u.pc * u.Myr**-2
-            #print(np.matmul(cqi, dqda.T))
-        else:
-            a_crb = np.sqrt((dqda[:,0]**2 * cqi[0,0])**-1) * u.pc * u.Myr**-2
-            #print(a_crb**-2)
+        ca = np.matmul(dadq, np.matmul(cq, dadq.T))
+        a_crb = np.sqrt(np.diag(ca)) * u.pc * u.Myr**-2
         if relative:
             af[i] = np.abs(a_crb/a)
         else:
@@ -2113,12 +2153,9 @@ def crb_acart(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], 
     
     for i in range(3):
         plt.sca(ax[i])
-        #im = plt.imshow(1 - af[:,i].reshape(Nb, 2*Nb)/np.flipud(af[:,i].reshape(Nb, 2*Nb)), origin='lower', extent=[-2*d, 2*d, -d, d], cmap=mpl.cm.RdBu, vmin=-1, vmax=1)
-        #im = plt.imshow(af[:,i].reshape(Nb, 2*Nb), origin='lower', extent=[-2*d, 2*d, -d, d], cmap=mpl.cm.gray, norm=mpl.colors.LogNorm(), vmin=vmin, vmax=vmax)
-        im = plt.imshow(af[:,i].reshape(Nb, Nb), origin='lower', extent=[-d, d, -d, d], cmap=mpl.cm.gray, norm=mpl.colors.LogNorm(), vmin=vmin, vmax=vmax)
+        im = plt.imshow(af[:,i].reshape(Nb, Nb), origin='lower', extent=[-d, d, -d, d], cmap=mpl.cm.gray, vmin=vmin, vmax=vmax, norm=mpl.colors.LogNorm())
         if progenitor:
             plt.plot(Rp, zp, 'r*', ms=10)
-        #im = plt.imshow(xg[i].reshape(Nb, 2*Nb), origin='lower', extent=[0.1, 2*d, 0.1, d], cmap=mpl.cm.gray)
         
         plt.xlabel('R (kpc)')
         plt.ylabel('Z (kpc)')
@@ -2131,6 +2168,355 @@ def crb_acart(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], 
         
     plt.tight_layout()
     plt.savefig('../plots/crb_acc_cart{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}.png'.format(alabel, n, vlabel, component, Ndim, d, Nb, relative))
+
+def crb_acart_cov(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', j=0, align=True, d=20, Nb=50, fast=False, scale=True, relative=True, progenitor=False, batch=False):
+    """"""
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    if relative:
+        vmin = 1e-2
+        vmax = 1
+        rlabel = ' / a'
+    else:
+        vmin = -0.005
+        vmax = 0.005
+        #vmin = 1e-2
+        #vmax = 1e0
+        rlabel =  ' (pc Myr$^{-2}$)'
+    
+    # read in full inverse CRB for stream modeling
+    cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+    if fast:
+        cx = np.linalg.inv(cxi)
+    else:
+        cx = stable_inverse(cxi)
+    
+    # choose the appropriate components:
+    Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
+    if 'progenitor' not in vary:
+        Nprog = 0
+    nstart = {'bary': Nprog, 'halo': Nprog + Nbary, 'dipole': Nprog + Nbary + Nhalo, 'quad': Nprog + Nbary + Nhalo + Ndipole, 'all': Nprog, 'point': 0}
+    nend = {'bary': Nprog + Nbary, 'halo': Nprog + Nbary + Nhalo, 'dipole': Nprog + Nbary + Nhalo + Ndipole, 'quad': Nprog + Nbary + Nhalo + Ndipole + Nquad, 'all': np.shape(cx)[0], 'point': 1}
+    
+    if 'progenitor' not in vary:
+        nstart['dipole'] = Npoint
+        nend['dipole'] = Npoint + Ndipole
+    
+    if component in ['bary', 'halo', 'dipole', 'quad', 'point']:
+        components = [component]
+    else:
+        components = [x for x in vary if x!='progenitor']
+    cq = cx[nstart[component]:nend[component], nstart[component]:nend[component]]
+    Npot = np.shape(cq)[0]
+    
+    if fast:
+        cqi = np.linalg.inv(cq)
+    else:
+        cqi = stable_inverse(cq)
+    
+    if scale:
+        dp_opt = read_optimal_step(n, vary)
+        dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
+        
+        scale_vec = np.array([x.value for x in dp[nstart[component]:nend[component]]])
+        scale_mat = np.outer(scale_vec, scale_vec)
+        cqi *= scale_mat
+
+    if progenitor:
+        x0, v0 = gd1_coordinates()
+    else:
+        x0 = np.array([4, 4, 0])
+    Rp = np.linalg.norm(x0[:2])
+    zp = x0[2]
+    
+    R = np.linspace(-d, d, Nb)
+    k = x0[1]/x0[0]
+    x = R/np.sqrt(1+k**2)
+    y = k * x
+    
+    z = np.linspace(-d, d, Nb)
+    
+    xv, zv = np.meshgrid(x, z)
+    yv, zv = np.meshgrid(y, z)
+    xin = np.array([np.ravel(xv), np.ravel(yv), np.ravel(zv)]).T
+
+    Npix = np.size(xv)
+    af = np.empty((Npix, 3))
+    derf = np.empty((Npix*3, Npot))
+    
+    for i in range(Npix):
+        xi = xin[i]*u.kpc
+        a = acc_cart(xi, components=components)
+        
+        dadq = apder_cart(xi, components=components)
+        derf[i*3:(i+1)*3] = dadq
+    
+    ca = np.matmul(derf, np.matmul(cq, derf.T))
+    
+    Nx = Npot
+    Nw = Npix*3
+    vals, vecs = la.eigh(ca, eigvals=(Nw - Nx - 2, Nw - 1))
+
+    ## check orthogonality:
+    #for i in range(Npot-1):
+        #for k in range(i+1, Npot):
+            #print(i, k)
+            #print(np.dot(vecs[:,i], vecs[:,k]))
+            #print(np.dot(vecs[::3,i], vecs[::3,k]), np.dot(vecs[1::3,i], vecs[1::3,k]), np.dot(vecs[1::3,i], vecs[1::3,k]))
+    
+    # save
+    np.savez('../data/crb_acart_cov{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}'.format(alabel, n, vlabel, component, Ndim, d, Nb, relative), x=xin, der=derf, c=ca)
+    
+    plt.close()
+    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+    
+    if j==0:
+        vcomb = np.sqrt(np.sum(vecs**2*vals, axis=1))
+        label = ['($\Sigma$ Eigval $\\times$ Eigvec$^2$ $a_{}$'.format(x)+')$^{1/2}$' for x in ['X', 'Y', 'Z']]
+        vmin = 1e-3
+        vmax = 1e-1
+        norm = mpl.colors.LogNorm()
+    else:
+        vcomb = vecs[:,j]
+        label = ['Eig {} $a_{}$'.format(np.abs(j), x) for x in ['X', 'Y', 'Z']]
+        vmin = -0.025
+        vmax = 0.025
+        norm = None
+
+    for i in range(3):
+        plt.sca(ax[i])
+        #im = plt.imshow(vecs[i::3,j].reshape(Nb, Nb), origin='lower', extent=[-d, d, -d, d], cmap=mpl.cm.gray, vmin=vmin, vmax=vmax)
+        im = plt.imshow(vcomb[i::3].reshape(Nb, Nb), origin='lower', extent=[-d, d, -d, d], cmap=mpl.cm.gray, vmin=vmin, vmax=vmax, norm=norm)
+        if progenitor:
+            plt.plot(Rp, zp, 'r*', ms=10)
+        
+        plt.xlabel('R (kpc)')
+        plt.ylabel('Z (kpc)')
+        
+        divider = make_axes_locatable(plt.gca())
+        cax = divider.append_axes("right", size="3%", pad=0.1)
+        plt.colorbar(im, cax=cax)
+        
+        plt.ylabel(label[i])
+        
+    plt.tight_layout()
+    if batch:
+        return fig
+    else:
+        plt.savefig('../plots/crb_acc_cart_cov{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}_{:d}.png'.format(alabel, n, vlabel, component, np.abs(j), Ndim, d, Nb, relative))
+
+
+def a_vecfield(vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', d=20, Nb=10):
+    """Plot acceleration field in R,z plane"""
+    if component in ['bary', 'halo', 'dipole', 'quad', 'point']:
+        components = [component]
+    else:
+        components = [x for x in vary if x!='progenitor']
+
+    x0 = np.array([4, 4, 0])
+    R = np.linspace(-d, d, Nb)
+    k = x0[1]/x0[0]
+    x = R/np.sqrt(1+k**2)
+    y = k * x
+    
+    z = np.linspace(-d, d, Nb)
+    
+    xv, zv = np.meshgrid(x, z)
+    yv, zv = np.meshgrid(y, z)
+    xin = np.array([np.ravel(xv), np.ravel(yv), np.ravel(zv)]).T
+    Rin = np.linalg.norm(xin[:,:2], axis=1) * np.sign(xin[:,0])
+    zin = xin[:,2]
+
+    Npix = np.size(xv)
+    acart_pix = np.empty((Npix, 3))
+    acyl_pix = np.empty((Npix, 2))
+    
+    for i in range(Npix):
+        xi = xin[i]*u.kpc
+        acart = acc_cart(xi, components=components)
+        acart_pix[i] = acart
+    
+    acyl_pix[:,0] = np.linalg.norm(acart_pix[:,:2], axis=1) * -np.sign(xin[:,0])
+    acyl_pix[:,1] = acart_pix[:,2]
+    
+    plt.close()
+    plt.figure()
+    
+    plt.quiver(Rin, zin, acyl_pix[:,0], acyl_pix[:,1])
+    
+    plt.tight_layout()
+
+def a_crbcov_vecfield(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', j=0, align=True, d=20, Nb=10, fast=False, scale=True, relative=False, progenitor=False, batch=False):
+    """"""
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    if relative:
+        vmin = 1e-2
+        vmax = 1
+        rlabel = ' / a'
+    else:
+        vmin = -0.005
+        vmax = 0.005
+        #vmin = 1e-2
+        #vmax = 1e0
+        rlabel =  ' (pc Myr$^{-2}$)'
+    
+    # read in full inverse CRB for stream modeling
+    cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+    if fast:
+        cx = np.linalg.inv(cxi)
+    else:
+        cx = stable_inverse(cxi)
+    
+    # choose the appropriate components:
+    Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
+    if 'progenitor' not in vary:
+        Nprog = 0
+    nstart = {'bary': Nprog, 'halo': Nprog + Nbary, 'dipole': Nprog + Nbary + Nhalo, 'quad': Nprog + Nbary + Nhalo + Ndipole, 'all': Nprog, 'point': 0}
+    nend = {'bary': Nprog + Nbary, 'halo': Nprog + Nbary + Nhalo, 'dipole': Nprog + Nbary + Nhalo + Ndipole, 'quad': Nprog + Nbary + Nhalo + Ndipole + Nquad, 'all': np.shape(cx)[0], 'point': 1}
+    
+    if 'progenitor' not in vary:
+        nstart['dipole'] = Npoint
+        nend['dipole'] = Npoint + Ndipole
+    
+    if component in ['bary', 'halo', 'dipole', 'quad', 'point']:
+        components = [component]
+    else:
+        components = [x for x in vary if x!='progenitor']
+    cq = cx[nstart[component]:nend[component], nstart[component]:nend[component]]
+    Npot = np.shape(cq)[0]
+    
+    if fast:
+        cqi = np.linalg.inv(cq)
+    else:
+        cqi = stable_inverse(cq)
+    
+    if scale:
+        dp_opt = read_optimal_step(n, vary)
+        dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
+        
+        scale_vec = np.array([x.value for x in dp[nstart[component]:nend[component]]])
+        scale_mat = np.outer(scale_vec, scale_vec)
+        cqi *= scale_mat
+
+    if progenitor:
+        x0, v0 = gd1_coordinates()
+    else:
+        x0 = np.array([4, 4, 0])
+    Rp = np.linalg.norm(x0[:2])
+    zp = x0[2]
+    
+    R = np.linspace(-d, d, Nb)
+    k = x0[1]/x0[0]
+    x = R/np.sqrt(1+k**2)
+    y = k * x
+    
+    z = np.linspace(-d, d, Nb)
+    
+    xv, zv = np.meshgrid(x, z)
+    yv, zv = np.meshgrid(y, z)
+    xin = np.array([np.ravel(xv), np.ravel(yv), np.ravel(zv)]).T
+    Rin = np.linalg.norm(xin[:,:2], axis=1) * np.sign(xin[:,0])
+    zin = xin[:,2]
+
+    Npix = np.size(xv)
+    acart_pix = np.empty((Npix, 3))
+    acyl_pix = np.empty((Npix, 2))
+    vcomb_pix = np.empty((Npix, 2))
+
+    af = np.empty((Npix, 3))
+    derf = np.empty((Npix*3, Npot))
+    
+    for i in range(Npix):
+        xi = xin[i]*u.kpc
+        a = acc_cart(xi, components=components)
+        acart_pix[i] = a
+        
+        dadq = apder_cart(xi, components=components)
+        derf[i*3:(i+1)*3] = dadq
+    
+    acyl_pix[:,0] = np.linalg.norm(acart_pix[:,:2], axis=1) * -np.sign(xin[:,0])
+    acyl_pix[:,1] = acart_pix[:,2]
+    
+    ca = np.matmul(derf, np.matmul(cq, derf.T))
+    
+    Nx = Npot
+    Nw = Npix*3
+    vals, vecs = la.eigh(ca, eigvals=(Nw - Nx - 2, Nw - 1))
+
+    if j==0:
+        vcomb = np.sqrt(np.sum(vecs**2*vals, axis=1))
+        label = ['($\Sigma$ Eigval $\\times$ Eigvec$^2$ $a_{}$'.format(x)+')$^{1/2}$' for x in ['X', 'Y', 'Z']]
+        vmin = 1e-3
+        vmax = 1e-1
+        norm = mpl.colors.LogNorm()
+    else:
+        vcomb = vecs[:,j]
+        label = ['Eig {} $a_{}$'.format(np.abs(j), x) for x in ['X', 'Y', 'Z']]
+        vmin = -0.025
+        vmax = 0.025
+        norm = None
+    
+    
+    vcomb_pix[:,0] = np.sqrt(vcomb[0::3]**2 + vcomb[1::3]**2) * -np.sign(xin[:,0])
+    #vcomb_pix[:,0] = np.sqrt(vcomb[0::3]**2 + vcomb[1::3]**2) * -np.sign(vcomb[0::3])
+    vcomb_pix[:,1] = vcomb[2::3]
+    
+    plt.close()
+    fig, ax = plt.subplots(1,2,figsize=(10,5))
+    
+    plt.sca(ax[0])
+    plt.quiver(Rin, zin, acyl_pix[:,0], acyl_pix[:,1])
+    
+    plt.xlabel('R (kpc)')
+    plt.ylabel('Z (kpc)')
+    plt.title('Acceleration {}'.format(component), fontsize='medium')
+    
+    plt.sca(ax[1])
+    plt.quiver(Rin, zin, vcomb_pix[:,0], vcomb_pix[:,1])
+    
+    plt.xlabel('R (kpc)')
+    plt.ylabel('Z (kpc)')
+    plt.title('Eigenvector {}'.format(np.abs(j)), fontsize='medium')
+    
+    plt.tight_layout()
+    if batch:
+        return fig
+    else:
+        plt.savefig('../plots/afield_crbcov{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}_{:d}.png'.format(alabel, n, vlabel, component, np.abs(j), Ndim, d, Nb, relative))
+
+
+def summary(n, mode='scalar', vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all'):
+    """"""
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    fn = {'scalar': crb_acart_cov, 'vector': a_crbcov_vecfield}
+    bins = {'scalar': 30, 'vector': 10}
+    
+    Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
+    Npars = {'bary': Nbary, 'halo': Nhalo, 'dipole': Ndipole, 'quad': Nquad, 'point': Npoint}
+    
+    if component in ['bary', 'halo', 'dipole', 'quad', 'point']:
+        components = [component]
+    else:
+        components = [x for x in vary if x!='progenitor']
+    
+    Niter = [Npars[x] for x in components]
+    Niter = sum(Niter) + 1
+    
+    pp = PdfPages('../plots/acceleration_{}_{}_{}_{}.pdf'.format(n, vlabel, component, mode))
+    
+    for i in range(Niter):
+        print(i, Niter)
+        fig = fn[mode](-1, progenitor=True, batch=True, vary=vary, component=component, j=-i, d=20, Nb=bins[mode])
+        pp.savefig(fig)
+    
+    pp.close()
 
 # cylindrical coordinates
 
