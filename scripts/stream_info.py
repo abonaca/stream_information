@@ -36,7 +36,7 @@ vgc = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 vgc0 = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 
 MASK = -9999
-pparams_fid = [0.5e10*u.Msun, 0.7*u.kpc, 6.8e10*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
+pparams_fid = [0.5*u.Msun, 0.7*u.kpc, 6.8*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
 
 
 class Stream():
@@ -423,6 +423,8 @@ def stream_model(n, pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=None, graph=Fa
     # vary potential parameters
     potential = 'quad'
     pparams = pparams0[:19]
+    pparams[0] = pparams0[0]*1e10
+    pparams[2] = pparams0[2]*1e10
     
     # adjust circular velocity in this halo
     r = observer['galcen_distance']
@@ -443,8 +445,8 @@ def stream_model(n, pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=None, graph=Fa
         x0_obs[i] += pparams0[19+i]
         v0_obs[i] += pparams0[22+i]
     
-    potential = 'point'
-    pparams[0] = 5e9*u.Msun
+    #potential = 'point'
+    #pparams[0] = 5e9*u.Msun
     
     # stream model parameters
     params = {'generate': {'x0': x0_obs, 'v0': v0_obs, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': progenitor['mi'], 'mfinal': progenitor['mf'], 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': progenitor['age'], 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': rotmatrix}}
@@ -488,7 +490,7 @@ def stream_model(n, pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=None, graph=Fa
         
         plt.tight_layout()
         if graphsave:
-            plt.savefig('../plots/mock_observables_s{}_p{}.png'.format(n, potential))
+            plt.savefig('../plots/mock_observables_s{}_p{}.png'.format(n, potential), dpi=150)
     
     return stream
 
@@ -872,15 +874,16 @@ def get_varied_bytype(vary):
     elif vary=='bary':
         pid = [0,1,2,3,4]
         # gd1
-        dp = [0.4e7*u.Msun, 0.005*u.kpc, 0.9e9*u.Msun, 0.002*u.kpc, 0.002*u.kpc]
+        dp = [1e-1*u.Msun, 0.005*u.kpc, 1e-1*u.Msun, 0.002*u.kpc, 0.002*u.kpc]
         ## atlas & triangulum
         #dp = [0.4e5*u.Msun, 0.0005*u.kpc, 0.5e6*u.Msun, 0.0002*u.kpc, 0.002*u.kpc]
-        ## pal5
-        #dp = [0.4e3*u.Msun, 0.000005*u.kpc, 0.5e4*u.Msun, 0.000002*u.kpc, 0.00002*u.kpc]
+        # pal5
+        dp = [1e-2*u.Msun, 0.000005*u.kpc, 1e-2*u.Msun, 0.000002*u.kpc, 0.00002*u.kpc]
+        dp = [1e-7*u.Msun, 0.5*u.kpc, 1e-7*u.Msun, 0.5*u.kpc, 0.5*u.kpc]
     elif vary=='halo':
         pid = [5,6,8,10]
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
-        dp = [30*u.km/u.s, 2.9*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
+        dp = [30*u.km/u.s, 2.5*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
     elif vary=='progenitor':
         pid = [19,20,21,22,23,24]
         dp = [1*u.deg, 1*u.deg, 0.5*u.kpc, 20*u.km/u.s, 0.3*u.mas/u.yr, 0.3*u.mas/u.yr]
@@ -903,7 +906,7 @@ def get_parlabel(pid):
     pid - list of parameter ids"""
     
     master = ['$M_b$', '$a_b$', '$M_d$', '$a_d$', '$b_d$', '$V_h$', '$R_h$', '$\phi$', '$q_1$', '$q_2$', '$q_z$', '$a_{1,-1}$', '$a_{1,0}$', '$a_{1,1}$', '$a_{2,-2}$', '$a_{2,-1}$', '$a_{2,0}$', '$a_{2,1}$', '$a_{2,2}$', '$RA_p$', '$Dec_p$', '$d_p$', '$V_{r_p}$', '$\mu_{\\alpha_p}$', '$\mu_{\delta_p}$']
-    master_units = ['$M_\odot$', 'kpc', '$M_\odot$', 'kpc', 'kpc', 'km/s', 'kpc', 'rad', '', '', '', 'pc/Myr$^2$', 'pc/Myr$^2$', 'pc/Myr$^2$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'deg', 'deg', 'kpc', 'km/s', 'mas/yr', 'mas/yr']
+    master_units = ['$10^{10}$ $M_\odot$', 'kpc', '$10^{10}$ $M_\odot$', 'kpc', 'kpc', 'km/s', 'kpc', 'rad', '', '', '', 'pc/Myr$^2$', 'pc/Myr$^2$', 'pc/Myr$^2$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'deg', 'deg', 'kpc', 'km/s', 'mas/yr', 'mas/yr']
     
     if type(pid) is list:
         labels = []
@@ -1466,7 +1469,7 @@ def bspline_crb(n, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True
                 fits_ex[p][i][j] = scipy.interpolate.make_lsq_spline(stream.obs[0][iexsort], stream.obs[j+1][iexsort], tex, k=k)
     
     for Ndim in [3,4,6]:
-    #for Ndim in [6,]:
+    #for Ndim in [3,]:
         Ndata = Nobs * (Ndim - 1)
         cyd = np.empty(Ndata)
         dydx = np.empty((Np, Ndata))
@@ -2457,7 +2460,7 @@ def a_crbcov_vecfield(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', '
         vmax = 1e-1
         norm = mpl.colors.LogNorm()
     else:
-        vcomb = vecs[:,j]
+        vcomb = vecs[:,j]*np.sqrt(vals[j])
         label = ['Eig {} $a_{}$'.format(np.abs(j), x) for x in ['X', 'Y', 'Z']]
         vmin = -0.025
         vmax = 0.025
@@ -2472,14 +2475,14 @@ def a_crbcov_vecfield(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', '
     fig, ax = plt.subplots(1,2,figsize=(10,5))
     
     plt.sca(ax[0])
-    plt.quiver(Rin, zin, acyl_pix[:,0], acyl_pix[:,1])
+    plt.quiver(Rin, zin, acyl_pix[:,0], acyl_pix[:,1], pivot='middle')
     
     plt.xlabel('R (kpc)')
     plt.ylabel('Z (kpc)')
     plt.title('Acceleration {}'.format(component), fontsize='medium')
     
     plt.sca(ax[1])
-    plt.quiver(Rin, zin, vcomb_pix[:,0], vcomb_pix[:,1])
+    plt.quiver(Rin, zin, vcomb_pix[:,0], vcomb_pix[:,1], pivot='middle', headwidth=0, headlength=0, headaxislength=0)
     
     plt.xlabel('R (kpc)')
     plt.ylabel('Z (kpc)')
@@ -3007,7 +3010,197 @@ def crb_toy(n, alabel='_align', Nobsdim=6, vlabel='point_dipole'):
     """"""
 
 
+def talk_crb_triangle(n=-1, vary=['progenitor', 'bary', 'halo'], plot='all', reveal=0, fast=False, scale=False):
+    """Produce a triangle plot of 2D Cramer-Rao bounds for all model parameters using a given stream"""
+    
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    dp_opt = read_optimal_step(n, vary)
+    dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
+    plabels, units = get_parlabel(pid)
+    params = ['$\Delta$' + x + '({})'.format(y) for x,y in zip(plabels, units)]
+    alabel='_align'
+    
+    if plot=='halo':
+        i0 = 11
+        i1 = 15
+    elif plot=='bary':
+        i0 = 6
+        i1 = 11
+    elif plot=='progenitor':
+        i0 = 0
+        i1 = 6
+    elif plot=='dipole':
+        i0 = 15
+        i1 = len(params)
+    else:
+        i0 = 0
+        i1 = len(params)
+    
+    Nvar = i1 - i0
+    params = params[i0:i1]
+    
+    #label = ['GD-1', 'Pal 5']
+    label = ['RA, Dec, d', 'RA, Dec, d, $V_r$', 'RA, Dec, d, $V_r$, $\mu_\\alpha$, $\mu_\delta$']
+    #name = columns[int(np.abs(n)-1)]
+    
+    #labels = ['RA, Dec, d', 'RA, Dec, d,\n$V_r$', 'RA, Dec, d,\n$V_r$, $\mu_\\alpha$, $\mu_\\delta$']
+    #params0 = ['$V_h$ (km/s)', '$R_h$ (kpc)', '$q_1$', '$q_z$', '$M_{LMC}$', '$X_p$', '$Y_p$', '$Z_p$', '$V_{xp}$', '$V_{yp}$', '$V_{zp}$']
+    #params = ['$\Delta$ '+x for x in params0]
+    ylim = [150, 20, 0.5, 0.5, 5e11]
+    ylim = [20, 10, 0.1, 0.1]
+    
+    plt.close()
+    fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(8,8), sharex='col', sharey='row')
+    
+    # plot 2d bounds in a triangle fashion
+    Ndim = 3
+    #labels = columns
+    streams = np.array([-1,-2,-3,-4])
+    slist = streams[:reveal+1]
+    #for l, n in enumerate(slist):
+    for l, Ndim in enumerate([3, 4, 6]):
+        cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+        if fast:
+            cx = np.linalg.inv(cxi)
+        else:
+            cx = stable_inverse(cxi)
+        cx = cx[i0:i1,i0:i1]
+        
+        for i in range(0,Nvar-1):
+            for j in range(i+1,Nvar):
+                plt.sca(ax[j-1][i])
+                if scale:
+                    cx_2d = np.array([[cx[i][i]/dp_unit[i]**2, cx[i][j]/(dp_unit[i]*dp_unit[j])], [cx[j][i]/(dp_unit[j]*dp_unit[i]), cx[j][j]/dp_unit[j]**2]])
+                else:
+                    cx_2d = np.array([[cx[i][i], cx[i][j]], [cx[j][i], cx[j][j]]])
+                
+                w, v = np.linalg.eig(cx_2d)
+                if np.all(np.isreal(v)):
+                    theta = np.degrees(np.arccos(v[0][0]))
+                    width = np.sqrt(w[0])*2
+                    height = np.sqrt(w[1])*2
+                    
+                    e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.PuBu((l+3)/6), lw=3, label=label[l])
+                    plt.gca().add_patch(e)
+                
+                if l==1:
+                    plt.gca().autoscale_view()
+                
+                if j==Nvar-1:
+                    plt.xlabel(params[i])
+                    
+                if i==0:
+                    plt.ylabel(params[j])
+        
+        # turn off unused axes
+        for i in range(0,Nvar-1):
+            for j in range(i+1,Nvar-1):
+                plt.sca(ax[i][j])
+                plt.axis('off')
+        
+        plt.sca(ax[int(Nvar/2-1)][int(Nvar/2-1)])
+        plt.legend(loc=2, bbox_to_anchor=(1,1))
+    
+    #plt.title('Marginalized ')
+    
+    #plt.tight_layout()
+    plt.tight_layout(h_pad=0.0, w_pad=0.0)
+    plt.savefig('../plots/talk2/triangle_{}.png'.format(n))
+    #plt.savefig('../plots/talk2/triangle_{}.png'.format(reveal))
 
-
-
-
+def talk_stream_comp(n=-1, vary=['progenitor', 'bary', 'halo'], plot='all', reveal=0, fast=False, scale=False):
+    """Produce a triangle plot of 2D Cramer-Rao bounds for all model parameters using a given stream"""
+    
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    dp_opt = read_optimal_step(n, vary)
+    dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
+    plabels, units = get_parlabel(pid)
+    params = ['$\Delta$' + x + '({})'.format(y) for x,y in zip(plabels, units)]
+    alabel='_align'
+    
+    if plot=='halo':
+        i0 = 11
+        i1 = 15
+    elif plot=='bary':
+        i0 = 6
+        i1 = 11
+    elif plot=='progenitor':
+        i0 = 0
+        i1 = 6
+    elif plot=='dipole':
+        i0 = 15
+        i1 = len(params)
+    else:
+        i0 = 0
+        i1 = len(params)
+    
+    Nvar = i1 - i0
+    params = params[i0:i1]
+    
+    label = ['GD-1', 'Pal 5', 'Triangulum']
+    #label = ['RA, Dec, d', 'RA, Dec, d, $V_r$', 'RA, Dec, d, $V_r$, $\mu_\\alpha$, $\mu_\delta$']
+    #name = columns[int(np.abs(n)-1)]
+    
+    #labels = ['RA, Dec, d', 'RA, Dec, d,\n$V_r$', 'RA, Dec, d,\n$V_r$, $\mu_\\alpha$, $\mu_\\delta$']
+    #params0 = ['$V_h$ (km/s)', '$R_h$ (kpc)', '$q_1$', '$q_z$', '$M_{LMC}$', '$X_p$', '$Y_p$', '$Z_p$', '$V_{xp}$', '$V_{yp}$', '$V_{zp}$']
+    #params = ['$\Delta$ '+x for x in params0]
+    ylim = [150, 20, 0.5, 0.5, 5e11]
+    ylim = [20, 10, 0.1, 0.1]
+    
+    plt.close()
+    fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(8,8), sharex='col', sharey='row')
+    
+    # plot 2d bounds in a triangle fashion
+    Ndim = 3
+    #labels = columns
+    streams = np.array([-1,-2,-3,-4])
+    slist = streams[:reveal+1]
+    for l, n in enumerate(slist):
+    #for l, Ndim in enumerate([3, 4, 6]):
+        cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+        if fast:
+            cx = np.linalg.inv(cxi)
+        else:
+            cx = stable_inverse(cxi)
+        cx = cx[i0:i1,i0:i1]
+        
+        for i in range(0,Nvar-1):
+            for j in range(i+1,Nvar):
+                plt.sca(ax[j-1][i])
+                if scale:
+                    cx_2d = np.array([[cx[i][i]/dp_unit[i]**2, cx[i][j]/(dp_unit[i]*dp_unit[j])], [cx[j][i]/(dp_unit[j]*dp_unit[i]), cx[j][j]/dp_unit[j]**2]])
+                else:
+                    cx_2d = np.array([[cx[i][i], cx[i][j]], [cx[j][i], cx[j][j]]])
+                
+                w, v = np.linalg.eig(cx_2d)
+                if np.all(np.isreal(v)):
+                    theta = np.degrees(np.arccos(v[0][0]))
+                    width = np.sqrt(w[0])*2
+                    height = np.sqrt(w[1])*2
+                    
+                    e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.YlOrBr((l+3)/6), lw=3, label=label[l])
+                    plt.gca().add_patch(e)
+                
+                if l==0:
+                    plt.gca().autoscale_view()
+                
+                if j==Nvar-1:
+                    plt.xlabel(params[i])
+                    
+                if i==0:
+                    plt.ylabel(params[j])
+        
+        # turn off unused axes
+        for i in range(0,Nvar-1):
+            for j in range(i+1,Nvar-1):
+                plt.sca(ax[i][j])
+                plt.axis('off')
+        
+        plt.sca(ax[int(Nvar/2-1)][int(Nvar/2-1)])
+        plt.legend(loc=2, bbox_to_anchor=(1,1))
+    
+    #plt.title('Marginalized ')
+    
+    #plt.tight_layout()
+    plt.tight_layout(h_pad=0.0, w_pad=0.0)
+    plt.savefig('../plots/talk2/comparison_{}.png'.format(reveal))
