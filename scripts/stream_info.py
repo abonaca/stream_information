@@ -5,6 +5,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mpl_toolkits.mplot3d import Axes3D
 
 import streakline
 #import streakline2
@@ -893,7 +894,7 @@ def get_varied_bytype(vary):
         dp = [0.3*u.pc/u.Myr**2, 0.3*u.pc/u.Myr**2, 0.3*u.pc/u.Myr**2]
     elif vary=='quad':
         pid = [14,15,16,17,18]
-        dp = [2*u.Gyr**-2 for x in range(5)]
+        dp = [0.5*u.Gyr**-2 for x in range(5)]
     else:
         pid = []
         dp = []
@@ -2172,7 +2173,7 @@ def crb_acart(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], 
     plt.tight_layout()
     plt.savefig('../plots/crb_acc_cart{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}.png'.format(alabel, n, vlabel, component, Ndim, d, Nb, relative))
 
-def crb_acart_cov(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', j=0, align=True, d=20, Nb=50, fast=False, scale=True, relative=True, progenitor=False, batch=False):
+def crb_acart_cov(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', j=0, align=True, d=20, Nb=30, fast=False, scale=True, relative=True, progenitor=False, batch=False):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
     if align:
@@ -2229,7 +2230,9 @@ def crb_acart_cov(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad
         cqi *= scale_mat
 
     if progenitor:
-        x0, v0 = gd1_coordinates()
+        prog_coords = {-1: gd1_coordinates(), -2: pal5_coordinates(), -3: tri_coordinates(), -4: atlas_coordinates()}
+        x0, v0 = prog_coords[n]
+        print(x0)
     else:
         x0 = np.array([4, 4, 0])
     Rp = np.linalg.norm(x0[:2])
@@ -2271,7 +2274,7 @@ def crb_acart_cov(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad
             #print(np.dot(vecs[::3,i], vecs[::3,k]), np.dot(vecs[1::3,i], vecs[1::3,k]), np.dot(vecs[1::3,i], vecs[1::3,k]))
     
     # save
-    np.savez('../data/crb_acart_cov{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}'.format(alabel, n, vlabel, component, Ndim, d, Nb, relative), x=xin, der=derf, c=ca)
+    np.savez('../data/crb_acart_cov{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}_{:d}'.format(alabel, n, vlabel, component, Ndim, d, Nb, relative, progenitor), x=xin, der=derf, c=ca)
     
     plt.close()
     fig, ax = plt.subplots(1, 3, figsize=(15, 5))
@@ -2279,8 +2282,8 @@ def crb_acart_cov(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad
     if j==0:
         vcomb = np.sqrt(np.sum(vecs**2*vals, axis=1))
         label = ['($\Sigma$ Eigval $\\times$ Eigvec$^2$ $a_{}$'.format(x)+')$^{1/2}$' for x in ['X', 'Y', 'Z']]
-        vmin = 1e-3
-        vmax = 1e-1
+        vmin = 1e-2
+        vmax = 5e0
         norm = mpl.colors.LogNorm()
     else:
         vcomb = vecs[:,j]
@@ -2309,7 +2312,7 @@ def crb_acart_cov(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad
     if batch:
         return fig
     else:
-        plt.savefig('../plots/crb_acc_cart_cov{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}_{:d}.png'.format(alabel, n, vlabel, component, np.abs(j), Ndim, d, Nb, relative))
+        plt.savefig('../plots/crb_acc_cart_cov{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}_{:d}_{:d}.png'.format(alabel, n, vlabel, component, np.abs(j), Ndim, d, Nb, relative, progenitor))
 
 
 def a_vecfield(vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', d=20, Nb=10):
@@ -2482,7 +2485,7 @@ def a_crbcov_vecfield(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', '
     plt.title('Acceleration {}'.format(component), fontsize='medium')
     
     plt.sca(ax[1])
-    plt.quiver(Rin, zin, vcomb_pix[:,0], vcomb_pix[:,1], pivot='middle', headwidth=0, headlength=0, headaxislength=0)
+    plt.quiver(Rin, zin, vcomb_pix[:,0], vcomb_pix[:,1], pivot='middle', headwidth=0, headlength=0, headaxislength=0, scale=0.02, scale_units='xy')
     
     plt.xlabel('R (kpc)')
     plt.ylabel('Z (kpc)')
@@ -2913,25 +2916,82 @@ def prog_orbit(n):
     """"""
     
     orbit = stream_orbit(n)
-    #orbit['x'].to(u.kpc)
-    #print(np.shape(orbit['x']))
-    R = np.linalg.norm(orbit['x'][:2,:].to(u.kpc), axis=0)
-    z = orbit['x'][2].to(u.kpc)
+
+    R = np.linalg.norm(orbit['x'][:2,:].to(u.kpc), axis=0)[::-1]
+    x = orbit['x'][0].to(u.kpc)[::-1]
+    y = orbit['x'][1].to(u.kpc)[::-1]
+    z = orbit['x'][2].to(u.kpc)[::-1]
     
-    x0, v0 = gd1_coordinates()
-    Rp = np.linalg.norm(x0[:2])
-    zp = x0[2]
-    
-    c = np.arange(np.size(z))
+    c = np.arange(np.size(z))[::-1]
     
     plt.close()
-    plt.figure()
+    fig, ax = plt.subplots(1,3,figsize=(15,5))
     
-    plt.scatter(R[::-1], z[::-1], c=c[::-1], cmap=mpl.cm.gray)
+    plt.sca(ax[0])
+    plt.scatter(x, y, c=c, cmap=mpl.cm.gray)
+    
+    plt.xlabel('X (kpc)')
+    plt.ylabel('Y (kpc)')
+    
+    plt.sca(ax[1])
+    plt.scatter(x, z, c=c, cmap=mpl.cm.gray)
+    
+    plt.xlabel('X (kpc)')
+    plt.ylabel('Z (kpc)')
+    
+    plt.sca(ax[2])
+    plt.scatter(y, z, c=c, cmap=mpl.cm.gray)
+    
+    plt.xlabel('Y (kpc)')
+    plt.ylabel('Z (kpc)')
+    
+    plt.tight_layout()
+    plt.savefig('../plots/orbit_cartesian_{}.png'.format(n))
+    #plt.scatter(R[::-1], z[::-1], c=c[::-1], cmap=mpl.cm.gray)
     #plt.plot(Rp, zp, 'ko', ms=10)
     
-    plt.xlim(0,40)
-    plt.ylim(-20,20)
+    #plt.xlim(0,40)
+    #plt.ylim(-20,20)
+
+def fancy_name(n):
+    """Return nicely formatted stream name"""
+    names = {-1: 'GD-1', -2: 'Palomar 5', -3: 'Triangulum', -4: 'ATLAS'}
+    
+    return names[n]
+
+def prog_orbit3d(n, symmetry=False):
+    """"""
+    
+    orbit = stream_orbit(n)
+
+    R = np.linalg.norm(orbit['x'][:2,:].to(u.kpc), axis=0)[::-1]
+    x = orbit['x'][0].to(u.kpc)[::-1].value
+    y = orbit['x'][1].to(u.kpc)[::-1].value
+    z = orbit['x'][2].to(u.kpc)[::-1].value
+    
+    c = np.arange(np.size(z))[::-1]
+    
+    plt.close()
+    fig = plt.figure(figsize=(9,9))
+    
+    ax = fig.add_subplot(1,1,1, projection='3d')
+    if symmetry:
+        azimuth = {-1: 119, -2: -39, -3: -5, -4: -11}
+        elevation = {-1: 49, -2: -117, -3: 49, -4: 60}
+        ax.view_init(azim=azimuth[n], elev=elevation[n])
+    else:
+        ax.view_init(azim=-10, elev=30)
+    ax.set_frame_on(False)
+    
+    ax.scatter(x, y, z, 'o', depthshade=False, c=c, cmap=mpl.cm.YlOrBr_r)
+    
+    ax.set_xlabel('X (kpc)')
+    ax.set_ylabel('Y (kpc)')
+    ax.set_zlabel('Z (kpc)')
+    plt.title('{}'.format(fancy_name(n)))
+    
+    plt.tight_layout()
+    plt.savefig('../plots/orbit_3d_{}_{:d}.png'.format(n, symmetry))
 
 def stream_orbit(n, pparams0=[0.5e10*u.Msun, 0.7*u.kpc, 6.8e10*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr], dt=0.2*u.Myr, rotmatrix=None, graph=False, observer=mw_observer, vobs=vsun, footprint='', obsmode='equatorial'):
     """Create a streakline model of a stream
