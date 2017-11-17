@@ -843,6 +843,12 @@ def atlas_track():
     
     return (ra_s, dec_s)
 
+def fancy_name(n):
+    """Return nicely formatted stream name"""
+    names = {-1: 'GD-1', -2: 'Palomar 5', -3: 'Triangulum', -4: 'ATLAS'}
+    
+    return names[n]
+
 
 # model parameters
 
@@ -1272,6 +1278,8 @@ def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', 
     units = ['kpc', 'kpc', 'kpc', 'km/s', 'km/s', 'km/s']
     punits = ['({})'.format(x) if len(x) else '' for x in units]
 
+    dpvec = np.array([x.value for x in dp])
+
     Nstep, step = get_steps(Nstep=Nstep, log=log)
 
     dev_der = np.empty((Np, Nstep-2*layer))
@@ -1286,6 +1294,7 @@ def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', 
     ra = np.linspace(np.min(stream0.obs[0])*1.05, np.max(stream0.obs[0])*0.95, Nobs)
     t = np.r_[(stream0.obs[0][isort][0],)*(k+1), ra, (stream0.obs[0][isort][-1],)*(k+1)]
     fits = [None]*5
+    dydx_all = np.empty((Np, Nstep, 5, 100))
     
     for j in range(5):
         fits[j] = scipy.interpolate.make_lsq_spline(stream0.obs[0][isort], stream0.obs[j+1][isort], t, k=k)
@@ -1323,6 +1332,7 @@ def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', 
                 dy = stream_fits[i][j](ra_der) - stream_fits[-i-1][j](ra_der)
                 dydx[i][j] = -dy / np.abs(2*step[i]*dp[p])
         
+        dydx_all[p] = dydx
         # deviations from adjacent steps
         step_der[p] = -step[layer:Nstep-layer] * dp[p]
         
@@ -1333,7 +1343,7 @@ def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', 
                     dev_der[p][i-layer] += np.sum((dydx[i][j] - dydx[i-l-1][j])**2)
                     dev_der[p][i-layer] += np.sum((dydx[i][j] - dydx[i+l+1][j])**2)
     
-    np.savez('../data/step_convergence_{}_{}_Ns{}_log{}_l{}'.format(n, vlabel, Nstep, log, layer), step=step_der, dev=dev_der)
+    np.savez('../data/step_convergence_{}_{}_Ns{}_log{}_l{}'.format(n, vlabel, Nstep, log, layer), step=step_der, dev=dev_der, ders=dydx_all, steps_all=np.outer(dpvec,step[Nstep:]))
     
     if graph:
         plt.close()
@@ -1361,31 +1371,51 @@ def choose_step(n, tolerance=2, Nstep=20, log=True, layer=1, vary='halo'):
     t = np.load('../data/step_convergence_{}_{}_Ns{}_log{}_l{}.npz'.format(n, vlabel, Nstep, log, layer))
     dev = t['dev']
     step = t['step']
+    dydx = t['ders']
+    steps_all = t['steps_all'][:,::-1]
+    
+    #print(steps_all[0])
+    #print(step[0])
     
     best = np.empty(Np)
     
     # plot setup
     da = 4
-    if Np>6:
-        nrow = 2
-        ncol = np.int64(np.ceil(Np/2))
-    else:
-        nrow = 1
-        ncol = Np
+    #if Np>6:
+        #nrow = 2
+        #ncol = np.int64(np.ceil(Np/2))
+    #else:
+        #nrow = 1
+        #ncol = Np
+    
+    nrow = 2
+    ncol = Np
     
     plt.close()
-    fig, ax = plt.subplots(nrow, ncol, figsize=(da*ncol, da*nrow), squeeze=False)
+    fig, ax = plt.subplots(nrow, ncol, figsize=(da*ncol, da*1.3), squeeze=False, sharex='col', gridspec_kw = {'height_ratios':[1.2, 3]})
     
     for p in range(Np):
-        plt.sca(ax[int(p/ncol)][int(p%ncol)])
-        plt.plot(step[p], dev[p], 'ko')
-        
+        #plt.sca(ax[int(p/ncol)][int(p%ncol)])
         # choose step
         dmin = np.min(dev[p])
         dtol = tolerance * dmin
         opt_step = np.min(step[p][dev[p]<dtol])
         opt_id = step[p]==opt_step
         best[p] = opt_step
+        
+        plt.sca(ax[0][p])
+        for i in range(5):
+            for j in range(10):
+                plt.plot(steps_all[p], np.tanh(dydx[p,:,i,j*10]), '-', color='{}'.format(i/5), lw=0.5, alpha=0.5)
+
+        plt.axvline(opt_step, ls='-', color='r', lw=2)
+        plt.ylim(-1,1)
+        
+        plt.ylabel('Derivative')
+        plt.title('{}'.format(plabels[p])+'$_{best}$ = '+'{:2.2g}'.format(opt_step), fontsize='small')
+        
+        plt.sca(ax[1][p])
+        plt.plot(step[p], dev[p], 'ko')
         
         plt.axvline(opt_step, ls='-', color='r', lw=2)
         plt.plot(step[p][opt_id], dev[p][opt_id], 'ro')
@@ -1398,11 +1428,10 @@ def choose_step(n, tolerance=2, Nstep=20, log=True, layer=1, vary='halo'):
         plt.gca().set_xscale('log')
         plt.xlabel('$\Delta$ {} {}'.format(plabels[p], punits[p]))
         plt.ylabel('Derivative deviation')
-        plt.title('{}'.format(plabels[p])+'$_{best}$ = '+'{:2.2g}'.format(opt_step), fontsize='small')
     
     np.save('../data/optimal_step_{}_{}'.format(n, vlabel), best)
 
-    plt.tight_layout()
+    plt.tight_layout(h_pad=0)
     plt.savefig('../plots/step_convergence_{}_{}_Ns{}_log{}_l{}.png'.format(n, vlabel, Nstep, log, layer))
 
 def read_optimal_step(n, vary):
@@ -1690,7 +1719,7 @@ def crb_triangle_alldim(n, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad']
                 
                 w, v = np.linalg.eig(cx_2d)
                 if np.all(np.isreal(v)):
-                    theta = np.degrees(np.arccos(v[0][0]))
+                    theta = np.degrees(np.arctan2(v[1][0], v[0][0]))
                     width = np.sqrt(w[0])*2
                     height = np.sqrt(w[1])*2
                     
@@ -1718,7 +1747,15 @@ def crb_triangle_alldim(n, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad']
     plt.tight_layout()
     plt.savefig('../plots/crb_triangle_alldim_{:s}_{:d}_{:s}_{:s}.pdf'.format(alabel, n, vlabel, plot))
 
-###
+def compare_optimal_steps():
+    """"""
+    vary = ['progenitor', 'bary', 'halo', 'dipole', 'quad']
+    
+    for n in [-1,-2,-3]:
+        print(n)
+        print(read_optimal_step(n, vary))
+
+########################
 # cartesian coordinates
 
 # accelerations
@@ -2953,12 +2990,6 @@ def prog_orbit(n):
     #plt.xlim(0,40)
     #plt.ylim(-20,20)
 
-def fancy_name(n):
-    """Return nicely formatted stream name"""
-    names = {-1: 'GD-1', -2: 'Palomar 5', -3: 'Triangulum', -4: 'ATLAS'}
-    
-    return names[n]
-
 def prog_orbit3d(n, symmetry=False):
     """"""
     
@@ -3030,7 +3061,171 @@ def stream_orbit(n, pparams0=[0.5e10*u.Msun, 0.7*u.kpc, 6.8e10*u.Msun, 3*u.kpc, 
     
     return stream.orbit
 
+# summary of parameter constraints
 
+def relative_crb(vary=['progenitor', 'bary', 'halo'], component='all', Ndim=6, align=True, fast=False, scale=False):
+    """Plot crb_param/param for 3 streams"""
+    pid, dp, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    
+    # choose the appropriate components:
+    Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
+    if 'progenitor' not in vary:
+        Nprog = 0
+    nstart = {'bary': Nprog, 'halo': Nprog + Nbary, 'dipole': Nprog + Nbary + Nhalo, 'quad': Nprog + Nbary + Nhalo + Ndipole, 'all': Nprog, 'point': 0}
+    nend = {'bary': Nprog + Nbary, 'halo': Nprog + Nbary + Nhalo, 'dipole': Nprog + Nbary + Nhalo + Ndipole, 'quad': Nprog + Nbary + Nhalo + Ndipole + Nquad, 'all': len(pid), 'point': 1}
+    
+    if 'progenitor' not in vary:
+        nstart['dipole'] = Npoint
+        nend['dipole'] = Npoint + Ndipole
+    
+    if component in ['bary', 'halo', 'dipole', 'quad', 'point']:
+        components = [component]
+    else:
+        components = [x for x in vary if x!='progenitor']
+    
+    plabels, units = get_parlabel(pid)
+    #params = ['$\Delta$' + x + '({})'.format(y) for x,y in zip(plabels, units)]
+    params = [x for x in plabels]
+    params = params[nstart[component]:nend[component]]
+    Nvar = len(params)
+    xpos = np.arange(Nvar)
+    
+    params_fid = np.array([pparams_fid[x].value for x in pid[nstart[component]:nend[component]]])
+    
+    plt.close()
+    plt.figure(figsize=(10,6))
+    
+    for n in [-1,-2,-3]:
+        cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+        if fast:
+            cx = np.linalg.inv(cxi)
+        else:
+            cx = stable_inverse(cxi)
+        
+        cq = cx[nstart[component]:nend[component], nstart[component]:nend[component]]
+
+        if scale:
+            dp_opt = read_optimal_step(n, vary)
+            dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
+            
+            scale_vec = np.array([x.value for x in dp[nstart[component]:nend[component]]])
+            scale_mat = np.outer(scale_vec, scale_vec)
+            cq /= scale_mat
+        
+        crb = np.sqrt(np.diag(cq))
+        crb_rel = crb / params_fid
+        
+        print(fancy_name(n))
+        #print(crb)
+        print(crb_rel)
+    
+        plt.plot(xpos, crb_rel, 'o', label='{}'.format(fancy_name(n)))
+    
+    plt.legend(fontsize='small')
+    plt.ylabel('Relative CRB')
+    plt.xticks(xpos, params, rotation='horizontal', fontsize='medium')
+    plt.xlabel('Parameter')
+    
+    plt.ylim(0, 0.2)
+    #plt.gca().set_yscale('log')
+    
+    plt.tight_layout()
+    plt.savefig('../plots/relative_crb_{:s}_{:s}_{:d}.png'.format(vlabel, component, Ndim))
+    
+def relative_crb_sky(vary=['progenitor', 'bary', 'halo'], component='all', Ndim=6, align=True, fast=False, scale=False):
+    """"""
+    pid, dp, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    
+    # choose the appropriate components:
+    Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
+    if 'progenitor' not in vary:
+        Nprog = 0
+    nstart = {'bary': Nprog, 'halo': Nprog + Nbary, 'dipole': Nprog + Nbary + Nhalo, 'quad': Nprog + Nbary + Nhalo + Ndipole, 'all': Nprog, 'point': 0}
+    nend = {'bary': Nprog + Nbary, 'halo': Nprog + Nbary + Nhalo, 'dipole': Nprog + Nbary + Nhalo + Ndipole, 'quad': Nprog + Nbary + Nhalo + Ndipole + Nquad, 'all': len(pid), 'point': 1}
+    
+    if 'progenitor' not in vary:
+        nstart['dipole'] = Npoint
+        nend['dipole'] = Npoint + Ndipole
+    
+    if component in ['bary', 'halo', 'dipole', 'quad', 'point']:
+        components = [component]
+    else:
+        components = [x for x in vary if x!='progenitor']
+    
+    plabels, units = get_parlabel(pid)
+    #params = ['$\Delta$' + x + '({})'.format(y) for x,y in zip(plabels, units)]
+    params = [x for x in plabels]
+    params = params[nstart[component]:nend[component]]
+    Nvar = len(params)
+    xpos = np.arange(Nvar)
+    
+    params_fid = np.array([pparams_fid[x].value for x in pid[nstart[component]:nend[component]]])
+    
+    dd = 5
+    plt.close()
+    fig, ax = plt.subplots(Nvar, 2, figsize=(dd, 0.5*dd*Nvar), sharex='col', sharey='col', gridspec_kw = {'width_ratios':[6, 1]})
+    
+    for n in [-1,-2,-3]:
+        cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+        if fast:
+            cx = np.linalg.inv(cxi)
+        else:
+            cx = stable_inverse(cxi)
+        
+        cq = cx[nstart[component]:nend[component], nstart[component]:nend[component]]
+
+        if scale:
+            dp_opt = read_optimal_step(n, vary)
+            dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
+            
+            scale_vec = np.array([x.value for x in dp[nstart[component]:nend[component]]])
+            scale_mat = np.outer(scale_vec, scale_vec)
+            cq /= scale_mat
+        
+        crb = np.sqrt(np.diag(cq))
+        crb_rel = crb / params_fid
+        
+        #print(fancy_name(n))
+        ##print(crb)
+        #print(crb_rel)
+        
+        stream = stream_model(n)
+        for i in range(Nvar):
+            vmin, vmax = -2, 2
+            cind = (np.log10(crb_rel[i]) - vmin)/(vmax - vmin)
+            color = mpl.cm.magma_r(cind)
+            
+            plt.sca(ax[i])
+            plt.plot(stream.obs[0], stream.obs[1], 'o', color=color)
+    
+    for i in range(Nvar):
+        plt.sca(ax[i])
+        plt.gca().set_axis_bgcolor(mpl.cm.magma(0))
+        plt.gca().invert_xaxis()
+
+        plt.title(params[i], fontsize='medium')
+        plt.ylabel('Dec (deg)')
+        if i==Nvar-1:
+            plt.xlabel('R.A. (deg)')
+        
+    #plt.legend(fontsize='small')
+    #plt.ylabel('Relative CRB')
+    #plt.xticks(xpos, params, rotation='horizontal', fontsize='medium')
+    #plt.xlabel('Parameter')
+    
+    #plt.gca().set_yscale('log')
+    
+    plt.tight_layout()
+    plt.savefig('../plots/relative_crb_sky_{:s}_{:s}_{:d}.png'.format(vlabel, component, Ndim))
+    
 # toy problem: kepler + dipole
 
 import sklearn.datasets
@@ -3234,7 +3429,7 @@ def talk_stream_comp(n=-1, vary=['progenitor', 'bary', 'halo'], plot='all', reve
                 
                 w, v = np.linalg.eig(cx_2d)
                 if np.all(np.isreal(v)):
-                    theta = np.degrees(np.arccos(v[0][0]))
+                    theta = np.degrees(np.arctan2(v[1][0], v[0][0]))
                     width = np.sqrt(w[0])*2
                     height = np.sqrt(w[1])*2
                     
@@ -3264,3 +3459,70 @@ def talk_stream_comp(n=-1, vary=['progenitor', 'bary', 'halo'], plot='all', reve
     #plt.tight_layout()
     plt.tight_layout(h_pad=0.0, w_pad=0.0)
     plt.savefig('../plots/talk2/comparison_{}.png'.format(reveal))
+
+def test_ellipse():
+    """"""
+    
+    th = np.radians(60)
+    v = np.array([[np.cos(th),np.sin(th)], [-np.sin(th),np.cos(th)]])
+    w = np.array([2,1])
+    
+    plt.close()
+    plt.figure()
+    
+    theta = np.degrees(np.arctan2(v[0][1], v[0][0]))
+    print(theta, np.degrees(th))
+    e = mpl.patches.Ellipse((0,0), width=w[0]*2, height=w[1]*2, angle=theta, fc='none', ec='k', lw=2)
+    plt.gca().add_artist(e)
+    
+    plt.xlim(-5,5)
+    plt.ylim(-5,5)
+
+def test_ellipse2():
+    """"""
+    v1 = np.array([1.5, -0.05])
+    v2 = np.array([0.01, 0.3])
+    c = np.outer(v1, v1) + np.outer(v2, v2)
+    w, v = np.linalg.eig(c)
+    
+    print(w)
+    print(v)
+    
+    plt.close()
+    plt.figure()
+    
+    theta = np.degrees(np.arctan2(v[1][0], v[0][0]))
+    width = np.sqrt(w[0])*2
+    height = np.sqrt(w[1])*2
+    print(width/height)
+    e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec='k', lw=2)
+    plt.gca().add_artist(e)
+    
+    plt.xlim(-5,5)
+    plt.ylim(-5,5)
+    plt.savefig('../plots/test_ellipse.png')
+
+def test_ellipse3():
+    """"""
+    v1 = np.array([-28., -8.])
+    v2 = np.array([6., -21.])
+    c = np.outer(v1, v1) + np.outer(v2, v2)
+    w, v = np.linalg.eig(c)
+    
+    print(w)
+    print(v)
+    
+    plt.close()
+    plt.figure()
+    
+    theta = np.degrees(np.arctan2(v[1][0], v[0][0]))
+    width = np.sqrt(w[0])*2
+    height = np.sqrt(w[1])*2
+    print(width, height, width/height)
+    e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec='k', lw=2)
+    
+    plt.gca().add_artist(e)
+    plt.gca().autoscale_view()
+    plt.xlim(-40,40)
+    plt.ylim(-40,40)
+    plt.savefig('../plots/test_ellipse3.png')
