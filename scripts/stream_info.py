@@ -2562,6 +2562,122 @@ def summary(n, mode='scalar', vary=['progenitor', 'bary', 'halo', 'dipole', 'qua
     pp.close()
 
 
+# circular velocity
+
+def pder_vc(x, p=[pparams_fid[j] for j in [0,1,2,3,4,5,6,8,10]], components=['bary', 'halo']):
+    """"""
+    N = np.size(x)
+    
+    # components
+    bulge = np.array([G*x*(x+p[1])**-2, -2*G*p[0]*x*(x+p[1])**-3])
+    aux = p[3] + p[4]
+    disk = np.array([G*x**2*(x**2 + aux**2)**-1.5, -3*G*p[2]*x**2*aux*(x**2 + aux**2)**-2.5, -3*G*p[2]*x**2*aux*(x**2 + aux**2)**-2.5])
+    nfw = np.array([2*p[5]*(p[6]/x*np.log(1+x.value/p[6].value) - (1+x.value/p[6].value)**-1), p[5]**2*(np.log(1+x.value/p[6].value)/x - (x+p[6])**-1 - x*(x+p[6])**-2), np.zeros(N), np.zeros(N)])
+
+    pder = np.vstack([bulge, disk, nfw])
+    
+    return pder
+
+def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', j=0, align=True, d=20, Nb=100, fast=False, scale=True):
+    """"""
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+        
+    plt.close()
+    fig, ax = plt.subplots(1,2,figsize=(10,5))
+    
+    labels = {-1: 'GD-1', -2: 'Palomar 5', -3: 'Triangulum'}
+    colors = {-1: mpl.cm.bone(0), -2: mpl.cm.bone(0.5), -3: mpl.cm.bone(0.8)}
+    
+    for n in [-1, -2, -3]:
+        # read in full inverse CRB for stream modeling
+        cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+        if fast:
+            cx = np.linalg.inv(cxi)
+        else:
+            cx = stable_inverse(cxi)
+        
+        # choose the appropriate components:
+        Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
+        if 'progenitor' not in vary:
+            Nprog = 0
+        nstart = {'bary': Nprog, 'halo': Nprog + Nbary, 'dipole': Nprog + Nbary + Nhalo, 'quad': Nprog + Nbary + Nhalo + Ndipole, 'all': Nprog, 'point': 0}
+        nend = {'bary': Nprog + Nbary, 'halo': Nprog + Nbary + Nhalo, 'dipole': Nprog + Nbary + Nhalo + Ndipole, 'quad': Nprog + Nbary + Nhalo + Ndipole + Nquad, 'all': np.shape(cx)[0], 'point': 1}
+        
+        if 'progenitor' not in vary:
+            nstart['dipole'] = Npoint
+            nend['dipole'] = Npoint + Ndipole
+        
+        if component in ['bary', 'halo', 'dipole', 'quad', 'point']:
+            components = [component]
+        else:
+            components = [x for x in vary if x!='progenitor']
+        cq = cx[nstart[component]:nend[component], nstart[component]:nend[component]]
+        Npot = np.shape(cq)[0]
+        
+        if fast:
+            cqi = np.linalg.inv(cq)
+        else:
+            cqi = stable_inverse(cq)
+        
+        if scale:
+            dp_opt = read_optimal_step(n, vary)
+            dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
+            
+            scale_vec = np.array([x.value for x in dp[nstart[component]:nend[component]]])
+            scale_mat = np.outer(scale_vec, scale_vec)
+            cqi *= scale_mat
+        
+        x = np.linspace(0.01, d, Nb)*u.kpc
+        Npix = np.size(x)
+        derf = np.transpose(pder_vc(x, components=components))
+        
+        ca = np.matmul(derf, np.matmul(cq, derf.T))
+        
+        Nx = Npot
+        Nw = Nb
+        vals, vecs = la.eigh(ca, eigvals=(Nw - Nx - 2, Nw - 1))
+
+        if j==0:
+            vcomb = np.sqrt(np.sum(vecs**2*vals, axis=1))
+            #label = ['($\Sigma$ Eigval $\\times$ Eigvec$^2$ $a_{}$'.format(x)+')$^{1/2}$' for x in ['X', 'Y', 'Z']]
+        else:
+            vcomb = vecs[:,j]*np.sqrt(vals[j])
+            #label = ['Eig {} $a_{}$'.format(np.abs(j), x) for x in ['X', 'Y', 'Z']]
+
+        mcomb = (vcomb*u.km**2*u.s**-2 * x / G).to(u.Msun)
+
+        # relate to orbit
+        orbit = stream_orbit(n)
+        r = np.linalg.norm(orbit['x'].to(u.kpc), axis=0)
+        rmax = np.max(r)
+        x = x/rmax
+        
+        # plot
+        plt.sca(ax[0])
+        plt.plot(x, np.sqrt(vcomb), '-', lw=3, color=colors[n], label=labels[n])
+        
+        plt.sca(ax[1])
+        plt.plot(x, mcomb, '-', lw=3, color=colors[n], label=labels[n])
+    
+    plt.sca(ax[0])
+    plt.xlabel('r/r$_{apo}$')
+    plt.ylabel('$\Delta$ $V_c$ (km s$^{-1}$)')
+    plt.xlim(0,2)
+    plt.ylim(0, 100)
+    
+    plt.sca(ax[1])
+    plt.legend(frameon=False, handlelength=1, fontsize='small')
+    plt.xlabel('r/r$_{apo}$')
+    plt.ylabel('$\Delta$ $M_{enc}$ ($M_\odot$)')
+    plt.xlim(0,2)
+    plt.ylim(0, 1e11)
+    
+    plt.tight_layout()
+    plt.savefig('../plots/vc_r_summary.png')
 
 # progenitor's orbit
 
