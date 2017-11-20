@@ -1708,6 +1708,7 @@ def crb_triangle_alldim(n, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad']
         else:
             cx = stable_inverse(cxi)
         cx = cx[i0:i1,i0:i1]
+        print(np.sqrt(np.diag(cx)))
         
         for i in range(0,Nvar-1):
             for j in range(i+1,Nvar):
@@ -2678,6 +2679,103 @@ def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], 
     
     plt.tight_layout()
     plt.savefig('../plots/vc_r_summary.png')
+
+
+# flattening
+
+def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='halo', j=0, align=True, fast=False, scale=False):
+    """"""
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    
+    kq = {'x': 0, 'z': 2}
+    iq = {'x': 2, 'z': 3}
+    labelq = {'x': '$_x$', 'z': '$_z$'}
+    
+    plt.close()
+    fig, ax = plt.subplots(1,3,figsize=(15,5))
+    
+    labels = {-1: 'GD-1', -2: 'Palomar 5', -3: 'Triangulum'}
+    colors = {-1: mpl.cm.bone(0), -2: mpl.cm.bone(0.5), -3: mpl.cm.bone(0.8)}
+    
+    for n in [-1, -2, -3]:
+    #for n in [-1,]:
+        # read in full inverse CRB for stream modeling
+        cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+        if fast:
+            cx = np.linalg.inv(cxi)
+        else:
+            cx = stable_inverse(cxi)
+        
+        # choose the appropriate components:
+        Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
+        if 'progenitor' not in vary:
+            Nprog = 0
+        nstart = {'bary': Nprog, 'halo': Nprog + Nbary, 'dipole': Nprog + Nbary + Nhalo, 'quad': Nprog + Nbary + Nhalo + Ndipole, 'all': Nprog, 'point': 0}
+        nend = {'bary': Nprog + Nbary, 'halo': Nprog + Nbary + Nhalo, 'dipole': Nprog + Nbary + Nhalo + Ndipole, 'quad': Nprog + Nbary + Nhalo + Ndipole + Nquad, 'all': np.shape(cx)[0], 'point': 1}
+        
+        if 'progenitor' not in vary:
+            nstart['dipole'] = Npoint
+            nend['dipole'] = Npoint + Ndipole
+        
+        if component in ['bary', 'halo', 'dipole', 'quad', 'point']:
+            components = [component]
+        else:
+            components = [x for x in vary if x!='progenitor']
+        cq = cx[nstart[component]:nend[component], nstart[component]:nend[component]]
+        Npot = np.shape(cq)[0]
+        
+        if scale:
+            dp_opt = read_optimal_step(n, vary)
+            dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
+            dp_unit = unity_scale(dp)
+            scale_vec = np.array([x.value for x in dp_unit[nstart[component]:nend[component]]])
+            scale_mat = np.outer(scale_vec, scale_vec)
+            cqi /= scale_mat
+        
+        delta_q = np.sqrt(cq[iq[q], iq[q]])
+
+        # relate to orbit
+        orbit = stream_orbit(n)
+        r = np.linalg.norm(orbit['x'].to(u.kpc), axis=0)
+        rmin = np.min(r)
+        rmax = np.max(r)
+        e = (rmax - rmin)/(rmax + rmin)
+        
+        l = np.cross(orbit['x'].to(u.kpc), orbit['v'].to(u.km/u.s), axisa=0, axisb=0)
+        ltheta = np.median(l[:,kq[q]]/np.linalg.norm(l, axis=1))
+        langle = np.degrees(np.arccos(ltheta))
+        sigltheta = np.std(l[:,kq[q]]/np.linalg.norm(l, axis=1))
+        
+        plt.sca(ax[0])
+        plt.plot(e, delta_q, 'o', color=colors[n], label=labels[n])
+        
+        plt.sca(ax[1])
+        plt.plot(sigltheta, delta_q, 'o', color=colors[n], label=labels[n])
+
+        plt.sca(ax[2])
+        plt.plot(ltheta, delta_q, 'o', color=colors[n], label=labels[n])
+    
+    plt.sca(ax[0])
+    plt.legend(frameon=False, handlelength=1, fontsize='small')
+    plt.xlabel('Eccentricity')
+    plt.ylabel('$\Delta$ q{}'.format(labelq[q]))
+    plt.xlim(0,1)
+    #plt.ylim(0, 1e11)
+    
+    plt.sca(ax[1])
+    plt.xlabel('$\sigma$ L{}'.format(labelq[q]) + ' (kpc km s$^{-1}$)')
+    plt.ylabel('$\Delta$ q{}'.format(labelq[q]))
+
+    plt.sca(ax[2])
+    plt.xlabel('L{} / |L|'.format(labelq[q]))
+    plt.ylabel('$\Delta$ q{}'.format(labelq[q]))
+    
+    plt.tight_layout()
+    plt.savefig('../plots/delta_q{}.png'.format(q))
 
 # progenitor's orbit
 
