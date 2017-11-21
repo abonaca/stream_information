@@ -1452,7 +1452,7 @@ def read_optimal_step(n, vary):
 
 # crbs using bspline
 
-def bspline_crb(n, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True, scale=True):
+def bspline_crb(n, dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'], Nobs=50, verbose=False, align=True, scale=False, errmode='fiducial'):
     """"""
     if align:
         rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
@@ -1462,7 +1462,10 @@ def bspline_crb(n, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True
         alabel = ''
         
     # typical uncertainties
-    sig_obs = np.array([0.1, 2, 5, 0.1, 0.1])
+    if errmode=='fiducial':
+        sig_obs = np.array([0.1, 2, 5, 0.1, 0.1])
+    elif errmode=='binospec':
+        sig_obs = np.array([0.1, 2, 10, 0.1, 0.1])
     
     # mock observations
     pparams0 = pparams_fid
@@ -1538,7 +1541,7 @@ def bspline_crb(n, dt=0.2*u.Myr, vary='halo', Nobs=50, verbose=False, align=True
             print(np.allclose(cxi, cxi.T), np.allclose(cx, cx.T), np.allclose(np.matmul(cx,cxi), np.eye(np.shape(cx)[0])))
             print('condition {:g}'.format(np.linalg.cond(cxi)))
 
-        np.save('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}'.format(alabel, n, vlabel, Ndim), cxi)
+        np.save('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}'.format(alabel, errmode, n, vlabel, Ndim), cxi)
 
 def unity_scale(dp):
     """"""
@@ -1549,7 +1552,7 @@ def unity_scale(dp):
     
     return dp_unit
 
-def test_inversion(n, Ndim=6, vary=['halo', 'progenitor'], align=True):
+def test_inversion(n, Ndim=6, vary=['progenitor', 'bary', 'halo'], align=True, errmode='fiducial'):
     """"""
     pid, dp, vlabel = get_varied_pars(vary)
     if align:
@@ -1557,7 +1560,7 @@ def test_inversion(n, Ndim=6, vary=['halo', 'progenitor'], align=True):
     else:
         alabel = ''
         
-    cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+    cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
     N = np.shape(cxi)[0]
     
     cx_ = np.linalg.inv(cxi)
@@ -1657,7 +1660,7 @@ def crb_triangle(n, vary, Ndim=6, align=True, plot='all', fast=False):
     plt.tight_layout()
     plt.savefig('../plots/crb_triangle_{:s}_{:d}_{:s}_{:d}_{:s}.pdf'.format(alabel, n, vlabel, Ndim, plot))
 
-def crb_triangle_alldim(n, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], align=True, plot='all', fast=False, scale=True):
+def crb_triangle_alldim(n, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], align=True, plot='all', fast=False, scale=False, errmode='fiducial'):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
     dp_opt = read_optimal_step(n, vary)
@@ -1702,13 +1705,13 @@ def crb_triangle_alldim(n, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad']
     fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(dax*Nvar, dax*Nvar), sharex='col', sharey='row')
     
     for l, Ndim in enumerate([3, 4, 6]):
-        cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+        cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
         if fast:
             cx = np.linalg.inv(cxi)
         else:
             cx = stable_inverse(cxi)
         cx = cx[i0:i1,i0:i1]
-        print(np.sqrt(np.diag(cx)))
+        #print(np.sqrt(np.diag(cx)))
         
         for i in range(0,Nvar-1):
             for j in range(i+1,Nvar):
@@ -1746,7 +1749,7 @@ def crb_triangle_alldim(n, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad']
         plt.legend(loc=2, bbox_to_anchor=(1,1))
     
     plt.tight_layout()
-    plt.savefig('../plots/crb_triangle_alldim_{:s}_{:d}_{:s}_{:s}.pdf'.format(alabel, n, vlabel, plot))
+    plt.savefig('../plots/crb_triangle_alldim{:s}_{:s}_{:d}_{:s}_{:s}.pdf'.format(alabel, errmode, n, vlabel, plot))
 
 def compare_optimal_steps():
     """"""
@@ -2094,7 +2097,7 @@ def apder_cart(x, components=['bary', 'halo', 'dipole']):
     
     return dacart
 
-def crb_acart(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', align=True, d=20, Nb=50, fast=False, scale=True, relative=True, progenitor=False):
+def crb_acart(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', align=True, d=20, Nb=50, fast=False, scale=False, relative=True, progenitor=False, errmode='fiducial'):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
     if align:
@@ -2111,7 +2114,7 @@ def crb_acart(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], 
         rlabel =  ' (pc Myr$^{-2}$)'
     
     # read in full inverse CRB for stream modeling
-    cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+    cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
     if fast:
         cx = np.linalg.inv(cxi)
     else:
@@ -2186,7 +2189,7 @@ def crb_acart(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], 
         #print(xi, a_crb)
     
     # save
-    np.savez('../data/crb_acart{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}'.format(alabel, n, vlabel, component, Ndim, d, Nb, relative), acc=af, x=xin, der=derf)
+    np.savez('../data/crb_acart{:s}_{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}'.format(alabel, errmode, n, vlabel, component, Ndim, d, Nb, relative), acc=af, x=xin, der=derf)
     
     plt.close()
     fig, ax = plt.subplots(1, 3, figsize=(15, 5))
@@ -2209,9 +2212,9 @@ def crb_acart(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], 
         plt.ylabel(label[i] + rlabel)
         
     plt.tight_layout()
-    plt.savefig('../plots/crb_acc_cart{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}.png'.format(alabel, n, vlabel, component, Ndim, d, Nb, relative))
+    plt.savefig('../plots/crb_acc_cart{:s}_{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}.png'.format(alabel, errmode, n, vlabel, component, Ndim, d, Nb, relative))
 
-def crb_acart_cov(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', j=0, align=True, d=20, Nb=30, fast=False, scale=True, relative=True, progenitor=False, batch=False):
+def crb_acart_cov(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', j=0, align=True, d=20, Nb=30, fast=False, scale=False, relative=True, progenitor=False, batch=False, errmode='fiducial'):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
     if align:
@@ -2230,7 +2233,7 @@ def crb_acart_cov(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad
         rlabel =  ' (pc Myr$^{-2}$)'
     
     # read in full inverse CRB for stream modeling
-    cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+    cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
     if fast:
         cx = np.linalg.inv(cxi)
     else:
@@ -2312,7 +2315,7 @@ def crb_acart_cov(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad
             #print(np.dot(vecs[::3,i], vecs[::3,k]), np.dot(vecs[1::3,i], vecs[1::3,k]), np.dot(vecs[1::3,i], vecs[1::3,k]))
     
     # save
-    np.savez('../data/crb_acart_cov{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}_{:d}'.format(alabel, n, vlabel, component, Ndim, d, Nb, relative, progenitor), x=xin, der=derf, c=ca)
+    np.savez('../data/crb_acart_cov{:s}_{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}_{:d}'.format(alabel, errmode, n, vlabel, component, Ndim, d, Nb, relative, progenitor), x=xin, der=derf, c=ca)
     
     plt.close()
     fig, ax = plt.subplots(1, 3, figsize=(15, 5))
@@ -2350,7 +2353,7 @@ def crb_acart_cov(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad
     if batch:
         return fig
     else:
-        plt.savefig('../plots/crb_acc_cart_cov{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}_{:d}_{:d}.png'.format(alabel, n, vlabel, component, np.abs(j), Ndim, d, Nb, relative, progenitor))
+        plt.savefig('../plots/crb_acc_cart_cov{:s}_{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}_{:d}_{:d}.png'.format(alabel, errmode, n, vlabel, component, np.abs(j), Ndim, d, Nb, relative, progenitor))
 
 
 def a_vecfield(vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', d=20, Nb=10):
@@ -2393,7 +2396,7 @@ def a_vecfield(vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component=
     
     plt.tight_layout()
 
-def a_crbcov_vecfield(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', j=0, align=True, d=20, Nb=10, fast=False, scale=True, relative=False, progenitor=False, batch=False):
+def a_crbcov_vecfield(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], errmode='fiducial', component='all', j=0, align=True, d=20, Nb=10, fast=False, scale=True, relative=False, progenitor=False, batch=False):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
     if align:
@@ -2412,7 +2415,7 @@ def a_crbcov_vecfield(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', '
         rlabel =  ' (pc Myr$^{-2}$)'
     
     # read in full inverse CRB for stream modeling
-    cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+    cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
     if fast:
         cx = np.linalg.inv(cxi)
     else:
@@ -2533,10 +2536,10 @@ def a_crbcov_vecfield(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', '
     if batch:
         return fig
     else:
-        plt.savefig('../plots/afield_crbcov{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}_{:d}.png'.format(alabel, n, vlabel, component, np.abs(j), Ndim, d, Nb, relative))
+        plt.savefig('../plots/afield_crbcov{:s}_{:s}_{:d}_{:s}_{:s}_{:d}_{:d}_{:d}_{:d}_{:d}.png'.format(alabel, errmode, n, vlabel, component, np.abs(j), Ndim, d, Nb, relative))
 
 
-def summary(n, mode='scalar', vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all'):
+def summary(n, mode='scalar', vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], errmode='fiducial', component='all'):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
     fn = {'scalar': crb_acart_cov, 'vector': a_crbcov_vecfield}
@@ -2553,11 +2556,11 @@ def summary(n, mode='scalar', vary=['progenitor', 'bary', 'halo', 'dipole', 'qua
     Niter = [Npars[x] for x in components]
     Niter = sum(Niter) + 1
     
-    pp = PdfPages('../plots/acceleration_{}_{}_{}_{}.pdf'.format(n, vlabel, component, mode))
+    pp = PdfPages('../plots/acceleration_{}_{}_{}_{}_{}.pdf'.format(n, errmode, vlabel, component, mode))
     
     for i in range(Niter):
         print(i, Niter)
-        fig = fn[mode](-1, progenitor=True, batch=True, vary=vary, component=component, j=-i, d=20, Nb=bins[mode])
+        fig = fn[mode](-1, progenitor=True, batch=True, errmode=errmode, vary=vary, component=component, j=-i, d=20, Nb=bins[mode])
         pp.savefig(fig)
     
     pp.close()
@@ -2579,7 +2582,7 @@ def pder_vc(x, p=[pparams_fid[j] for j in [0,1,2,3,4,5,6,8,10]], components=['ba
     
     return pder
 
-def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', j=0, align=True, d=20, Nb=100, fast=False, scale=True):
+def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], errmode='fiducial', component='all', j=0, align=True, d=20, Nb=100, fast=False, scale=True):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
     if align:
@@ -2595,7 +2598,7 @@ def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], 
     
     for n in [-1, -2, -3]:
         # read in full inverse CRB for stream modeling
-        cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+        cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
         if fast:
             cx = np.linalg.inv(cxi)
         else:
@@ -2683,7 +2686,7 @@ def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], 
 
 # flattening
 
-def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='halo', j=0, align=True, fast=False, scale=False):
+def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], errmode='fiducial', component='halo', j=0, align=True, fast=False, scale=False):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
     if align:
@@ -2704,7 +2707,7 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad']
     for n in [-1, -2, -3]:
     #for n in [-1,]:
         # read in full inverse CRB for stream modeling
-        cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+        cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
         if fast:
             cx = np.linalg.inv(cxi)
         else:
