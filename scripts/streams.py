@@ -11,7 +11,29 @@ from astropy.table import Table
 import astropy.coordinates as coord
 import gala.coordinates as gc
 
+MASK = -9999
+
+mw_observer = {'z_sun': 27.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_coord': coord.SkyCoord(ra=266.4051*u.deg, dec=-28.936175*u.deg, frame='icrs')}
+vsun = {'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
+vsun0 = {'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
+
+gc_observer = {'z_sun': 27.*u.pc, 'galcen_distance': 0.1*u.kpc, 'roll': 0*u.deg, 'galcen_coord': coord.SkyCoord(ra=266.4051*u.deg, dec=-28.936175*u.deg, frame='icrs')}
+vgc = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
+vgc0 = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
+
+pparams_fid = [0.5*u.Msun, 0.7*u.kpc, 6.8*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
+
+import streakline
+import emcee
+import ffwd
+from scipy import stats
+import time
+import pickle
+import shutil
+
 cold = ['ACS', 'ATLAS', 'Ach', 'Alp', 'Coc', 'GD1', 'Hyl', 'Kwa', 'Let', 'Mol', 'Mur', 'NGC5466', 'Oph', 'Ori', 'Orp', 'PS1A', 'PS1B', 'PS1C', 'PS1D', 'PS1E', 'Pal5', 'Pho', 'San', 'Sca', 'Sty', 'TriPis', 'WG1', 'WG2', 'WG3', 'WG4']
+
+north = ['ACS', 'ATLAS', 'Ach', 'Coc', 'GD1', 'Hyl', 'Kwa', 'Let', 'Mol', 'Mur', 'NGC5466', 'Oph', 'Orp', 'PS1A', 'PS1B', 'PS1C', 'PS1D', 'PS1E', 'Pal5', 'San', 'Sca', 'Sty', 'TriPis']
 
 def show_streams():
     """Read streams from Mateu+(2017) and plot them in equatorial coordinates"""
@@ -39,6 +61,7 @@ def show_streams():
         plt.plot(t['RA_deg'][ind], t['DEC_deg'][ind], 'o', label=n)
         plt.text(t['RA_deg'][ind][0], t['DEC_deg'][ind][0], n, fontsize='x-small')
     
+    plt.axhline(-30, color='k', lw=2)
     plt.legend(fontsize='xx-small', ncol=6, handlelength=0.2)
     plt.gca().invert_xaxis()
     
@@ -428,27 +451,59 @@ class Stream():
         t.write(fname, format='ascii.commented_header')
 
 
+def reformat_stream_obs(name):
+    """Reformat legacy table of stream observational data to the standardized library version"""
+    
+    t = Table.read('../data/{}_allmembers.txt'.format(name), format='ascii.commented_header')
+    t.pprint()
+    
+    nanvec = np.ones_like(t['ra']) * np.nan
 
-MASK = -9999
+    if name=='tri':
+        t['vr'] = nanvec
+        t['err_vr'] = nanvec
+    
+    nan = t['vr']==MASK
+    t['vr'][nan] = np.nan
+    t['err_vr'][nan] = np.nan
+    
+    tout = Table(np.array([t['ra'], t['err_ra'], t['dec'], t['err_dec'], t['d'], t['err_d'], t['vr'], t['err_vr'], nanvec, nanvec, nanvec, nanvec, nanvec]).T, names=('ra', 'ra_err', 'dec', 'dec_err', 'd', 'd_err', 'vr', 'vr_err', 'pmra', 'pmra_err', 'pmdec', 'pmdec_err', 'p'), dtype=('f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f'))
+    
+    tout.pprint()
+    tout.write('../data/lib/{}_members.fits'.format(name), overwrite=True)
 
-mw_observer = {'z_sun': 27.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_coord': coord.SkyCoord(ra=266.4051*u.deg, dec=-28.936175*u.deg, frame='icrs')}
-vsun = {'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
-vsun0 = {'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
+def load_stream(name, mock=False, mode='true'):
+    """Read stream observation from the library and store in a Stream object
+    Parameters:
+    name - short stream name
+    mock - bool, True loads a mock stream for a given observing mode (optional, default: False)
+    mode - string, sets observing mode for mock streams (optional, default: 'true')
+    Returns:
+    stream object"""
+    
+    if mock:
+        mock_label = 'mock_'
+        mode_label = '_{}'.format(mode)
+    else:
+        mock_label = ''
+        mode_label = ''
+    
+    t = Table.read('../data/lib/{}{}{}_members.fits'.format(mock_label, name, mode_label))
+    
+    obs = np.array([t['ra'], t['dec'], t['d'], t['vr'], t['pmra'], t['pmdec']])
+    obsunit = [u.deg, u.deg, u.kpc, u.km/u.s, u.mas/u.yr, u.mas/u.yr]
+    err = np.array([t['ra_err'], t['dec_err'], t['d_err'], t['vr_err'], t['pmra_err'], t['pmdec_err']])
 
-gc_observer = {'z_sun': 27.*u.pc, 'galcen_distance': 0.1*u.kpc, 'roll': 0*u.deg, 'galcen_coord': coord.SkyCoord(ra=266.4051*u.deg, dec=-28.936175*u.deg, frame='icrs')}
-vgc = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
-vgc0 = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
+    # store into stream object
+    stream = Stream()
+    stream.obs = obs
+    stream.obsunit = obsunit
+    stream.err = err
+    stream.obserror = obsunit
+    
+    return stream
 
-pparams_fid = [0.5*u.Msun, 0.7*u.kpc, 6.8*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
-
-import streakline
-import emcee
-import ffwd
-from scipy import stats
-import time
-import pickle
-
-def load_stream(name, obserr=[2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc]):
+def load_stream_mateu(name, obserr=[2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc]):
     """Load a stream and return a Stream object
     Assumes only positions known
     Parameters:
@@ -493,11 +548,12 @@ def vcirc_potential(r, pparams=pparams_fid):
     
     return vcirc
 
-def find_progenitor(name='Sty', test=False, verbose=False):
+def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100, seeds=[905, 63]):
     """"""
     obserr = [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc]
     potential = 'gal'
     pparams = pparams_fid[:]
+    mf = 1e-2*u.Msun
     dt = 1*u.Myr
     observer = mw_observer
     vobs = vsun
@@ -505,8 +561,13 @@ def find_progenitor(name='Sty', test=False, verbose=False):
     footprint = None
     np.random.seed(58)
     
+    if cont:
+        extension = '_cont'
+    else:
+        extension = ''
+    
     # load stream
-    observed = load_stream(name, obserr=obserr)
+    observed = load_stream(name)
     
     # adjust circular velocity in this halo
     vobs['vcirc'] = vcirc_potential(observer['galcen_distance'], pparams=pparams)
@@ -523,36 +584,43 @@ def find_progenitor(name='Sty', test=False, verbose=False):
     
     # initialize progenitor properties
     x0_obs, v0_obs = get_progenitor(observed, observer=mw_observer, pparams=pparams)
-    plist = [i.value for i in x0_obs] + [i.value for i in v0_obs] + [4, -1, 3]
+    plist = [i.value for i in x0_obs] + [i.value for i in v0_obs] + [4, 3]
     pinit = np.array(plist)
     
     if test:
-        print(lnprob_prog(pinit, potential, pparams, dt, obsmode, observer, vobs, footprint, observed))
+        print(lnprob_prog(pinit, potential, pparams, mf, dt, obsmode, observer, vobs, footprint, observed))
         pbest = pinit
     
     else:
-        extension = ''
         dname = '../data/chains/progenitor_{}'.format(name)
         
         # Define a sampler
         mpi = False
         nth = 4
-        nwalkers = 30
-        nfree = 9
+        nwalkers = 50
+        nfree = 8
         pool = get_pool(mpi=mpi, threads=nth)
-        sampler = emcee.EnsembleSampler(nwalkers, nfree, lnprob_prog, pool=pool, args=[potential, pparams, dt, obsmode, observer, vobs, footprint, observed])
+        sampler = emcee.EnsembleSampler(nwalkers, nfree, lnprob_prog, pool=pool, args=[potential, pparams, mf, dt, obsmode, observer, vobs, footprint, observed])
         
-        # initialize run
-        seeds = [905, 63]
-        nstep = 100
-        prng = np.random.RandomState(seeds[1])
-        genstate = np.random.get_state()
+        if cont:
+            # initialize random state
+            pin = pickle.load(open('{}.state'.format(dname), 'rb'))
+            genstate = pin['state']
+            
+            # initialize walkers
+            res = np.load('{}.npz'.format(dname))
+            positions = np.arange(-nwalkers, 0, dtype=np.int64)
+            p = res['chain'][positions]
+        else:
+            # initialize random state
+            prng = np.random.RandomState(seeds[1])
+            genstate = np.random.get_state()
         
-        # initialize walkers
-        np.random.seed(seeds[0])
-        p = (np.random.rand(nfree * nwalkers).reshape((nwalkers, nfree)))
-        for i in range(nfree):
-            p[:,i] = (p[:,i]-0.5)*1e-2 + pinit[i]
+            # initialize walkers
+            np.random.seed(seeds[0])
+            p = (np.random.rand(nfree * nwalkers).reshape((nwalkers, nfree)))
+            for i in range(nfree):
+                p[:,i] = (p[:,i]-0.5)*1e-2 + pinit[i]
         
         # Sample
         t1 = time.time()
@@ -561,14 +629,19 @@ def find_progenitor(name='Sty', test=False, verbose=False):
 
         # Save chains and likelihoods
         np.savez('{}{}.npz'.format(dname, extension), lnp=sampler.flatlnprobability, chain=sampler.flatchain)
-        
+    
         # Save random generator state
         rgstate = {'state': state}
         pickle.dump(rgstate, open('{}.state{:s}'.format(dname, extension), 'wb'))
+        
+        # combine continued run
+        if cont:
+            combine_results('{}.npz'.format(dname), '{}_cont.npz'.format(dname), nwalkers)
+            shutil.copyfile(dname+'.state_cont', dname+'.state')
 
+        idmax = np.argmax(sampler.flatlnprobability)
         if verbose:
             print("Time: ", t2 - t1)
-            idmax = np.argmax(sampler.flatlnprobability)
             print("Best fit: ", sampler.flatchain[idmax])
             print("Acceptance fraction: ", np.mean(sampler.acceptance_fraction))
         
@@ -583,11 +656,10 @@ def find_progenitor(name='Sty', test=False, verbose=False):
     x0 = [pbest[0]*u.deg, pbest[1]*u.deg, pbest[2]*u.kpc]
     v0 = [pbest[3]*u.km/u.s, pbest[4]*u.mas/u.yr, pbest[5]*u.mas/u.yr]
     mi = 10**pbest[6]*u.Msun
-    mf = 10**pbest[7]*u.Msun
-    age = pbest[8]*u.Gyr
+    age = pbest[7]*u.Gyr
     
     # stream model parameters
-    params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 100, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [0.5*u.deg, 0.5*u.deg, 1*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': None}}
+    params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 100, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [0.5*u.deg, 0.5*u.deg, 1*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': None}}
     
     model = Stream(**params['generate'])
     model.generate()
@@ -596,6 +668,25 @@ def find_progenitor(name='Sty', test=False, verbose=False):
     for i in range(2):
         plt.sca(ax[i])
         plt.plot(model.obs[0], model.obs[i+1], 'ro')
+
+def combine_results(f, fcont, nwalkers):
+    """"""
+    
+    res = np.load(f)
+    res_cont = np.load(fcont)
+    nsample, ndim = np.shape(res['chain'])
+    
+    pack = res['chain'].reshape(nwalkers,-1,ndim)
+    pack_cont = res_cont['chain'].reshape(nwalkers,-1,ndim)
+    pack_comb = np.concatenate((pack, pack_cont), axis=1)
+    flat_comb = pack_comb.reshape(-1,ndim)
+    
+    ppack = res['lnp'].reshape(nwalkers,-1)
+    ppack_cont = res_cont['lnp'].reshape(nwalkers,-1)
+    ppack_comb = np.concatenate((ppack, ppack_cont), axis=1)
+    pflat_comb = ppack_comb.reshape(-1)
+    
+    np.savez(f, lnp=pflat_comb, chain=flat_comb)
 
 def analyze_chains(name='Sty'):
     """"""
@@ -606,7 +697,7 @@ def analyze_chains(name='Sty'):
     chain = d['chain']
     lnp = d['lnp']
     
-    nwalkers = 30
+    nwalkers = 50
     nstep, ndim = np.shape(chain)
     nstep = int(nstep/nwalkers)
     
@@ -645,12 +736,13 @@ def bestfit(name='Sty'):
     x0 = [pbest[0]*u.deg, pbest[1]*u.deg, pbest[2]*u.kpc]
     v0 = [pbest[3]*u.km/u.s, pbest[4]*u.mas/u.yr, pbest[5]*u.mas/u.yr]
     mi = 10**pbest[6]*u.Msun
-    mf = 10**pbest[7]*u.Msun
-    age = pbest[8]*u.Gyr
+    #mf = 10**pbest[7]*u.Msun
+    age = pbest[7]*u.Gyr
     
     obserr = [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc]
     potential = 'gal'
     pparams = pparams_fid[:]
+    mf = 1e-2*u.Msun
     dt = 0.2*u.Myr
     observer = mw_observer
     vobs = vsun
@@ -688,7 +780,7 @@ def bestfit(name='Sty'):
     plt.tight_layout()
     
 
-def lnprob_prog(x, potential, pparams, dt, obsmode, observer, vobs, footprint, observed):
+def lnprob_prog(x, potential, pparams, mf, dt, obsmode, observer, vobs, footprint, observed):
     """"""
     
     lnprior = lnprior_prog(x)
@@ -697,11 +789,11 @@ def lnprob_prog(x, potential, pparams, dt, obsmode, observer, vobs, footprint, o
         x0 = [x[0]*u.deg, x[1]*u.deg, x[2]*u.kpc]
         v0 = [x[3]*u.km/u.s, x[4]*u.mas/u.yr, x[5]*u.mas/u.yr]
         mi = 10**x[6]*u.Msun
-        mf = 10**x[7]*u.Msun
-        age = x[8]*u.Gyr
+        #mf = 10**x[7]*u.Msun
+        age = x[7]*u.Gyr
         
         # stream model parameters
-        params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 100, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [0.5*u.deg, 0.5*u.deg, 1*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': None}}
+        params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 100, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [0.5*u.deg, 0.5*u.deg, 1*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': None}}
         
         model = Stream(**params['generate'])
         model.generate()
@@ -911,27 +1003,29 @@ def point_point_comparison(x_obs, x_mod, err_obs, err_mod):
     
     return lnp
 
-def point_smooth_comparison(x_obs, x_mod, err_obs, err_mod, bandwidth=0.1, scale=1.):
+def point_smooth_comparison(x_obs, x_mod, err_obs, err_mod):
     """Compare two distributions of points with associated uncertainties"""
-    
-    # rescale the coordinates to 0-1 range
-    #mx_obs_ = x_obs[:3,:] * scale
-    #mx_mod_ = x_mod[:3,:] * scale
-    #me_obs = err_obs[:3,:] * scale
-    ##me_mod = np.transpose((err_mod[:3,:].T*0 + 1)) * np.array(bandwidth)[np.newaxis].T
-    #me_mod = np.ones_like(mx_mod_) * bandwidth
     
     mx_obs_ = x_obs
     mx_mod_ = x_mod
     me_obs = err_obs
     me_mod = err_mod
     
-    log_pdf = 0
-    nmodes = 1
-    i1 = [0, ]
-    i2 = [3, ]
-    ind = [x_obs[1,:]!=MASK, ]
+    # modes of comparison: photometric, + rv, + pm
+    nmodes = 3
+    i1 = [0, 0, 0]
+    i2 = [3, 4, 6]
     
+    # store indices of different dimension availability
+    ind = []
+    for i in range(nmodes):
+        present = np.ones_like(x_obs[0], dtype=bool)
+        for j in range(i1[i], i2[i]):
+            present = present & np.isfinite(x_obs[j])
+        ind = ind + [present]
+    
+    # compare
+    log_pdf = 0
     for i in range(nmodes):
         if np.sum(ind[i])>0:
             if np.any(ind[i]==False):
