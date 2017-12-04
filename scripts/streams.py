@@ -30,6 +30,7 @@ from scipy import stats
 import time
 import pickle
 import shutil
+import inspect
 
 cold = ['ACS', 'ATLAS', 'Ach', 'Alp', 'Coc', 'GD1', 'Hyl', 'Kwa', 'Let', 'Mol', 'Mur', 'NGC5466', 'Oph', 'Ori', 'Orp', 'PS1A', 'PS1B', 'PS1C', 'PS1D', 'PS1E', 'Pal5', 'Pho', 'San', 'Sca', 'Sty', 'TriPis', 'WG1', 'WG2', 'WG3', 'WG4']
 
@@ -548,7 +549,82 @@ def vcirc_potential(r, pparams=pparams_fid):
     
     return vcirc
 
-def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100, seeds=[905, 63]):
+def save_params(fname='', name='tri', test=False, verbose=True, cont=False, nstep=100, seeds=[905, 63], nth=4, mpi=True):
+    """Save dictionary with parameters for find_progenitor in a pickle file"""
+    
+    argval = inspect.getargvalues(inspect.currentframe())
+    print(argval)
+    
+    pickle.dump(argval[3], open('../data/input/{}.pars'.format(fname), 'wb'))
+
+def find_fromfile(fname, verbose=False):
+    """Load parameters for finding progenitor from a pickled dictionary, and run find_progenitor"""
+    
+    params = pickle.load(open('../data/input/{}.pars'.format(fname), 'rb'))
+    del(params['fname'])
+    if verbose: print(params)
+    
+    # run stream fitting
+    find_progenitor(**params)
+
+def timelabel(t, manager='slurm'):
+    """Return time in a HH:MM:SS format
+    Parameters:
+    t - astropy time quantity"""
+    
+    if manager=='slurm':
+        tsec = t.to(u.s).value
+        td = np.int64(np.trunc(tsec/(24*3600)))
+        th = np.int64(np.trunc((tsec - td*24*3600)/3600))
+        tm = np.int64(np.trunc((tsec - td*24*3600 - th*3600)/60))
+        #ts = np.int64(np.trunc(tsec - td*24*3600 - th*3600 - tm*60))
+        
+        t_label = '%1d-%02d:%02d'%(td, th, tm)
+    else:
+        tsec = t.to(u.s).value
+        th = np.int64(np.trunc(tsec/3600))
+        tm = np.int64(np.trunc((tsec - th*3600)/60))
+        ts = np.int64(np.trunc(tsec - th*3600 - tm*60))
+        
+        t_label = '%02d:%02d:%02d'%(th, tm, ts)
+    
+    return t_label
+
+def make_script(name, t=1*u.h, nth=4, mem=1000, queue='conroy', manager='slurm', verbose=True):
+    """Create a SLURM script for submitting a stream-fitting job on a cluster
+    Parameters:
+    name - stream name
+    t - walltime limit, astropy quantity (default: 1*u.h)
+    nth - number of parallel threads (default: 16)
+    verbose - if True, print resulting pbs script (default: False)"""
+    
+    t_label = timelabel(t)
+    
+    if manager=='slurm':
+        t_slurm = timelabel(t, manager='slurm')
+        script = """#!/bin/bash
+        #SBATCH -p {0}
+        #SBATCH -n {1}
+        #SBATCH --mem {4}
+        #SBATCH -t {2}
+        #SBATCH --mail-type=ALL
+        #SBATCH --mail-user=ana.bonaca@cfa.harvard.edu
+        cd $HOME/projects/stream_information/scripts
+        name='{3}'
+        $HOME/local/bin/mpirun -np {1} $HOME/local/bin/python run.py $name > slurm/$name.out 2> slurm/$name.err""".format(queue, nth, t_slurm, name, mem)
+        
+        fmt_script = ""
+        for line in script.split('\n'):
+            fmt_script += line.lstrip()+'\n'
+
+        f = open("slurm/%s.sh"%name, 'w')
+        f.write(fmt_script)
+        f.close()
+    
+    if verbose:
+        print(fmt_script)
+
+def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100, seeds=[905, 63], nth=4, mpi=False):
     """"""
     obserr = [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc]
     potential = 'gal'
@@ -595,8 +671,6 @@ def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100
         dname = '../data/chains/progenitor_{}'.format(name)
         
         # Define a sampler
-        mpi = False
-        nth = 4
         nwalkers = 50
         nfree = 8
         pool = get_pool(mpi=mpi, threads=nth)
@@ -890,7 +964,7 @@ def get_progenitor(stream, **kwargs):
     rhomax = get_mostdense_point(X, Y)
     
     # use this point as a guess for progenitor position
-    px = [x*y for x, y in zip(stream.obs[:3,rhomax], stream.obsunit[:3])]
+    px = [x*y for x, y in zip(stream.obs[:2,rhomax], stream.obsunit[:2])] + [np.median(stream.obs[2]*stream.obsunit[2])]
     xeq = coord.SkyCoord(px[0], px[1], px[2], **observer)
     xgal = xeq.transform_to(coord.Galactocentric)
     x0_u = np.array([xgal.x.to(u.kpc).value, xgal.y.to(u.kpc).value, xgal.z.to(u.kpc).value])*u.kpc
