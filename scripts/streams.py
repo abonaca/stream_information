@@ -636,6 +636,7 @@ def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100
     obsmode = 'equatorial'
     footprint = None
     np.random.seed(58)
+    nwalkers = 100
     
     if cont:
         extension = '_cont'
@@ -662,6 +663,7 @@ def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100
     x0_obs, v0_obs = get_progenitor(observed, observer=mw_observer, pparams=pparams)
     plist = [i.value for i in x0_obs] + [i.value for i in v0_obs] + [4, 3]
     pinit = np.array(plist)
+    psig = np.array([0.1, 0.1, 1, 10, 0.2, 0.2, 0.2, 0.5])
     
     if test:
         print(lnprob_prog(pinit, potential, pparams, mf, dt, obsmode, observer, vobs, footprint, observed))
@@ -671,7 +673,6 @@ def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100
         dname = '../data/chains/progenitor_{}'.format(name)
         
         # Define a sampler
-        nwalkers = 50
         nfree = 8
         pool = get_pool(mpi=mpi, threads=nth)
         sampler = emcee.EnsembleSampler(nwalkers, nfree, lnprob_prog, pool=pool, args=[potential, pparams, mf, dt, obsmode, observer, vobs, footprint, observed])
@@ -694,7 +695,7 @@ def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100
             np.random.seed(seeds[0])
             p = (np.random.rand(nfree * nwalkers).reshape((nwalkers, nfree)))
             for i in range(nfree):
-                p[:,i] = (p[:,i]-0.5)*1e-2 + pinit[i]
+                p[:,i] = (p[:,i]-0.5)*psig[i] + pinit[i]
         
         # Sample
         t1 = time.time()
@@ -771,7 +772,7 @@ def analyze_chains(name='Sty'):
     chain = d['chain']
     lnp = d['lnp']
     
-    nwalkers = 50
+    nwalkers = 100
     nstep, ndim = np.shape(chain)
     nstep = int(nstep/nwalkers)
     
