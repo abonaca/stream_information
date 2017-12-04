@@ -664,6 +664,7 @@ def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100
     plist = [i.value for i in x0_obs] + [i.value for i in v0_obs] + [4, 3]
     pinit = np.array(plist)
     psig = np.array([0.1, 0.1, 1, 10, 0.2, 0.2, 0.2, 0.5])
+    nfree = np.size(pinit)
     
     if test:
         print(lnprob_prog(pinit, potential, pparams, mf, dt, obsmode, observer, vobs, footprint, observed))
@@ -673,7 +674,6 @@ def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100
         dname = '../data/chains/progenitor_{}'.format(name)
         
         # Define a sampler
-        nfree = 8
         pool = get_pool(mpi=mpi, threads=nth)
         sampler = emcee.EnsembleSampler(nwalkers, nfree, lnprob_prog, pool=pool, args=[potential, pparams, mf, dt, obsmode, observer, vobs, footprint, observed])
         
@@ -684,8 +684,15 @@ def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100
             
             # initialize walkers
             res = np.load('{}.npz'.format(dname))
+            flatchain = res['chain']
+            cshape = np.shape(flatchain)
+            nstep_tot = np.int64(cshape[0]/nwalkers)
+            chain = np.transpose(flatchain.reshape(nwalkers, nstep_tot, nfree), (1,0,2))
+            flatchain = chain.reshape(nwalkers*nstep_tot, nfree)
+            
             positions = np.arange(-nwalkers, 0, dtype=np.int64)
-            p = res['chain'][positions]
+            p = flatchain[positions]
+            
         else:
             # initialize random state
             prng = np.random.RandomState(seeds[1])
