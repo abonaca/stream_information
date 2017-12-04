@@ -1466,6 +1466,8 @@ def bspline_crb(n, dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'], Nobs=50, v
         sig_obs = np.array([0.1, 2, 5, 0.1, 0.1])
     elif errmode=='binospec':
         sig_obs = np.array([0.1, 2, 10, 0.1, 0.1])
+    elif errmode=='hectochelle':
+        sig_obs = np.array([0.1, 2, 1, 0.1, 0.1])
     
     # mock observations
     pparams0 = pparams_fid
@@ -2779,6 +2781,102 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad']
     
     plt.tight_layout()
     plt.savefig('../plots/delta_q{}.png'.format(q))
+
+
+# compare observing modes
+
+def comp_errmodes(n, errmodes=['binospec', 'fiducial', 'hectochelle'], Ndim=4, vary=['progenitor', 'bary', 'halo'], plot='halo', align=True, fast=False, scale=False):
+    """"""
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    dp_opt = read_optimal_step(n, vary)
+    dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
+    plabels, units = get_parlabel(pid)
+    params = ['$\Delta$' + x + '({})'.format(y) for x,y in zip(plabels, units)]
+    
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    
+    if plot=='halo':
+        i0 = 11
+        i1 = 15
+    elif plot=='bary':
+        i0 = 6
+        i1 = 11
+    elif plot=='progenitor':
+        i0 = 0
+        i1 = 6
+    elif plot=='dipole':
+        i0 = 15
+        i1 = len(params)
+    else:
+        i0 = 0
+        i1 = len(params)
+    
+    Nvar = i1 - i0
+    params = params[i0:i1]
+    if scale:
+        dp_unit = unity_scale(dp)
+        #print(dp_unit)
+        dp_unit = dp_unit[i0:i1]
+        pid = pid[i0:i1]
+    
+    #print(params, dp_unit, Nvar, len(pid), len(dp_unit))
+    #label = ['RA, Dec, d', 'RA, Dec, d, $V_r$', 'RA, Dec, d, $V_r$, $\mu_\\alpha$, $\mu_\delta$']
+    label = errmodes
+
+    plt.close()
+    dax = 2
+    fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(dax*Nvar, dax*Nvar), sharex='col', sharey='row')
+    
+    for l, errmode in enumerate(errmodes):
+        cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
+        if fast:
+            cx = np.linalg.inv(cxi)
+        else:
+            cx = stable_inverse(cxi)
+        cx = cx[i0:i1,i0:i1]
+        #print(np.sqrt(np.diag(cx)))
+        
+        for i in range(0,Nvar-1):
+            for j in range(i+1,Nvar):
+                plt.sca(ax[j-1][i])
+                if scale:
+                    cx_2d = np.array([[cx[i][i]/dp_unit[i]**2, cx[i][j]/(dp_unit[i]*dp_unit[j])], [cx[j][i]/(dp_unit[j]*dp_unit[i]), cx[j][j]/dp_unit[j]**2]])
+                else:
+                    cx_2d = np.array([[cx[i][i], cx[i][j]], [cx[j][i], cx[j][j]]])
+                
+                w, v = np.linalg.eig(cx_2d)
+                if np.all(np.isreal(v)):
+                    theta = np.degrees(np.arctan2(v[1][0], v[0][0]))
+                    width = np.sqrt(w[0])*2
+                    height = np.sqrt(w[1])*2
+                    
+                    e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=mpl.cm.bone(0.1+l/4), lw=2, label=label[l])
+                    plt.gca().add_patch(e)
+                
+                if l==1:
+                    plt.gca().autoscale_view()
+                
+                if j==Nvar-1:
+                    plt.xlabel(params[i])
+                    
+                if i==0:
+                    plt.ylabel(params[j])
+        
+        # turn off unused axes
+        for i in range(0,Nvar-1):
+            for j in range(i+1,Nvar-1):
+                plt.sca(ax[i][j])
+                plt.axis('off')
+        
+        plt.sca(ax[int(Nvar/2-1)][int(Nvar/2-1)])
+        plt.legend(loc=2, bbox_to_anchor=(1,1))
+    
+    plt.tight_layout()
+    plt.savefig('../plots/crb_triangle_alldim{:s}_comparison_{:d}_{:s}_{:s}.pdf'.format(alabel, n, vlabel, plot))
+
 
 # progenitor's orbit
 
