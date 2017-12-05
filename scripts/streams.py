@@ -660,11 +660,13 @@ def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100
     plt.tight_layout()
     
     # initialize progenitor properties
-    x0_obs, v0_obs = get_progenitor(observed, observer=mw_observer, pparams=pparams)
+    x0_obs, v0_obs = get_close_progenitor(observed, potential, pparams, mf, dt, obsmode, observer, vobs, footprint)
+    #x0_obs, v0_obs = get_progenitor(observed, observer=mw_observer, pparams=pparams)
     plist = [i.value for i in x0_obs] + [i.value for i in v0_obs] + [4, 3]
     pinit = np.array(plist)
     psig = np.array([0.1, 0.1, 1, 10, 0.2, 0.2, 0.2, 0.5])
     nfree = np.size(pinit)
+    psig = np.ones(nfree) * 1e-2
     
     if test:
         print(lnprob_prog(pinit, potential, pparams, mf, dt, obsmode, observer, vobs, footprint, observed))
@@ -750,6 +752,25 @@ def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100
     for i in range(2):
         plt.sca(ax[i])
         plt.plot(model.obs[0], model.obs[i+1], 'ro')
+
+def get_close_progenitor(observed, potential, pparams, mf, dt, obsmode, observer, vobs, footprint):
+    """Pick the best direction for initializing progenitor velocity vector"""
+
+    dp_list = np.array([[1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1],
+    [1,1,1], [-1,-1,-1], [1,-1,1,], [-1,1,-1], [-1,-1,1], [1,1,-1], [-1,1,1], [1,-1,-1]])
+    ndp, ndim = np.shape(dp_list)
+    
+    lnp = np.empty(ndp)
+    v0 = [None]*ndp
+    
+    for i in range(ndp):
+        x0_obs, v0_obs = get_progenitor(observed, dp=dp_list[i], observer=mw_observer, pparams=pparams)
+        plist = [j.value for j in x0_obs] + [j.value for j in v0_obs] + [4, 3]
+        pinit = np.array(plist)
+        lnp[i] = lnprob_prog(pinit, potential, pparams, mf, dt, obsmode, observer, vobs, footprint, observed)
+        v0[i] = v0_obs
+    
+    return x0_obs, v0[np.argmax(lnp)]
 
 def combine_results(f, fcont, nwalkers):
     """"""
@@ -880,6 +901,7 @@ def lnprob_prog(x, potential, pparams, mf, dt, obsmode, observer, vobs, footprin
         model = Stream(**params['generate'])
         model.generate()
         model.observe(**params['observe'])
+        #print(np.median(model.obs, axis=1))
         
         lnp = point_smooth_comparison(observed.obs, model.obs, observed.err, model.err)
         return lnp + lnprior
@@ -889,7 +911,7 @@ def lnprob_prog(x, potential, pparams, mf, dt, obsmode, observer, vobs, footprin
 
 def lnprior_prog(x):
     """"""
-    ranges = np.array([[0, 360], [-90, 90], [0,100], [-300, 300], [-5, 5], [-5, 5], [-2,7], [-2,7], [1,6]])
+    ranges = np.array([[0, 360], [-90, 90], [0,100], [-500, 500], [-50, 50], [-50, 50], [-1,6], [1,6]])
     npar = np.size(x)
     
     outbounds = [(x[i]<ranges[i][0]) | (x[i]>ranges[i][1]) for i in range(npar)]
@@ -956,7 +978,7 @@ def get_mostdense_point(X, Y):
     
     return rhomax
 
-def get_progenitor(stream, **kwargs):
+def get_progenitor(stream, dp=np.nan, **kwargs):
     """Return a guess for the phase space coordinates of the progenitor"""
     
     #for k in kwargs:
@@ -984,7 +1006,9 @@ def get_progenitor(stream, **kwargs):
     mr = pparams[5]**2 * pparams[6] / G * (np.log(1 + r/pparams[6]) - r/(r + pparams[6]))
     vtot = np.sqrt(G*mr/r)
     
-    dp = np.array([-x0[0], -x0[1], (x0[0]**2 + x0[1]**2)/x0[2]])
+    if np.any(~np.isfinite(dp)):
+        dp = np.array([x0[0], x0[1], -(x0[0]**2 + x0[1]**2)/x0[2]])
+
     progdv = dp/np.linalg.norm(dp) * vtot
     veq = gc.vgal_to_hel(xeq, progdv)
     
