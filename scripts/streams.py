@@ -626,7 +626,6 @@ def make_script(name, t=1*u.h, nth=4, mem=1000, queue='conroy', manager='slurm',
 
 def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100, seeds=[905, 63], nth=4, mpi=False):
     """"""
-    obserr = [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc]
     potential = 'gal'
     pparams = pparams_fid[:]
     mf = 1e-2*u.Msun
@@ -635,7 +634,6 @@ def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100
     vobs = vsun
     obsmode = 'equatorial'
     footprint = None
-    np.random.seed(58)
     nwalkers = 100
     
     if cont:
@@ -911,12 +909,12 @@ def lnprob_prog(x, potential, pparams, mf, dt, obsmode, observer, vobs, footprin
 
 def lnprior_prog(x):
     """"""
-    ranges = np.array([[0, 360], [-90, 90], [0,100], [-500, 500], [-50, 50], [-50, 50], [-1,6], [1,6]])
+    ranges = np.array([[0, 360], [-90, 90], [0,100], [-500, 500], [-50, 50], [-50, 50], [2,6], [1,6]])
     npar = np.size(x)
     
     outbounds = [(x[i]<ranges[i][0]) | (x[i]>ranges[i][1]) for i in range(npar)]
 
-    if np.any(~np.isfinite(outbounds)):
+    if np.any(outbounds):
         return -np.inf
     else:
         return 0
