@@ -624,17 +624,12 @@ def make_script(name, t=1*u.h, nth=4, mem=1000, queue='conroy', manager='slurm',
     if verbose:
         print(fmt_script)
 
-def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100, seeds=[905, 63], nth=4, mpi=False):
+def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100, seeds=[905, 63], nth=4, mpi=False, potential='gal', pparams=pparams_fid[:], mf=1e-2*u.Msun, dt=1*u.Myr, nstar=100, observer=mw_observer, vobs=vsun, obsmode='equatorial', mod_err=[0.5*u.deg, 0.5*u.deg, 1*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], footprint=None, nwalkers=100, psig=np.ones(8)*1e-2, ranges=np.array([[0, 360], [-90, 90], [0,100], [-500, 500], [-50, 50], [-50, 50], [2,6], [1,6]])):
     """"""
-    potential = 'gal'
-    pparams = pparams_fid[:]
-    mf = 1e-2*u.Msun
-    dt = 1*u.Myr
-    observer = mw_observer
-    vobs = vsun
-    obsmode = 'equatorial'
-    footprint = None
-    nwalkers = 100
+    
+    # save running setup
+    argval = inspect.getargvalues(inspect.currentframe())
+    pickle.dump(argval[3], open('../data/chains/progenitor_{}.info'.format(name), 'wb'))
     
     if cont:
         extension = '_cont'
@@ -658,16 +653,13 @@ def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100
     plt.tight_layout()
     
     # initialize progenitor properties
-    x0_obs, v0_obs = get_close_progenitor(observed, potential, pparams, mf, dt, obsmode, observer, vobs, footprint)
-    #x0_obs, v0_obs = get_progenitor(observed, observer=mw_observer, pparams=pparams)
+    x0_obs, v0_obs = get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, mod_err, observer, vobs, footprint, ranges)
     plist = [i.value for i in x0_obs] + [i.value for i in v0_obs] + [4, 3]
     pinit = np.array(plist)
-    psig = np.array([0.1, 0.1, 1, 10, 0.2, 0.2, 0.2, 0.5])
     nfree = np.size(pinit)
-    psig = np.ones(nfree) * 1e-2
     
     if test:
-        print(lnprob_prog(pinit, potential, pparams, mf, dt, obsmode, observer, vobs, footprint, observed))
+        print(lnprob_prog(pinit, potential, pparams, mf, dt, nstar, obsmode, mod_err, observer, vobs, footprint, observed, ranges))
         pbest = pinit
     
     else:
@@ -675,7 +667,7 @@ def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100
         
         # Define a sampler
         pool = get_pool(mpi=mpi, threads=nth)
-        sampler = emcee.EnsembleSampler(nwalkers, nfree, lnprob_prog, pool=pool, args=[potential, pparams, mf, dt, obsmode, observer, vobs, footprint, observed])
+        sampler = emcee.EnsembleSampler(nwalkers, nfree, lnprob_prog, pool=pool, args=[potential, pparams, mf, dt, nstar, obsmode, mod_err, observer, vobs, footprint, observed, ranges])
         
         if cont:
             # initialize random state
@@ -741,7 +733,7 @@ def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100
     age = pbest[7]*u.Gyr
     
     # stream model parameters
-    params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 100, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [0.5*u.deg, 0.5*u.deg, 1*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': None}}
+    params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': nstar, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': mod_err, 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': None}}
     
     model = Stream(**params['generate'])
     model.generate()
@@ -751,7 +743,7 @@ def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100
         plt.sca(ax[i])
         plt.plot(model.obs[0], model.obs[i+1], 'ro')
 
-def get_close_progenitor(observed, potential, pparams, mf, dt, obsmode, observer, vobs, footprint):
+def get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, mod_err, observer, vobs, footprint, ranges):
     """Pick the best direction for initializing progenitor velocity vector"""
 
     dp_list = np.array([[1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1],
@@ -765,7 +757,7 @@ def get_close_progenitor(observed, potential, pparams, mf, dt, obsmode, observer
         x0_obs, v0_obs = get_progenitor(observed, dp=dp_list[i], observer=mw_observer, pparams=pparams)
         plist = [j.value for j in x0_obs] + [j.value for j in v0_obs] + [4, 3]
         pinit = np.array(plist)
-        lnp[i] = lnprob_prog(pinit, potential, pparams, mf, dt, obsmode, observer, vobs, footprint, observed)
+        lnp[i] = lnprob_prog(pinit, potential, pparams, mf, dt, nstar, obsmode, mod_err, observer, vobs, footprint, observed, ranges)
         v0[i] = v0_obs
     
     return x0_obs, v0[np.argmax(lnp)]
@@ -881,10 +873,10 @@ def bestfit(name='Sty'):
     plt.tight_layout()
     
 
-def lnprob_prog(x, potential, pparams, mf, dt, obsmode, observer, vobs, footprint, observed):
+def lnprob_prog(x, potential, pparams, mf, dt, nstar, obsmode, mod_err, observer, vobs, footprint, observed, ranges):
     """"""
     
-    lnprior = lnprior_prog(x)
+    lnprior = lnprior_prog(x, ranges)
     
     if np.isfinite(lnprior):
         x0 = [x[0]*u.deg, x[1]*u.deg, x[2]*u.kpc]
@@ -894,7 +886,7 @@ def lnprob_prog(x, potential, pparams, mf, dt, obsmode, observer, vobs, footprin
         age = x[7]*u.Gyr
         
         # stream model parameters
-        params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 100, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [0.5*u.deg, 0.5*u.deg, 1*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': None}}
+        params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': nstar, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': mod_err, 'present': [], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': None}}
         
         model = Stream(**params['generate'])
         model.generate()
@@ -907,11 +899,9 @@ def lnprob_prog(x, potential, pparams, mf, dt, obsmode, observer, vobs, footprin
     else:
         return -np.inf
 
-def lnprior_prog(x):
+def lnprior_prog(x, ranges):
     """"""
-    ranges = np.array([[0, 360], [-90, 90], [0,100], [-500, 500], [-50, 50], [-50, 50], [2,6], [1,6]])
     npar = np.size(x)
-    
     outbounds = [(x[i]<ranges[i][0]) | (x[i]>ranges[i][1]) for i in range(npar)]
 
     if np.any(outbounds):
