@@ -21,7 +21,7 @@ gc_observer = {'z_sun': 27.*u.pc, 'galcen_distance': 0.1*u.kpc, 'roll': 0*u.deg,
 vgc = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 vgc0 = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 
-pparams_fid = [0.5*u.Msun, 0.7*u.kpc, 6.8*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
+pparams_fid = [0.5e10*u.Msun, 0.7*u.kpc, 6.8e10*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
 
 import streakline
 import emcee
@@ -780,6 +780,29 @@ def combine_results(f, fcont, nwalkers):
     pflat_comb = ppack_comb.reshape(-1)
     
     np.savez(f, lnp=pflat_comb, chain=flat_comb)
+
+def store_progparams(name, verbose=False):
+    """"""
+    info = pickle.load(open('../data/chains/progenitor_{}.info'.format(name), 'rb'))
+    res = np.load('../data/chains/progenitor_{}.npz'.format(name))
+    
+    chain = res['chain']
+    lnp = res['lnp']
+    idmax = np.argmax(lnp)
+    pbest = chain[idmax]
+    
+    x0 = [pbest[0]*u.deg, pbest[1]*u.deg, pbest[2]*u.kpc]
+    v0 = [pbest[3]*u.km/u.s, pbest[4]*u.mas/u.yr, pbest[5]*u.mas/u.yr]
+    mi = 10**pbest[6]*u.Msun
+    age = pbest[7]*u.Gyr
+    
+    prog_params = {'x0': x0, 'v0': v0, 'mi': mi, 'mf': info['mf'], 'age': age}
+    
+    for k in ['observer', 'potential', 'pparams', 'obsmode', 'vobs', 'footprint']:
+        prog_params[k] = info[k]
+    
+    if verbose: print(prog_params)
+    pickle.dump(prog_params, open('../data/mock_{}.params'.format(name), 'wb'))
 
 def analyze_chains(name='Sty'):
     """"""
