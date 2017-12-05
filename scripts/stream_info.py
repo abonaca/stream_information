@@ -25,6 +25,7 @@ import scipy.optimize
 import zscale
 
 import copy
+import pickle
 
 # observers
 # defaults taken as in astropy v2.0 icrs
@@ -417,7 +418,7 @@ class Stream():
 
 # make a streakline model of a stream
 
-def stream_model(n, pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=None, graph=False, graphsave=False, observer=mw_observer, vobs=vsun, footprint='', obsmode='equatorial'):
+def stream_model(n, name='gd1', pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=np.eye(3), graph=False, graphsave=False, observer=mw_observer, vobs=vsun, footprint='', obsmode='equatorial'):
     """Create a streakline model of a stream
     baryonic component as in kupper+2015: 3.4e10*u.Msun, 0.7*u.kpc, 1e11*u.Msun, 6.5*u.kpc, 0.26*u.kpc"""
     
@@ -438,6 +439,7 @@ def stream_model(n, pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=None, graph=Fa
     vcd2 = G * pparams[2] * r**2 * (r**2 + (pparams[3] + pparams[4])**2)**-1.5
     
     vobs['vcirc'] = np.sqrt(vch2 + vcb2 + vcd2)
+    print(vobs['vcirc'])
     
     # vary progenitor parameters
     progenitor = progenitor_params(n)
@@ -446,11 +448,13 @@ def stream_model(n, pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=None, graph=Fa
         x0_obs[i] += pparams0[19+i]
         v0_obs[i] += pparams0[22+i]
     
-    #potential = 'point'
-    #pparams[0] = 5e9*u.Msun
+    #print(x0_obs, v0_obs)
     
     # stream model parameters
-    params = {'generate': {'x0': x0_obs, 'v0': v0_obs, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': progenitor['mi'], 'mfinal': progenitor['mf'], 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': progenitor['age'], 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': rotmatrix}}
+    #params = {'generate': {'x0': x0_obs, 'v0': v0_obs, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': progenitor['mi'], 'mfinal': progenitor['mf'], 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': progenitor['age'], 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': rotmatrix}}
+    
+    mock = pickle.load(open('../data/mock_{}.params'.format(name), 'rb'))
+    params = {'generate': {'x0': mock['x0'], 'v0': mock['v0'], 'progenitor': {'coords': 'equatorial', 'observer': mock['observer'], 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mock['mi'], 'mfinal': mock['mf'], 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': mock['age'], 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': mock['obsmode'], 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mock['observer'], 'vobs': mock['vobs'], 'footprint': mock['footprint'], 'rotmatrix': rotmatrix}}
     
     stream = Stream(**params['generate'])
     stream.generate()
