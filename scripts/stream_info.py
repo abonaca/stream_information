@@ -2951,41 +2951,38 @@ def prog_orbit3d(n, symmetry=False):
     plt.tight_layout()
     plt.savefig('../plots/orbit_3d_{}_{:d}.png'.format(n, symmetry))
 
-def stream_orbit(n, pparams0=[0.5e10*u.Msun, 0.7*u.kpc, 6.8e10*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 2.5e11*u.Msun, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr], dt=0.2*u.Myr, rotmatrix=None, graph=False, observer=mw_observer, vobs=vsun, footprint='', obsmode='equatorial'):
+def stream_orbit(name='gd1', pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=np.eye(3), diagnostic=False, observer=mw_observer, vobs=vsun, footprint='', obsmode='equatorial'):
     """Create a streakline model of a stream
     baryonic component as in kupper+2015: 3.4e10*u.Msun, 0.7*u.kpc, 1e11*u.Msun, 6.5*u.kpc, 0.26*u.kpc"""
     
+    # vary progenitor parameters
+    mock = pickle.load(open('../data/mock_{}.params'.format(name), 'rb'))
+    #for i in range(3):
+        #mock['x0'][i] += pparams0[19+i]
+        #mock['v0'][i] += pparams0[22+i]
+    
     # vary potential parameters
-    potential = 'gal'
-    pparams = pparams0[:11]
+    potential = 'quad'
+    pparams = pparams0[:19]
+    pparams[0] = pparams0[0]*1e10
+    pparams[2] = pparams0[2]*1e10
     
     # adjust circular velocity in this halo
-    r = observer['galcen_distance']
-    # nfw halo
-    mr = pparams[5]**2 * pparams[6] / G * (np.log(1 + r/pparams[6]) - r/(r + pparams[6]))
-    vch2 = G*mr/r
-    # hernquist bulge
-    vcb2 = G * pparams[0] * r * (r + pparams[1])**-2
-    # miyamoto-nagai disk
-    vcd2 = G * pparams[2] * r**2 * (r**2 + (pparams[3] + pparams[4])**2)**-1.5
-    
-    vobs['vcirc'] = np.sqrt(vch2 + vcb2 + vcd2)
-    
-    # vary progenitor parameters
-    progenitor = progenitor_params(n)
-    x0_obs, v0_obs = gal2eq(progenitor['x0'], progenitor['v0'], observer=observer, vobs=vobs)
-    for i in range(3):
-        x0_obs[i] += pparams0[12+i]
-        v0_obs[i] += pparams0[15+i]
-    
-    # stream model parameters
-    params = {'generate': {'x0': x0_obs, 'v0': v0_obs, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': progenitor['mi'], 'mfinal': progenitor['mf'], 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': progenitor['age'], 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': rotmatrix}}
+    vobs['vcirc'] = vcirc_potential(observer['galcen_distance'], pparams=pparams)
+
+    # create a model stream with these parameters
+    params = {'generate': {'x0': mock['x0'], 'v0': mock['v0'], 'progenitor': {'coords': 'equatorial', 'observer': mock['observer'], 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mock['mi'], 'mfinal': mock['mf'], 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': mock['age'], 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': mock['obsmode'], 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mock['observer'], 'vobs': mock['vobs'], 'footprint': mock['footprint'], 'rotmatrix': rotmatrix}}
     
     stream = Stream(**params['generate'])
-    #stream.generate()
-    #stream.observe(**params['observe'])
     stream.prog_orbit()
     
+    if diagnostic:
+        r = np.linalg.norm(stream.orbit['x'].to(u.kpc), axis=0)
+        rmin = np.min(r)
+        rmax = np.max(r)
+        e = (rmax - rmin)/(rmax + rmin)
+        print(rmin, rmax, e)
+        
     return stream.orbit
 
 # summary of parameter constraints
