@@ -904,6 +904,7 @@ def get_varied_bytype(vary):
         # pal5
         dp = [1e-2*u.Msun, 0.000005*u.kpc, 1e-2*u.Msun, 0.000002*u.kpc, 0.00002*u.kpc]
         dp = [1e-7*u.Msun, 0.5*u.kpc, 1e-7*u.Msun, 0.5*u.kpc, 0.5*u.kpc]
+        #dp = [1e-4*u.Msun, 0.5*u.kpc, 1e-4*u.Msun, 0.5*u.kpc, 0.5*u.kpc]
     elif vary=='halo':
         pid = [5,6,8,10]
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
@@ -1363,8 +1364,8 @@ def step_convergence(name='gd1', Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary
             plt.sca(ax[p])
             plt.plot(step_der[p], dev_der[p], 'ko')
             
-            plabel = get_parlabel(pid[p])
-            plt.xlabel('$\Delta$ {}'.format(plabel))
+            #plabel = get_parlabel(pid[p])
+            #plt.xlabel('$\Delta$ {}'.format(plabel))
             plt.ylabel('D')
             plt.gca().set_yscale('log')
         
@@ -1450,52 +1451,65 @@ def read_optimal_step(name, vary):
     return dp
 
 
+# observing modes
+def define_obsmodes():
+    """Output a pickled dictionary with typical uncertainties and dimensionality of data for a number of observing modes"""
+    
+    obsmodes = {}
+    
+    obsmodes['fiducial'] = {'sig_obs': np.array([0.1, 2, 5, 0.1, 0.1]), 'Ndim': [3,4,6]}
+    obsmodes['binospec'] = {'sig_obs': np.array([0.1, 2, 10, 0.1, 0.1]), 'Ndim': [3,4,6]}
+    obsmodes['hectochelle'] = {'sig_obs': np.array([0.1, 2, 1, 0.1, 0.1]), 'Ndim': [3,4,6]}
+    
+    pickle.dump(obsmodes, open('../data/observing_modes.info','wb'))
+
+
 # crbs using bspline
 
-def bspline_crb(n, dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'], Nobs=50, verbose=False, align=True, scale=False, errmode='fiducial'):
+def calculate_crb(name='gd1', dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'], ra=np.nan, Nobs=50, verbose=False, align=True, scale=False, errmode='fiducial', k=3):
     """"""
+    mock = pickle.load(open('../data/mock_{}.params'.format(name),'rb'))
     if align:
-        rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
-        alabel = '_align'
+        rotmatrix = mock['rotmatrix']
+        xmm = mock['xi_range']
     else:
-        rotmatrix = None
-        alabel = ''
+        rotmatrix = np.eye(3)
+        xmm = mock['ra_range']
         
-    # typical uncertainties
-    if errmode=='fiducial':
-        sig_obs = np.array([0.1, 2, 5, 0.1, 0.1])
-    elif errmode=='binospec':
-        sig_obs = np.array([0.1, 2, 10, 0.1, 0.1])
-    elif errmode=='hectochelle':
-        sig_obs = np.array([0.1, 2, 1, 0.1, 0.1])
+    # typical uncertainties and data availability
+    obsmodes = pickle.load(open('../data/observing_modes.info', 'rb'))
+    if errmode not in obsmodes.keys():
+        errmode = 'fiducial'
+    sig_obs = obsmodes[errmode]['sig_obs']
+    data_dim = obsmodes[errmode]['Ndim']
     
     # mock observations
-    pparams0 = pparams_fid
-    stream0 = stream_model(n, pparams0=pparams0, dt=dt, rotmatrix=rotmatrix)
-    
-    ra = np.linspace(np.min(stream0.obs[0])*1.05, np.max(stream0.obs[0])*0.95, Nobs)
+    if np.any(~np.isfinite(ra)):
+        ra = np.linspace(xmm[0]*1.05, xmm[1]*0.95, Nobs)
+    else:
+        Nobs = np.size(ra)
     err = np.tile(sig_obs, Nobs).reshape(Nobs,-1)
 
+    # varied parameters
+    pparams0 = pparams_fid
     pid, dp_fid, vlabel = get_varied_pars(vary)
     Np = len(pid)
-    dp_opt = read_optimal_step(n, vary)
+    dp_opt = read_optimal_step(name, vary)
     dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
+    fits_ex = [[[None]*5 for x in range(2)] for y in range(Np)]
     
     if scale:
         dp_unit = unity_scale(dp)
         dps = [x*y for x,y in zip(dp, dp_unit)]
-    
-    k = 3
-    
-    fits_ex = [[[None]*5 for x in range(2)] for y in range(Np)]
 
+    # calculate derivatives for all parameters
     for p in range(Np):
         for i, s in enumerate([-1, 1]):
             pparams = [x for x in pparams0]
             pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
-            stream = stream_model(n, pparams0=pparams, dt=dt, rotmatrix=rotmatrix)
+            stream = stream_model(name=name, pparams0=pparams, dt=dt, rotmatrix=rotmatrix)
             
-            # fits
+            # bspline fits to stream centerline
             iexsort = np.argsort(stream.obs[0])
             raex = np.linspace(np.percentile(stream.obs[0], 10), np.percentile(stream.obs[0], 90), Nobs)
             tex = np.r_[(stream.obs[0][iexsort][0],)*(k+1), raex, (stream.obs[0][iexsort][-1],)*(k+1)]
@@ -1503,8 +1517,8 @@ def bspline_crb(n, dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'], Nobs=50, v
             for j in range(5):
                 fits_ex[p][i][j] = scipy.interpolate.make_lsq_spline(stream.obs[0][iexsort], stream.obs[j+1][iexsort], tex, k=k)
     
-    for Ndim in [3,4,6]:
-    #for Ndim in [3,]:
+    # populate matrix of derivatives and calculate CRB
+    for Ndim in data_dim:
         Ndata = Nobs * (Ndim - 1)
         cyd = np.empty(Ndata)
         dydx = np.empty((Np, Ndata))
@@ -1513,37 +1527,32 @@ def bspline_crb(n, dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'], Nobs=50, v
             for p in range(Np):
                 dy = fits_ex[p][0][j-1](ra) - fits_ex[p][1][j-1](ra)
                 positive = np.abs(dy)>0
-                print('{:d},{:d} {:s} min{:.1e} max{:1e} med{:.1e}'.format(j, p, get_parlabel(pid[p])[0], np.min(np.abs(dy[positive])), np.max(np.abs(dy)), np.median(np.abs(dy))))
+                #if verbose: print('{:d},{:d} {:s} min{:.1e} max{:1e} med{:.1e}'.format(j, p, get_parlabel(pid[p])[0], np.min(np.abs(dy[positive])), np.max(np.abs(dy)), np.median(np.abs(dy))))
                 if scale:
                     dydx[p][(j-1)*Nobs:j*Nobs] = -dy / np.abs(2*dps[p].value)
                 else:
                     dydx[p][(j-1)*Nobs:j*Nobs] = -dy / np.abs(2*dp[p].value)
-                print('{:d},{:d} {:s} min{:.1e} max{:1e} med{:.1e}'.format(j, p, get_parlabel(pid[p])[0], np.min(np.abs(dydx[p][(j-1)*Nobs:j*Nobs][positive])), np.max(np.abs(dydx[p][(j-1)*Nobs:j*Nobs])), np.median(np.abs(dydx[p][(j-1)*Nobs:j*Nobs]))))
+                #if verbose: print('{:d},{:d} {:s} min{:.1e} max{:1e} med{:.1e}'.format(j, p, get_parlabel(pid[p])[0], np.min(np.abs(dydx[p][(j-1)*Nobs:j*Nobs][positive])), np.max(np.abs(dydx[p][(j-1)*Nobs:j*Nobs])), np.median(np.abs(dydx[p][(j-1)*Nobs:j*Nobs]))))
         
             cyd[(j-1)*Nobs:j*Nobs] = err[:,j-1]**2
         
         cy = np.diag(cyd)
         cyi = np.diag(1. / cyd)
-        
         caux = np.matmul(cyi, dydx.T)
         cxi = np.matmul(dydx, caux)
-
-        cx = np.linalg.inv(cxi)
-        cx = np.matmul(np.linalg.inv(np.matmul(cx, cxi)), cx) # iteration of inverse improvement for large cond numbers
-        sx = np.sqrt(np.diag(cx))
-        
-        for i, m in enumerate([cy, cyi, dydx, caux, cxi]):
-            positive = m>0
-            print('{:d} {:g} {:g}'.format(i, np.min(m[positive]), np.max(m)))
         
         if verbose:
-            print(Ndim)
-            print(np.diag(cxi))
-            print(np.linalg.det(cxi))
-            print(np.allclose(cxi, cxi.T), np.allclose(cx, cx.T), np.allclose(np.matmul(cx,cxi), np.eye(np.shape(cx)[0])))
+            cx = np.linalg.inv(cxi)
+            cx = np.matmul(np.linalg.inv(np.matmul(cx, cxi)), cx) # iteration to improve inverse at large cond numbers
+            sx = np.sqrt(np.diag(cx))
+            print('CRB', sx)
             print('condition {:g}'.format(np.linalg.cond(cxi)))
+            print('standard inverse', np.allclose(cxi, cxi.T), np.allclose(cx, cx.T), np.allclose(np.matmul(cx,cxi), np.eye(np.shape(cx)[0])))
+            
+            cx = stable_inverse(cxi)
+            print('stable inverse', np.allclose(cxi, cxi.T), np.allclose(cx, cx.T), np.allclose(np.matmul(cx,cxi), np.eye(np.shape(cx)[0])))
 
-        np.save('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}'.format(alabel, errmode, n, vlabel, Ndim), cxi)
+        np.save('../data/crb/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}'.format(errmode, Ndim, name, align, vlabel), cxi)
 
 def unity_scale(dp):
     """"""
@@ -1554,26 +1563,21 @@ def unity_scale(dp):
     
     return dp_unit
 
-def test_inversion(n, Ndim=6, vary=['progenitor', 'bary', 'halo'], align=True, errmode='fiducial'):
+def test_inversion(name='gd1', Ndim=6, vary=['progenitor', 'bary', 'halo'], align=True, errmode='fiducial'):
     """"""
     pid, dp, vlabel = get_varied_pars(vary)
-    if align:
-        alabel = '_align'
-    else:
-        alabel = ''
         
-    cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
+    cxi = np.load('../data/crb/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npy'.format(errmode, Ndim, name, align, vlabel))
     N = np.shape(cxi)[0]
     
     cx_ = np.linalg.inv(cxi)
-    
-    cx = stable_inverse(cxi, verbose=True)
-    cx_ii = stable_inverse(cx, verbose=True)
+    cx = stable_inverse(cxi, verbose=True, maxiter=20)
+    #cx_ii = stable_inverse(cx, verbose=True, maxiter=50)
     
     print('condition {:g}'.format(np.linalg.cond(cxi)))
     print('stable inverse', np.allclose(np.matmul(cx,cxi), np.eye(N)))
     print('linalg inverse', np.allclose(np.matmul(cx_,cxi), np.eye(N)))
-    print('inverse inverse', np.allclose(cx_ii, cxi))
+    #print('inverse inverse', np.allclose(cx_ii, cxi))
 
 def stable_inverse(a, maxiter=20, verbose=False):
     """Invert a matrix with a bad condition number"""
