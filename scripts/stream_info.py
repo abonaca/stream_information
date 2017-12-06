@@ -12,6 +12,8 @@ import streakline
 import myutils
 import ffwd
 
+from streams import load_stream, vcirc_potential
+
 import astropy
 import astropy.units as u
 from astropy.constants import G
@@ -418,9 +420,15 @@ class Stream():
 
 # make a streakline model of a stream
 
-def stream_model(n, name='gd1', pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=np.eye(3), graph=False, graphsave=False, observer=mw_observer, vobs=vsun, footprint='', obsmode='equatorial'):
+def stream_model(name='gd1', pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=np.eye(3), graph=False, graphsave=False, observer=mw_observer, vobs=vsun, footprint='', obsmode='equatorial'):
     """Create a streakline model of a stream
     baryonic component as in kupper+2015: 3.4e10*u.Msun, 0.7*u.kpc, 1e11*u.Msun, 6.5*u.kpc, 0.26*u.kpc"""
+    
+    # vary progenitor parameters
+    mock = pickle.load(open('../data/mock_{}.params'.format(name), 'rb'))
+    for i in range(3):
+        mock['x0'][i] += pparams0[19+i]
+        mock['v0'][i] += pparams0[22+i]
     
     # vary potential parameters
     potential = 'quad'
@@ -429,31 +437,9 @@ def stream_model(n, name='gd1', pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=np
     pparams[2] = pparams0[2]*1e10
     
     # adjust circular velocity in this halo
-    r = observer['galcen_distance']
-    # nfw halo
-    mr = pparams[5]**2 * pparams[6] / G * (np.log(1 + r/pparams[6]) - r/(r + pparams[6]))
-    vch2 = G*mr/r
-    # hernquist bulge
-    vcb2 = G * pparams[0] * r * (r + pparams[1])**-2
-    # miyamoto-nagai disk
-    vcd2 = G * pparams[2] * r**2 * (r**2 + (pparams[3] + pparams[4])**2)**-1.5
-    
-    vobs['vcirc'] = np.sqrt(vch2 + vcb2 + vcd2)
-    print(vobs['vcirc'])
-    
-    # vary progenitor parameters
-    progenitor = progenitor_params(n)
-    x0_obs, v0_obs = gal2eq(progenitor['x0'], progenitor['v0'], observer=observer, vobs=vobs)
-    for i in range(3):
-        x0_obs[i] += pparams0[19+i]
-        v0_obs[i] += pparams0[22+i]
-    
-    #print(x0_obs, v0_obs)
-    
-    # stream model parameters
-    #params = {'generate': {'x0': x0_obs, 'v0': v0_obs, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': progenitor['mi'], 'mfinal': progenitor['mf'], 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': progenitor['age'], 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': rotmatrix}}
-    
-    mock = pickle.load(open('../data/mock_{}.params'.format(name), 'rb'))
+    vobs['vcirc'] = vcirc_potential(observer['galcen_distance'], pparams=pparams)
+
+    # create a model stream with these parameters
     params = {'generate': {'x0': mock['x0'], 'v0': mock['v0'], 'progenitor': {'coords': 'equatorial', 'observer': mock['observer'], 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mock['mi'], 'mfinal': mock['mf'], 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': mock['age'], 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': mock['obsmode'], 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mock['observer'], 'vobs': mock['vobs'], 'footprint': mock['footprint'], 'rotmatrix': rotmatrix}}
     
     stream = Stream(**params['generate'])
@@ -464,7 +450,7 @@ def stream_model(n, name='gd1', pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=np
     # Plot observed stream and model
     
     if graph:
-        observed = load_stream(n)
+        observed = load_stream(name)
         Ndim = np.shape(observed.obs)[0]
     
         modcol = 'k'
@@ -481,13 +467,7 @@ def stream_model(n, name='gd1', pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=np
             plt.xlabel('R.A. (deg)')
             plt.ylabel(ylabel[i])
             
-            if i<Ndim-1:
-                if i<2:
-                    sample = np.arange(np.size(observed.obs[0]), dtype=int)
-                else:
-                    sample = observed.obs[i+1]>MASK
-                plt.plot(observed.obs[0][sample], observed.obs[i+1][sample], 's', color=obscol, mec='none', ms=8, label='Observed stream')
-            
+            plt.plot(observed.obs[0], observed.obs[i+1], 's', color=obscol, mec='none', ms=8, label='Observed stream')
             plt.plot(stream.obs[0], stream.obs[i+1], 'o', color=modcol, mec='none', ms=4, label='Fiducial model')
             
             if i==0:
@@ -495,7 +475,7 @@ def stream_model(n, name='gd1', pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=np
         
         plt.tight_layout()
         if graphsave:
-            plt.savefig('../plots/mock_observables_s{}_p{}.png'.format(n, potential), dpi=150)
+            plt.savefig('../plots/mock_observables_{}_p{}.png'.format(name, potential), dpi=150)
     
     return stream
 
@@ -599,10 +579,10 @@ def atlas_coordinates(observer=mw_observer):
 
 # great circle orientation
 
-def find_greatcircle(n, pparams=pparams_fid, dt=0.2*u.Myr):
+def find_greatcircle(name='gd1', pparams=pparams_fid, dt=0.2*u.Myr):
     """Save rotation matrix for a stream model"""
     
-    stream = stream_model(n, pparams0=pparams, dt=dt)
+    stream = stream_model(name, pparams0=pparams, dt=dt)
     
     # find the pole
     ra = np.radians(stream.obs[0])
@@ -639,7 +619,16 @@ def find_greatcircle(n, pparams=pparams_fid, dt=0.2*u.Myr):
     R = np.dot(R2, np.matmul(R1, R0))
     xi, eta = myutils.rotate_angles(stream.obs[0], stream.obs[1], R)
     
-    np.save('../data/rotmatrix_{:d}'.format(n), R)
+    np.save('../data/rotmatrix_{}'.format(name), R)
+    
+    f = open('../data/mock_{}.params'.format(name), 'rb')
+    mock = pickle.load(f)
+    mock['rotmatrix'] = R
+    f.close()
+    
+    f = open('../data/mock_{}.params'.format(name), 'wb')
+    pickle.dump(mock, f)
+    f.close()
     
     plt.close()
     fig, ax = plt.subplots(1,2,figsize=(10,5))
@@ -658,7 +647,7 @@ def find_greatcircle(n, pparams=pparams_fid, dt=0.2*u.Myr):
     plt.ylim(-5, 5)
     
     plt.tight_layout()
-    plt.savefig('../plots/gc_orientation_{:d}.png'.format(n))
+    plt.savefig('../plots/gc_orientation_{}.png'.format(name))
 
 def wfit_plane(x, r, p=None):
     """Fit a plane to a set of 3d points"""
@@ -680,19 +669,19 @@ def wfit_plane(x, r, p=None):
 
 # observed streams
 
-def load_stream(n):
-    """Load stream observations"""
+#def load_stream(n):
+    #"""Load stream observations"""
     
-    if n==-1:
-        observed = load_gd1(present=[0,1,2,3])
-    elif n==-2:
-        observed = load_pal5(present=[0,1,2,3])
-    elif n==-3:
-        observed = load_tri(present=[0,1,2,3])
-    elif n==-4:
-        observed = load_atlas(present=[0,1,2,3])
+    #if n==-1:
+        #observed = load_gd1(present=[0,1,2,3])
+    #elif n==-2:
+        #observed = load_pal5(present=[0,1,2,3])
+    #elif n==-3:
+        #observed = load_tri(present=[0,1,2,3])
+    #elif n==-4:
+        #observed = load_atlas(present=[0,1,2,3])
     
-    return observed
+    #return observed
 
 def load_pal5(present, nobs=50, potential='gal'):
     """"""
@@ -1267,13 +1256,15 @@ def plot_steps(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=Fa
     plt.tight_layout()
     plt.savefig('../plots/observable_steps_{:d}_{:s}_p{:d}_Ns{:d}.png'.format(n, vlabel, p, Nstep))
 
-def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', align=True, graph=False, verbose=False):
+def step_convergence(name='gd1', Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', align=True, graph=False, verbose=False):
     """Check deviations in numerical derivatives for consecutive step sizes"""
     
     if align:
-        rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
+        #rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
+        mock = pickle.load(open('../data/mock_{}.params'.format(name),'rb'))
+        rotmatrix = mock['rotmatrix']
     else:
-        rotmatrix = None
+        rotmatrix = np.eye(3)
     
     pparams0 = pparams_fid
     pid, dp, vlabel = get_varied_pars(vary)
@@ -1290,7 +1281,7 @@ def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', 
     step_der = np.empty((Np, Nstep-2*layer))
     
     # fiducial model
-    stream0 = stream_model(n, pparams0=pparams0, dt=dt, rotmatrix=rotmatrix)
+    stream0 = stream_model(name=name, pparams0=pparams0, dt=dt, rotmatrix=rotmatrix)
     
     Nobs = 10
     k = 3
@@ -1314,7 +1305,7 @@ def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', 
             if verbose: print(i, s)
             pparams = [x for x in pparams0]
             pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
-            stream = stream_model(n, pparams0=pparams, dt=dt, rotmatrix=rotmatrix)
+            stream = stream_model(name=name, pparams0=pparams, dt=dt, rotmatrix=rotmatrix)
             
             # fits
             iexsort = np.argsort(stream.obs[0])
@@ -1337,6 +1328,7 @@ def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', 
                 dydx[i][j] = -dy / np.abs(2*step[i]*dp[p])
         
         dydx_all[p] = dydx
+        
         # deviations from adjacent steps
         step_der[p] = -step[layer:Nstep-layer] * dp[p]
         
@@ -1347,7 +1339,7 @@ def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', 
                     dev_der[p][i-layer] += np.sum((dydx[i][j] - dydx[i-l-1][j])**2)
                     dev_der[p][i-layer] += np.sum((dydx[i][j] - dydx[i+l+1][j])**2)
     
-    np.savez('../data/step_convergence_{}_{}_Ns{}_log{}_l{}'.format(n, vlabel, Nstep, log, layer), step=step_der, dev=dev_der, ders=dydx_all, steps_all=np.outer(dpvec,step[Nstep:]))
+    np.savez('../data/step_convergence_{}_{}_Ns{}_log{}_l{}'.format(name, vlabel, Nstep, log, layer), step=step_der, dev=dev_der, ders=dydx_all, steps_all=np.outer(dpvec,step[Nstep:]))
     
     if graph:
         plt.close()
@@ -1362,7 +1354,7 @@ def step_convergence(n, Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', 
             plt.gca().set_yscale('log')
         
         plt.tight_layout()
-        plt.savefig('../plots/step_convergence_{}_{}_Ns{}_log{}_l{}.png'.format(n, vlabel, Nstep, log, layer))
+        plt.savefig('../plots/step_convergence_{}_{}_Ns{}_log{}_l{}.png'.format(name, vlabel, Nstep, log, layer))
 
 def choose_step(n, tolerance=2, Nstep=20, log=True, layer=1, vary='halo'):
     """"""
