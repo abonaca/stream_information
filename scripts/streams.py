@@ -624,7 +624,7 @@ def make_script(name, t=1*u.h, nth=4, mem=1000, queue='conroy', manager='slurm',
     if verbose:
         print(fmt_script)
 
-def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100, seeds=[905, 63], nth=4, mpi=False, potential='gal', pparams=pparams_fid[:], mf=1e-2*u.Msun, dt=1*u.Myr, nstar=100, observer=mw_observer, vobs=vsun, obsmode='equatorial', mod_err=[0.5*u.deg, 0.5*u.deg, 1*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], footprint=None, nwalkers=100, psig=np.ones(8)*1e-2, ranges=np.array([[0, 360], [-90, 90], [0,100], [-500, 500], [-50, 50], [-50, 50], [2,6], [1,6]])):
+def find_progenitor(name='gd1', test=False, verbose=False, cont=False, nstep=100, seeds=[905, 63], nth=4, mpi=False, potential='gal', pparams=pparams_fid[:], mf=1e-2*u.Msun, dt=1*u.Myr, nstar=200, observer=mw_observer, vobs=vsun, obsmode='equatorial', mod_err=[0.5*u.deg, 0.5*u.deg, 0.5*u.kpc, 2*u.km/u.s, 0.1*u.mas/u.yr, 0.1*u.mas/u.yr], footprint=None, nwalkers=100, psig=np.ones(8)*1e-2, ranges=np.array([[0, 360], [-90, 90], [0,100], [-500, 500], [-50, 50], [-50, 50], [2,6], [1,7]])):
     """"""
     
     # save running setup
@@ -746,8 +746,15 @@ def find_progenitor(name='Sty', test=False, verbose=False, cont=False, nstep=100
 def get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, mod_err, observer, vobs, footprint, ranges):
     """Pick the best direction for initializing progenitor velocity vector"""
 
-    dp_list = np.array([[1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1],
-    [1,1,1], [-1,-1,-1], [1,-1,1,], [-1,1,-1], [-1,-1,1], [1,1,-1], [-1,1,1], [1,-1,-1]])
+    N = 50
+    u_ = np.random.random(N)
+    v_ = np.random.random(N)
+    theta = np.arccos(2*u_ - 1)
+    phi = 2 * np.pi * v_
+    dp_list = np.array([np.sin(theta) * np.cos(phi),
+                np.sin(theta) * np.sin(phi),
+                np.cos(theta)]).T
+    
     ndp, ndim = np.shape(dp_list)
     
     lnp = np.empty(ndp)
