@@ -904,7 +904,7 @@ def get_varied_bytype(vary):
         # pal5
         dp = [1e-2*u.Msun, 0.000005*u.kpc, 1e-2*u.Msun, 0.000002*u.kpc, 0.00002*u.kpc]
         dp = [1e-7*u.Msun, 0.5*u.kpc, 1e-7*u.Msun, 0.5*u.kpc, 0.5*u.kpc]
-        #dp = [1e-4*u.Msun, 0.5*u.kpc, 1e-4*u.Msun, 0.5*u.kpc, 0.5*u.kpc]
+        dp = [1e-4*u.Msun, 0.5*u.kpc, 1e-4*u.Msun, 0.5*u.kpc, 0.5*u.kpc]
     elif vary=='halo':
         pid = [5,6,8,10]
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
@@ -1666,18 +1666,16 @@ def crb_triangle(n, vary, Ndim=6, align=True, plot='all', fast=False):
     plt.tight_layout()
     plt.savefig('../plots/crb_triangle_{:s}_{:d}_{:s}_{:d}_{:s}.pdf'.format(alabel, n, vlabel, Ndim, plot))
 
-def crb_triangle_alldim(n, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], align=True, plot='all', fast=False, scale=False, errmode='fiducial'):
-    """"""
-    pid, dp_fid, vlabel = get_varied_pars(vary)
-    dp_opt = read_optimal_step(n, vary)
-    dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
-    plabels, units = get_parlabel(pid)
-    params = ['$\Delta$' + x + '({})'.format(y) for x,y in zip(plabels, units)]
+def crb_triangle_alldim(name='gd1', vary=['progenitor', 'bary', 'halo'], align=True, plot='all', fast=False, scale=False, errmode='fiducial'):
+    """Show correlations in CRB between a chosen set of parameters in a triangle plot"""
     
-    if align:
-        alabel = '_align'
-    else:
-        alabel = ''
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    dp_opt = read_optimal_step(name, vary)
+    dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
+
+    plabels, units = get_parlabel(pid)
+    punits = [' ({})'.format(x) if len(x) else '' for x in units]
+    params = ['$\Delta$ {}{}'.format(x, y) for x,y in zip(plabels, punits)]
     
     if plot=='halo':
         i0 = 11
@@ -1703,7 +1701,6 @@ def crb_triangle_alldim(n, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad']
         dp_unit = dp_unit[i0:i1]
         pid = pid[i0:i1]
     
-    #print(params, dp_unit, Nvar, len(pid), len(dp_unit))
     label = ['RA, Dec, d', 'RA, Dec, d, $V_r$', 'RA, Dec, d, $V_r$, $\mu_\\alpha$, $\mu_\delta$']
 
     plt.close()
@@ -1711,13 +1708,12 @@ def crb_triangle_alldim(n, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad']
     fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(dax*Nvar, dax*Nvar), sharex='col', sharey='row')
     
     for l, Ndim in enumerate([3, 4, 6]):
-        cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
+        cxi = np.load('../data/crb/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npy'.format(errmode, Ndim, name, align, vlabel))
         if fast:
             cx = np.linalg.inv(cxi)
         else:
             cx = stable_inverse(cxi)
         cx = cx[i0:i1,i0:i1]
-        #print(np.sqrt(np.diag(cx)))
         
         for i in range(0,Nvar-1):
             for j in range(i+1,Nvar):
@@ -1755,15 +1751,16 @@ def crb_triangle_alldim(n, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad']
         plt.legend(loc=2, bbox_to_anchor=(1,1))
     
     plt.tight_layout()
-    plt.savefig('../plots/crb_triangle_alldim{:s}_{:s}_{:d}_{:s}_{:s}.pdf'.format(alabel, errmode, n, vlabel, plot))
+    plt.savefig('../plots/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}_{:s}.pdf'.format(errmode, Ndim, name, align, vlabel, plot))
 
 def compare_optimal_steps():
     """"""
     vary = ['progenitor', 'bary', 'halo', 'dipole', 'quad']
+    vary = ['progenitor', 'bary', 'halo']
     
-    for n in [-1,-2,-3]:
-        print(n)
-        print(read_optimal_step(n, vary))
+    for name in ['gd1', 'tri']:
+        print(name)
+        print(read_optimal_step(name, vary))
 
 ########################
 # cartesian coordinates
@@ -2102,6 +2099,7 @@ def apder_cart(x, components=['bary', 'halo', 'dipole']):
         dacart = np.hstack((dacart, da_))
     
     return dacart
+
 
 def crb_acart(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', align=True, d=20, Nb=50, fast=False, scale=False, relative=True, progenitor=False, errmode='fiducial'):
     """"""
