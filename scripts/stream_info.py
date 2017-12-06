@@ -683,6 +683,30 @@ def wfit_plane(x, r, p=None):
     
     #return observed
 
+def endpoints(name):
+    """"""
+    stream = load_stream(name)
+    
+    # find endpoints
+    amin = np.argmin(stream.obs[0])
+    amax = np.argmax(stream.obs[0])
+    ra = np.array([stream.obs[0][i] for i in [amin, amax]])
+    dec = np.array([stream.obs[1][i] for i in [amin, amax]])
+    
+    f = open('../data/mock_{}.params'.format(name), 'rb')
+    mock = pickle.load(f)
+    
+    # rotate endpoints
+    R = mock['rotmatrix']
+    xi, eta  = myutils.rotate_angles(ra, dec, R)
+    mock['ra_range'] = ra
+    mock['xi_range'] = xi
+    f.close()
+    
+    f = open('../data/mock_{}.params'.format(name), 'wb')
+    pickle.dump(mock, f)
+    f.close()
+
 def load_pal5(present, nobs=50, potential='gal'):
     """"""
     
@@ -1256,43 +1280,34 @@ def plot_steps(n, p=0, Nstep=20, log=True, dt=0.2*u.Myr, vary='halo', verbose=Fa
     plt.tight_layout()
     plt.savefig('../plots/observable_steps_{:d}_{:s}_p{:d}_Ns{:d}.png'.format(n, vlabel, p, Nstep))
 
-def step_convergence(name='gd1', Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', align=True, graph=False, verbose=False):
+def step_convergence(name='gd1', Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary='halo', align=True, graph=False, verbose=False, Nobs=10, k=3, ra_der=np.nan, Nra=50):
     """Check deviations in numerical derivatives for consecutive step sizes"""
     
+    mock = pickle.load(open('../data/mock_{}.params'.format(name),'rb'))
     if align:
-        #rotmatrix = np.load('../data/rotmatrix_{}.npy'.format(n))
-        mock = pickle.load(open('../data/mock_{}.params'.format(name),'rb'))
         rotmatrix = mock['rotmatrix']
+        xmm = mock['xi_range']
     else:
         rotmatrix = np.eye(3)
+        xmm = mock['ra_range']
     
+    # fiducial model
     pparams0 = pparams_fid
+    stream0 = stream_model(name=name, pparams0=pparams0, dt=dt, rotmatrix=rotmatrix)
+
+    if np.any(~np.isfinite(ra_der)):
+        ra_der = np.linspace(xmm[0]*1.05, xmm[1]*0.95, Nra)
+    Nra = np.size(ra_der)
+    
+    # parameters to vary
     pid, dp, vlabel = get_varied_pars(vary)
     Np = len(pid)
-    units = ['km/s', 'kpc', '', '']
-    units = ['kpc', 'kpc', 'kpc', 'km/s', 'km/s', 'km/s']
-    punits = ['({})'.format(x) if len(x) else '' for x in units]
-
     dpvec = np.array([x.value for x in dp])
 
     Nstep, step = get_steps(Nstep=Nstep, log=log)
-
+    dydx_all = np.empty((Np, Nstep, 5, Nra))
     dev_der = np.empty((Np, Nstep-2*layer))
     step_der = np.empty((Np, Nstep-2*layer))
-    
-    # fiducial model
-    stream0 = stream_model(name=name, pparams0=pparams0, dt=dt, rotmatrix=rotmatrix)
-    
-    Nobs = 10
-    k = 3
-    isort = np.argsort(stream0.obs[0])
-    ra = np.linspace(np.min(stream0.obs[0])*1.05, np.max(stream0.obs[0])*0.95, Nobs)
-    t = np.r_[(stream0.obs[0][isort][0],)*(k+1), ra, (stream0.obs[0][isort][-1],)*(k+1)]
-    fits = [None]*5
-    dydx_all = np.empty((Np, Nstep, 5, 100))
-    
-    for j in range(5):
-        fits[j] = scipy.interpolate.make_lsq_spline(stream0.obs[0][isort], stream0.obs[j+1][isort], t, k=k)
     
     for p in range(Np):
         plabel = get_parlabel(pid[p])
@@ -1318,8 +1333,7 @@ def step_convergence(name='gd1', Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary
                 stream_fits[i][j] = fits_ex[j]
         
         # symmetric derivatives
-        ra_der = np.linspace(np.min(stream0.obs[0])*1.05, np.max(stream0.obs[0])*0.95, 100)
-        dydx = np.empty((Nstep, 5, 100))
+        dydx = np.empty((Nstep, 5, Nra))
         
         for i in range(Nstep):
             color = mpl.cm.Greys_r(i/Nstep)
@@ -1349,14 +1363,15 @@ def step_convergence(name='gd1', Nstep=20, log=True, layer=1, dt=0.2*u.Myr, vary
             plt.sca(ax[p])
             plt.plot(step_der[p], dev_der[p], 'ko')
             
-            plt.xlabel('$\Delta$ {} {}'.format(plabel, punits[p]))
+            plabel = get_parlabel(pid[p])
+            plt.xlabel('$\Delta$ {}'.format(plabel))
             plt.ylabel('D')
             plt.gca().set_yscale('log')
         
         plt.tight_layout()
         plt.savefig('../plots/step_convergence_{}_{}_Ns{}_log{}_l{}.png'.format(name, vlabel, Nstep, log, layer))
 
-def choose_step(n, tolerance=2, Nstep=20, log=True, layer=1, vary='halo'):
+def choose_step(name='gd1', tolerance=2, Nstep=20, log=True, layer=1, vary='halo'):
     """"""
     
     pid, dp, vlabel = get_varied_pars(vary)
@@ -1364,26 +1379,17 @@ def choose_step(n, tolerance=2, Nstep=20, log=True, layer=1, vary='halo'):
     plabels, units = get_parlabel(pid)
     punits = ['({})'.format(x) if len(x) else '' for x in units]
     
-    t = np.load('../data/step_convergence_{}_{}_Ns{}_log{}_l{}.npz'.format(n, vlabel, Nstep, log, layer))
+    t = np.load('../data/step_convergence_{}_{}_Ns{}_log{}_l{}.npz'.format(name, vlabel, Nstep, log, layer))
     dev = t['dev']
     step = t['step']
     dydx = t['ders']
     steps_all = t['steps_all'][:,::-1]
-    
-    #print(steps_all[0])
-    #print(step[0])
+    Nra = np.shape(dydx)[-1]
     
     best = np.empty(Np)
     
     # plot setup
     da = 4
-    #if Np>6:
-        #nrow = 2
-        #ncol = np.int64(np.ceil(Np/2))
-    #else:
-        #nrow = 1
-        #ncol = Np
-    
     nrow = 2
     ncol = Np
     
@@ -1391,7 +1397,6 @@ def choose_step(n, tolerance=2, Nstep=20, log=True, layer=1, vary='halo'):
     fig, ax = plt.subplots(nrow, ncol, figsize=(da*ncol, da*1.3), squeeze=False, sharex='col', gridspec_kw = {'height_ratios':[1.2, 3]})
     
     for p in range(Np):
-        #plt.sca(ax[int(p/ncol)][int(p%ncol)])
         # choose step
         dmin = np.min(dev[p])
         dtol = tolerance * dmin
@@ -1402,7 +1407,7 @@ def choose_step(n, tolerance=2, Nstep=20, log=True, layer=1, vary='halo'):
         plt.sca(ax[0][p])
         for i in range(5):
             for j in range(10):
-                plt.plot(steps_all[p], np.tanh(dydx[p,:,i,j*10]), '-', color='{}'.format(i/5), lw=0.5, alpha=0.5)
+                plt.plot(steps_all[p], np.tanh(dydx[p,:,i,np.int64(j*Nra/10)]), '-', color='{}'.format(i/5), lw=0.5, alpha=0.5)
 
         plt.axvline(opt_step, ls='-', color='r', lw=2)
         plt.ylim(-1,1)
@@ -1425,22 +1430,21 @@ def choose_step(n, tolerance=2, Nstep=20, log=True, layer=1, vary='halo'):
         plt.xlabel('$\Delta$ {} {}'.format(plabels[p], punits[p]))
         plt.ylabel('Derivative deviation')
     
-    np.save('../data/optimal_step_{}_{}'.format(n, vlabel), best)
+    np.save('../data/optimal_step_{}_{}'.format(name, vlabel), best)
 
     plt.tight_layout(h_pad=0)
-    plt.savefig('../plots/step_convergence_{}_{}_Ns{}_log{}_l{}.png'.format(n, vlabel, Nstep, log, layer))
+    plt.savefig('../plots/step_convergence_{}_{}_Ns{}_log{}_l{}.png'.format(name, vlabel, Nstep, log, layer))
 
-def read_optimal_step(n, vary):
+def read_optimal_step(name, vary):
     """Return optimal steps for a range of parameter types"""
     
     if type(vary) is not list:
         vary = [vary]
     
-    Nt = len(vary)
     dp = np.empty(0)
     
     for v in vary:
-        dp_opt = np.load('../data/optimal_step_{}_{}.npy'.format(n, v))
+        dp_opt = np.load('../data/optimal_step_{}_{}.npy'.format(name, v))
         dp = np.concatenate([dp, dp_opt])
     
     return dp
