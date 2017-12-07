@@ -996,7 +996,7 @@ def get_mostdense_point(X, Y):
     
     return rhomax
 
-def get_progenitor(stream, dp=np.nan, **kwargs):
+def get_progenitor(stream, dp=np.nan, fc=0.8, **kwargs):
     """Return a guess for the phase space coordinates of the progenitor"""
     
     #for k in kwargs:
@@ -1027,7 +1027,7 @@ def get_progenitor(stream, dp=np.nan, **kwargs):
     if np.any(~np.isfinite(dp)):
         dp = np.array([x0[0], x0[1], -(x0[0]**2 + x0[1]**2)/x0[2]])
 
-    progdv = dp/np.linalg.norm(dp) * vtot
+    progdv = dp/np.linalg.norm(dp) * vtot * fc
     veq = gc.vgal_to_hel(xeq, progdv)
     
     pv = [veq[2].to(u.km/u.s), veq[0].to(u.mas/u.yr), veq[1].to(u.mas/u.yr)]
