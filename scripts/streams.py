@@ -797,6 +797,7 @@ def store_progparams(name, verbose=False):
     lnp = res['lnp']
     idmax = np.argmax(lnp)
     pbest = chain[idmax]
+    if verbose: print(pbest)
     
     x0 = [pbest[0]*u.deg, pbest[1]*u.deg, pbest[2]*u.kpc]
     v0 = [pbest[3]*u.km/u.s, pbest[4]*u.mas/u.yr, pbest[5]*u.mas/u.yr]
