@@ -259,7 +259,7 @@ class Stream():
                 infoot = dec > -2.5*u.deg
                 obs = obs[:,infoot]
             
-            if np.all(rotmatrix)!=None:
+            if np.allclose(rotmatrix, np.eye(3))!=1:
                 xi, eta  = myutils.rotate_angles(obs[0], obs[1], rotmatrix)
                 obs[0] = xi
                 obs[1] = eta
@@ -733,7 +733,7 @@ def find_progenitor(name='gd1', test=False, verbose=False, cont=False, nstep=100
     age = pbest[7]*u.Gyr
     
     # stream model parameters
-    params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': nstar, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': mod_err, 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': None}}
+    params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': nstar, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': mod_err, 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': np.eye(3)}}
     
     model = Stream(**params['generate'])
     model.generate()

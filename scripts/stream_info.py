@@ -215,7 +215,7 @@ class Stream():
             veq = gc.vgal_to_hel(xeq, v, **vobs)
             
             # store coordinates
-            ra, dec, dist = [xeq.ra.to(units[0]), xeq.dec.to(units[1]), xeq.distance.to(units[2])]
+            ra, dec, dist = [xeq.ra.to(units[0]).wrap_at(180*u.deg), xeq.dec.to(units[1]), xeq.distance.to(units[2])]
             vr, mua, mud = [veq[2].to(units[3]), veq[0].to(units[4]), veq[1].to(units[5])]
             
             obs = np.hstack([ra, dec, dist, vr, mua, mud]).value
@@ -225,7 +225,7 @@ class Stream():
                 infoot = dec > -2.5*u.deg
                 obs = obs[:,infoot]
             
-            if np.all(rotmatrix)!=None:
+            if np.allclose(rotmatrix, np.eye(3))!=1:
                 xi, eta  = myutils.rotate_angles(obs[0], obs[1], rotmatrix)
                 obs[0] = xi
                 obs[1] = eta
@@ -241,8 +241,6 @@ class Stream():
                 for i in range(6):
                     err[i] *= errors[i].to(units[i]).value
             self.err = err
-    
-            
 
         self.obsunit = units
         self.obserror = errors
@@ -406,7 +404,7 @@ class Stream():
         # add progenitor info
         t.add_row(np.ravel([self.setup['x0'].to(u.kpc).value, self.setup['v0'].to(u.km/u.s).value]))
         
-        # add leading tail info
+        # add leading tail infoobsmode
         tt = Table(np.concatenate((self.leading['x'].to(u.kpc).value, self.leading['v'].to(u.km/u.s).value)).T, names=('x', 'y', 'z', 'vx', 'vy', 'vz'))
         t = astropy.table.vstack([t,tt])
         
