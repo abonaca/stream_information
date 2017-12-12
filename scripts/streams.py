@@ -249,7 +249,7 @@ class Stream():
             veq = gc.vgal_to_hel(xeq, v, **vobs)
             
             # store coordinates
-            ra, dec, dist = [xeq.ra.to(units[0]), xeq.dec.to(units[1]), xeq.distance.to(units[2])]
+            ra, dec, dist = [xeq.ra.to(units[0]).wrap_at(180*u.deg), xeq.dec.to(units[1]), xeq.distance.to(units[2])]
             vr, mua, mud = [veq[2].to(units[3]), veq[0].to(units[4]), veq[1].to(units[5])]
             
             obs = np.hstack([ra, dec, dist, vr, mua, mud]).value
