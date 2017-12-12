@@ -904,7 +904,7 @@ def get_varied_bytype(vary):
         # pal5
         dp = [1e-2*u.Msun, 0.000005*u.kpc, 1e-2*u.Msun, 0.000002*u.kpc, 0.00002*u.kpc]
         dp = [1e-7*u.Msun, 0.5*u.kpc, 1e-7*u.Msun, 0.5*u.kpc, 0.5*u.kpc]
-        dp = [1e-4*u.Msun, 0.5*u.kpc, 1e-4*u.Msun, 0.5*u.kpc, 0.5*u.kpc]
+        dp = [1e-2*u.Msun, 0.5*u.kpc, 1e-2*u.Msun, 0.5*u.kpc, 0.5*u.kpc]
     elif vary=='halo':
         pid = [5,6,8,10]
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
@@ -1405,6 +1405,11 @@ def choose_step(name='gd1', tolerance=2, Nstep=20, log=True, layer=1, vary='halo
         opt_id = step[p]==opt_step
         best[p] = opt_step
         
+        # largest step w deviation smaller than 1e-4
+        opt_step = np.max(step[p][dev[p]<1e-4])
+        opt_id = step[p]==opt_step
+        best[p] = opt_step
+        
         plt.sca(ax[0][p])
         for i in range(5):
             for j in range(10):
@@ -1519,6 +1524,7 @@ def calculate_crb(name='gd1', dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'],
     
     # populate matrix of derivatives and calculate CRB
     for Ndim in data_dim:
+    #for Ndim in [4,6,]:
         Ndata = Nobs * (Ndim - 1)
         cyd = np.empty(Ndata)
         dydx = np.empty((Np, Ndata))
@@ -1578,7 +1584,7 @@ def test_inversion(name='gd1', Ndim=6, vary=['progenitor', 'bary', 'halo'], alig
     print('condition {:g}'.format(np.linalg.cond(cxi)))
     print('stable inverse', np.allclose(np.matmul(cx,cxi), np.eye(N)))
     print('linalg inverse', np.allclose(np.matmul(cx_,cxi), np.eye(N)))
-    print(np.matmul(cx,cxi))
+    #print(np.matmul(cx,cxi))
     #print('inverse inverse', np.allclose(cx_ii, cxi))
 
 def stable_inverse(a, maxiter=20, verbose=False):
@@ -2600,10 +2606,10 @@ def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
     plt.close()
     fig, ax = plt.subplots(1,2,figsize=(10,5))
     
-    labels = {'gd1': 'GD-1', 'pal5': 'Palomar 5', 'tri': 'Triangulum'}
-    colors = {'gd1': mpl.cm.bone(0), 'pal5': mpl.cm.bone(0.5), 'tri': mpl.cm.bone(0.8)}
+    labels = {'gd1': 'GD-1', 'atlas': 'ATLAS', 'tri': 'Triangulum'}
+    colors = {'gd1': mpl.cm.bone(0), 'atlas': mpl.cm.bone(0.5), 'tri': mpl.cm.bone(0.8)}
     
-    for n in ['gd1', 'tri']:
+    for n in ['gd1', 'tri', 'atlas']:
         # read in full inverse CRB for stream modeling
         cxi = np.load('../data/crb/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npy'.format(errmode, Ndim, n, align, vlabel))
         if fast:
@@ -2688,15 +2694,15 @@ def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
     plt.sca(ax[0])
     plt.xlabel('r/r$_{apo}$')
     plt.ylabel('$\Delta$ $V_c$ (km s$^{-1}$)')
-    plt.xlim(0,2)
-    plt.ylim(0, 100)
+    #plt.xlim(0,2)
+    #plt.ylim(0, 100)
     
     plt.sca(ax[1])
     plt.legend(frameon=False, handlelength=1, fontsize='small')
     plt.xlabel('r/r$_{apo}$')
     plt.ylabel('$\Delta$ $M_{enc}$ ($M_\odot$)')
-    plt.xlim(0,2)
-    plt.ylim(0, 1e11)
+    #plt.xlim(0,2)
+    #plt.ylim(0, 1e11)
     
     plt.tight_layout()
     plt.savefig('../plots/vc_r_summary_new.png')
@@ -2715,10 +2721,10 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducia
     plt.close()
     fig, ax = plt.subplots(1,3,figsize=(15,5))
     
-    labels = {'gd1': 'GD-1', 'pal5': 'Palomar 5', 'tri': 'Triangulum'}
-    colors = {'gd1': mpl.cm.bone(0), 'pal5': mpl.cm.bone(0.5), 'tri': mpl.cm.bone(0.8)}
+    labels = {'gd1': 'GD-1', 'atlas': 'ATLAS', 'tri': 'Triangulum'}
+    colors = {'gd1': mpl.cm.bone(0), 'atlas': mpl.cm.bone(0.5), 'tri': mpl.cm.bone(0.8)}
     
-    for name in ['gd1', 'tri']:
+    for name in ['gd1', 'tri', 'atlas']:
     #for n in [-1,]:
         # read in full inverse CRB for stream modeling
         #cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
