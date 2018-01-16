@@ -77,6 +77,36 @@ def show_streams():
     plt.tight_layout()
     plt.savefig('../plots/halo_structures.png', dpi=200)
 
+def wrap_angles(name):
+    """Save wrap angle in a stream params file"""
+    angles = {'gd1': 360, 'tri': 180, 'atlas': 180}
+    
+    f = open('../data/mock_{}.params'.format(name), 'rb')
+    mock = pickle.load(f)
+    mock['wangle'] = angles[name]*u.deg
+    f.close()
+    
+    f = open('../data/mock_{}.params'.format(name), 'wb')
+    pickle.dump(mock, f)
+    f.close()
+
+def progenitor_prior(name):
+    """Save (inverse) uncertainties on progenitor positions in a stream params file"""
+    
+    priors = {'gd1': np.zeros(6),
+              'tri': np.zeros(6),
+              'atlas': np.zeros(6),
+              'pal5': np.array([0.1, 0.1, 1, 1, 0.2, 0.2])**-2}
+    
+    f = open('../data/mock_{}.params'.format(name), 'rb')
+    mock = pickle.load(f)
+    mock['prog_prior'] = priors[name]
+    f.close()
+    
+    f = open('../data/mock_{}.params'.format(name), 'wb')
+    pickle.dump(mock, f)
+    f.close()
+
 class Stream():
     def __init__(self, x0=[]*u.kpc, v0=[]*u.km/u.s, progenitor={'coords': 'galactocentric', 'observer': {}, 'pm_polar': False}, potential='nfw', pparams=[], minit=2e4*u.Msun, mfinal=2e4*u.Msun, rcl=20*u.pc, dr=0.5, dv=2*u.km/u.s, dt=1*u.Myr, age=6*u.Gyr, nstars=600, integrator='lf'):
         """Initialize """

@@ -40,7 +40,8 @@ vgc = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 vgc0 = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 
 MASK = -9999
-pparams_fid = [0.5*u.Msun, 0.7*u.kpc, 6.8*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
+pparams_fid = [np.log10(0.5e10)*u.Msun, 0.7*u.kpc, np.log10(6.8e10)*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
+#pparams_fid = [0.5e-5*u.Msun, 0.7*u.kpc, 6.8e-5*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
 
 
 class Stream():
@@ -165,7 +166,7 @@ class Stream():
         self.trailing['x'] = stream[3:6]*u.m
         self.trailing['v'] = stream[9:12]*u.m/u.s
     
-    def observe(self, mode='cartesian', units=[], errors=[], nstars=-1, sequential=False, present=[], logerr=False, observer={'z_sun': 0.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_ra': 300*u.deg, 'galcen_dec': 20*u.deg}, vobs={'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}, footprint='none', rotmatrix=None):
+    def observe(self, mode='cartesian', wangle=0*u.deg, units=[], errors=[], nstars=-1, sequential=False, present=[], logerr=False, observer={'z_sun': 0.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_ra': 300*u.deg, 'galcen_dec': 20*u.deg}, vobs={'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}, footprint='none', rotmatrix=None):
         """Observe the stream
         stream.obs holds all observations
         stream.err holds all errors"""
@@ -215,7 +216,7 @@ class Stream():
             veq = gc.vgal_to_hel(xeq, v, **vobs)
             
             # store coordinates
-            ra, dec, dist = [xeq.ra.to(units[0]).wrap_at(180*u.deg), xeq.dec.to(units[1]), xeq.distance.to(units[2])]
+            ra, dec, dist = [xeq.ra.to(units[0]).wrap_at(wangle), xeq.dec.to(units[1]), xeq.distance.to(units[2])]
             vr, mua, mud = [veq[2].to(units[3]), veq[0].to(units[4]), veq[1].to(units[5])]
             
             obs = np.hstack([ra, dec, dist, vr, mua, mud]).value
@@ -431,14 +432,18 @@ def stream_model(name='gd1', pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=np.ey
     # vary potential parameters
     potential = 'quad'
     pparams = pparams0[:19]
-    pparams[0] = pparams0[0]*1e10
-    pparams[2] = pparams0[2]*1e10
+    #print(pparams[0])
+    pparams[0] = (10**pparams0[0].value)*pparams0[0].unit
+    pparams[2] = (10**pparams0[2].value)*pparams0[2].unit
+    #pparams[0] = pparams0[0]*1e15
+    #pparams[2] = pparams0[2]*1e15
+    #print(pparams[0])
     
     # adjust circular velocity in this halo
     vobs['vcirc'] = vcirc_potential(observer['galcen_distance'], pparams=pparams)
 
     # create a model stream with these parameters
-    params = {'generate': {'x0': mock['x0'], 'v0': mock['v0'], 'progenitor': {'coords': 'equatorial', 'observer': mock['observer'], 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mock['mi'], 'mfinal': mock['mf'], 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': mock['age'], 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': mock['obsmode'], 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mock['observer'], 'vobs': mock['vobs'], 'footprint': mock['footprint'], 'rotmatrix': rotmatrix}}
+    params = {'generate': {'x0': mock['x0'], 'v0': mock['v0'], 'progenitor': {'coords': 'equatorial', 'observer': mock['observer'], 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mock['mi'], 'mfinal': mock['mf'], 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': mock['age'], 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': mock['obsmode'], 'wangle': mock['wangle'], 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mock['observer'], 'vobs': mock['vobs'], 'footprint': mock['footprint'], 'rotmatrix': rotmatrix}}
     
     stream = Stream(**params['generate'])
     stream.generate()
@@ -906,7 +911,7 @@ def get_varied_bytype(vary):
     elif vary=='halo':
         pid = [5,6,8,10]
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
-        dp = [30*u.km/u.s, 2.5*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
+        dp = [35*u.km/u.s, 2.9*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
     elif vary=='progenitor':
         pid = [19,20,21,22,23,24]
         dp = [1*u.deg, 1*u.deg, 0.5*u.kpc, 20*u.km/u.s, 0.3*u.mas/u.yr, 0.3*u.mas/u.yr]
@@ -928,8 +933,8 @@ def get_parlabel(pid):
     Parameter:
     pid - list of parameter ids"""
     
-    master = ['$M_b$', '$a_b$', '$M_d$', '$a_d$', '$b_d$', '$V_h$', '$R_h$', '$\phi$', '$q_1$', '$q_2$', '$q_z$', '$a_{1,-1}$', '$a_{1,0}$', '$a_{1,1}$', '$a_{2,-2}$', '$a_{2,-1}$', '$a_{2,0}$', '$a_{2,1}$', '$a_{2,2}$', '$RA_p$', '$Dec_p$', '$d_p$', '$V_{r_p}$', '$\mu_{\\alpha_p}$', '$\mu_{\delta_p}$']
-    master_units = ['$10^{10}$ $M_\odot$', 'kpc', '$10^{10}$ $M_\odot$', 'kpc', 'kpc', 'km/s', 'kpc', 'rad', '', '', '', 'pc/Myr$^2$', 'pc/Myr$^2$', 'pc/Myr$^2$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'deg', 'deg', 'kpc', 'km/s', 'mas/yr', 'mas/yr']
+    master = ['log $M_b$', '$a_b$', 'log $M_d$', '$a_d$', '$b_d$', '$V_h$', '$R_h$', '$\phi$', '$q_1$', '$q_2$', '$q_z$', '$a_{1,-1}$', '$a_{1,0}$', '$a_{1,1}$', '$a_{2,-2}$', '$a_{2,-1}$', '$a_{2,0}$', '$a_{2,1}$', '$a_{2,2}$', '$RA_p$', '$Dec_p$', '$d_p$', '$V_{r_p}$', '$\mu_{\\alpha_p}$', '$\mu_{\delta_p}$', ]
+    master_units = ['dex', 'kpc', 'dex', 'kpc', 'kpc', 'km/s', 'kpc', 'rad', '', '', '', 'pc/Myr$^2$', 'pc/Myr$^2$', 'pc/Myr$^2$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'deg', 'deg', 'kpc', 'km/s', 'mas/yr', 'mas/yr', ]
     
     if type(pid) is list:
         labels = []
@@ -951,7 +956,7 @@ def get_steps(Nstep=50, log=False):
     log - if True, steps are logarithmically spaced (default: False)"""
     
     if log:
-        step = np.logspace(-4, 1, Nstep)
+        step = np.logspace(-10, 1, Nstep)
     else:
         step = np.linspace(0.1, 10, Nstep)
     
@@ -1403,10 +1408,10 @@ def choose_step(name='gd1', tolerance=2, Nstep=20, log=True, layer=1, vary='halo
         opt_id = step[p]==opt_step
         best[p] = opt_step
         
-        # largest step w deviation smaller than 1e-4
-        opt_step = np.max(step[p][dev[p]<1e-4])
-        opt_id = step[p]==opt_step
-        best[p] = opt_step
+        ## largest step w deviation smaller than 1e-4
+        #opt_step = np.max(step[p][dev[p]<1e-4])
+        #opt_id = step[p]==opt_step
+        #best[p] = opt_step
         
         plt.sca(ax[0][p])
         for i in range(5):
@@ -1439,7 +1444,7 @@ def choose_step(name='gd1', tolerance=2, Nstep=20, log=True, layer=1, vary='halo
     plt.tight_layout(h_pad=0)
     plt.savefig('../plots/step_convergence_{}_{}_Ns{}_log{}_l{}.png'.format(name, vlabel, Nstep, log, layer))
 
-def read_optimal_step(name, vary):
+def read_optimal_step(name, vary, equal=False):
     """Return optimal steps for a range of parameter types"""
     
     if type(vary) is not list:
@@ -1451,8 +1456,64 @@ def read_optimal_step(name, vary):
         dp_opt = np.load('../data/optimal_step_{}_{}.npy'.format(name, v))
         dp = np.concatenate([dp, dp_opt])
     
+    if equal:
+        dp = np.array([0.05, 0.05, 0.2, 1, 0.01, 0.01, 0.05, 0.1, 0.05, 0.1, 0.1, 10, 1, 0.01, 0.01])
+    
     return dp
 
+def visualize_optimal_steps(name='gd1', vary=['progenitor', 'bary', 'halo'], align=True, dt=0.2*u.Myr, Nobs=50, k=3):
+    """"""
+    mock = pickle.load(open('../data/mock_{}.params'.format(name),'rb'))
+    if align:
+        rotmatrix = mock['rotmatrix']
+        xmm = mock['xi_range']
+    else:
+        rotmatrix = np.eye(3)
+        xmm = mock['ra_range']
+    
+    # varied parameters
+    pparams0 = pparams_fid
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    Np = len(pid)
+    dp_opt = read_optimal_step(name, vary)
+    dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
+    
+    fiducial = stream_model(name=name, pparams0=pparams0, dt=dt, rotmatrix=rotmatrix)
+    iexsort = np.argsort(fiducial.obs[0])
+    raex = np.linspace(np.percentile(fiducial.obs[0], 10), np.percentile(fiducial.obs[0], 90), Nobs)
+    tex = np.r_[(fiducial.obs[0][iexsort][0],)*(k+1), raex, (fiducial.obs[0][iexsort][-1],)*(k+1)]
+    fit = scipy.interpolate.make_lsq_spline(fiducial.obs[0][iexsort], fiducial.obs[1][iexsort], tex, k=k)
+    
+    nrow = 2
+    ncol = np.int64((Np+1)/nrow)
+    da = 4
+    c = ['b', 'b', 'b', 'r', 'r', 'r']
+    
+    plt.close()
+    fig, ax = plt.subplots(nrow, ncol, figsize=(ncol*da, nrow*da), squeeze=False)
+    
+    for p in range(Np):
+        plt.sca(ax[p%2][int(p/2)])
+        for i, s in enumerate([-1.1, -1, -0.9, 0.9, 1, 1.1]):
+            pparams = [x for x in pparams0]
+            pparams[pid[p]] = pparams[pid[p]] + s*dp[p]
+            stream = stream_model(name=name, pparams0=pparams, dt=dt, rotmatrix=rotmatrix)
+            
+            # bspline fits to stream centerline
+            iexsort = np.argsort(stream.obs[0])
+            raex = np.linspace(np.percentile(stream.obs[0], 10), np.percentile(stream.obs[0], 90), Nobs)
+            tex = np.r_[(stream.obs[0][iexsort][0],)*(k+1), raex, (stream.obs[0][iexsort][-1],)*(k+1)]
+            fitex = scipy.interpolate.make_lsq_spline(stream.obs[0][iexsort], stream.obs[1][iexsort], tex, k=k)
+            
+            plt.plot(raex, fitex(raex) - fit(raex), '-', color=c[i])
+        
+        plt.xlabel('R.A. (deg)')
+        plt.ylabel('Dec (deg)')
+        #print(get_parlabel(p))
+        plt.title('$\Delta$ {} = {:.2g}'.format(get_parlabel(p)[0], dp[p]), fontsize='medium')
+    
+    plt.tight_layout()
+    plt.savefig('../plots/{}_optimal_steps.png'.format(name), dpi=200)
 
 # observing modes
 def define_obsmodes():
@@ -1522,28 +1583,41 @@ def calculate_crb(name='gd1', dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'],
     
     # populate matrix of derivatives and calculate CRB
     for Ndim in data_dim:
-    #for Ndim in [4,6,]:
+    #for Ndim in [6,]:
         Ndata = Nobs * (Ndim - 1)
         cyd = np.empty(Ndata)
         dydx = np.empty((Np, Ndata))
+        dy2 = np.empty((2, Np, Ndata))
         
         for j in range(1, Ndim):
             for p in range(Np):
                 dy = fits_ex[p][0][j-1](ra) - fits_ex[p][1][j-1](ra)
-                positive = np.abs(dy)>0
+                dy2[0][p][(j-1)*Nobs:j*Nobs] = fits_ex[p][0][j-1](ra)
+                dy2[1][p][(j-1)*Nobs:j*Nobs] = fits_ex[p][1][j-1](ra)
+                #positive = np.abs(dy)>0
                 #if verbose: print('{:d},{:d} {:s} min{:.1e} max{:1e} med{:.1e}'.format(j, p, get_parlabel(pid[p])[0], np.min(np.abs(dy[positive])), np.max(np.abs(dy)), np.median(np.abs(dy))))
                 if scale:
                     dydx[p][(j-1)*Nobs:j*Nobs] = -dy / np.abs(2*dps[p].value)
                 else:
                     dydx[p][(j-1)*Nobs:j*Nobs] = -dy / np.abs(2*dp[p].value)
-                if verbose: print('{:d},{:d} {:s} min{:.1e} max{:1e} med{:.1e}'.format(j, p, get_parlabel(pid[p])[0], np.min(np.abs(dydx[p][(j-1)*Nobs:j*Nobs][positive])), np.max(np.abs(dydx[p][(j-1)*Nobs:j*Nobs])), np.median(np.abs(dydx[p][(j-1)*Nobs:j*Nobs]))))
+                #if verbose: print('{:d},{:d} {:s} min{:.1e} max{:1e} med{:.1e}'.format(j, p, get_parlabel(pid[p])[0], np.min(np.abs(dydx[p][(j-1)*Nobs:j*Nobs][positive])), np.max(np.abs(dydx[p][(j-1)*Nobs:j*Nobs])), np.median(np.abs(dydx[p][(j-1)*Nobs:j*Nobs]))))
+                #print(j, p, get_parlabel(pid[p])[0], dp[p], np.min(np.abs(dy)), np.max(np.abs(dy)), np.median(dydx[p][(j-1)*Nobs:j*Nobs]))
         
             cyd[(j-1)*Nobs:j*Nobs] = err[:,j-1]**2
         
+        np.savez('../data/crb/components_{:s}{:1d}_{:s}_a{:1d}_{:s}'.format(errmode, Ndim, name, align, vlabel), dydx=dydx, y=dy2, cyd=cyd, dp=dp_opt)
+        
+        # data component of the Fisher matrix
         cy = np.diag(cyd)
         cyi = np.diag(1. / cyd)
         caux = np.matmul(cyi, dydx.T)
-        cxi = np.matmul(dydx, caux)
+        dxi = np.matmul(dydx, caux)
+        
+        # component based on prior knowledge of model parameters
+        pxi = priors(name, vary)
+        
+        # full Fisher matrix
+        cxi = dxi + pxi
         
         if verbose:
             cx = np.linalg.inv(cxi)
@@ -1556,7 +1630,77 @@ def calculate_crb(name='gd1', dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'],
             cx = stable_inverse(cxi)
             print('stable inverse', np.allclose(cxi, cxi.T), np.allclose(cx, cx.T), np.allclose(np.matmul(cx,cxi), np.eye(np.shape(cx)[0])))
 
-        np.save('../data/crb/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}'.format(errmode, Ndim, name, align, vlabel), cxi)
+        np.savez('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}'.format(errmode, Ndim, name, align, vlabel), cxi=cxi, dxi=dxi, pxi=pxi)
+
+def priors(name, vary):
+    """Return covariance matrix with prior knowledge about parameters"""
+    
+    mock = pickle.load(open('../data/mock_{}.params'.format(name), 'rb'))
+    
+    cprog = mock['prog_prior']
+    cbary = np.array([0.1*x.value for x in pparams_fid[:5]])**-2
+    chalo = np.zeros(4)
+    cdipole = np.zeros(3)
+    cquad = np.zeros(5)
+    
+    priors = {'progenitor': cprog, 'bary': cbary, 'halo': chalo, 'dipole': cdipole, 'quad': cquad}
+    cprior = np.empty(0)
+    for v in vary:
+        cprior = np.concatenate([cprior, priors[v]])
+    
+    pxi = np.diag(cprior)
+    
+    return pxi
+
+def scale2invert(name='gd1', Ndim=6, vary=['progenitor', 'bary', 'halo'], verbose=False, align=True, errmode='fiducial'):
+    """"""
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    #dp = read_optimal_step(name, vary)
+    
+    d = np.load('../data/crb/components_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
+    dydx = d['dydx']
+    cyd = d['cyd']
+    y = d['y']
+    dp = d['dp']
+    
+    dy = (y[1,:,:] - y[0,:,:])
+    dydx = (y[1,:,:] - y[0,:,:]) / (2*dp[:,np.newaxis])
+    
+    scaling_par = np.median(np.abs(dydx), axis=1)
+    dydx = dydx / scaling_par[:,np.newaxis]
+    
+    dydx_ = np.reshape(dydx, (len(dp), Ndim-1, -1))
+    scaling_dim = np.median(np.abs(dydx_), axis=(2,0))
+    dydx_ = dydx_ / scaling_dim[np.newaxis,:,np.newaxis]
+    
+    cyd_ = np.reshape(cyd, (Ndim-1, -1))
+    cyd_ = cyd_ / scaling_dim[:,np.newaxis]
+    
+    cyd = np.reshape(cyd_, (-1))
+    dydx = np.reshape(dydx_, (len(dp), -1))
+    
+    mmin = np.min(np.abs(dy), axis=0)
+    mmax = np.max(np.abs(dy), axis=0)
+    mmed = np.median(np.abs(dydx), axis=1)
+    dyn_range = mmax/mmin
+    
+    #print(dyn_range)
+    print(np.min(dyn_range), np.max(dyn_range), np.std(dyn_range))
+    
+    cy = np.diag(cyd)
+    cyi = np.diag(1. / cyd)
+    caux = np.matmul(cyi, dydx.T)
+    cxi = np.matmul(dydx, caux)
+    
+    print('condition {:e}'.format(np.linalg.cond(cxi)))
+
+    cx = np.linalg.inv(cxi)
+    cx = np.matmul(np.linalg.inv(np.matmul(cx, cxi)), cx) # iteration to improve inverse at large cond numbers
+    print('standard inverse', np.allclose(cxi, cxi.T), np.allclose(cx, cx.T), np.allclose(np.matmul(cx,cxi), np.eye(np.shape(cx)[0])))
+    
+    cx = stable_inverse(cxi, maxiter=30)
+    print('stable inverse', np.allclose(cxi, cxi.T), np.allclose(cx, cx.T), np.allclose(np.matmul(cx,cxi), np.eye(np.shape(cx)[0])))
+
 
 def unity_scale(dp):
     """"""
@@ -1616,7 +1760,8 @@ def crb_triangle(n, vary, Ndim=6, align=True, plot='all', fast=False):
     else:
         alabel = ''
         
-    cxi = np.load('../data/crb/bspline_cxi{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, n, vlabel, Ndim))
+    fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
+    cxi = fm['cxi']
     if fast:
         cx = np.linalg.inv(cxi)
     else:
@@ -1714,7 +1859,9 @@ def crb_triangle_alldim(name='gd1', vary=['progenitor', 'bary', 'halo'], align=T
     fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(dax*Nvar, dax*Nvar), sharex='col', sharey='row')
     
     for l, Ndim in enumerate([3, 4, 6]):
-        cxi = np.load('../data/crb/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npy'.format(errmode, Ndim, name, align, vlabel))
+        fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
+        cxi = fm['cxi']
+        #cxi = np.load('../data/crb/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npy'.format(errmode, Ndim, name, align, vlabel))
         if fast:
             cx = np.linalg.inv(cxi)
         else:
@@ -1757,7 +1904,7 @@ def crb_triangle_alldim(name='gd1', vary=['progenitor', 'bary', 'halo'], align=T
         plt.legend(loc=2, bbox_to_anchor=(1,1))
     
     plt.tight_layout()
-    plt.savefig('../plots/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}_{:s}.pdf'.format(errmode, Ndim, name, align, vlabel, plot))
+    plt.savefig('../plots/cxi_{:s}_{:s}_a{:1d}_{:s}_{:s}.pdf'.format(errmode, name, align, vlabel, plot))
 
 def compare_optimal_steps():
     """"""
@@ -2584,13 +2731,16 @@ def pder_vc(x, p=[pparams_fid[j] for j in [0,1,2,3,4,5,6,8,10]], components=['ba
     N = np.size(x)
     
     # components
-    bulge = np.array([G*x*(x+p[1])**-2, -2*G*p[0]*x*(x+p[1])**-3])
-    aux = p[3] + p[4]
-    disk = np.array([G*x**2*(x**2 + aux**2)**-1.5, -3*G*p[2]*x**2*aux*(x**2 + aux**2)**-2.5, -3*G*p[2]*x**2*aux*(x**2 + aux**2)**-2.5])
-    nfw = np.array([2*p[5]*(p[6]/x*np.log(1+x.value/p[6].value) - (1+x.value/p[6].value)**-1), p[5]**2*(np.log(1+x.value/p[6].value)/x - (x+p[6])**-1 - x*(x+p[6])**-2), np.zeros(N), np.zeros(N)])
+    if 'bary' in components:
+        bulge = np.array([G*x*(x+p[1])**-2, -2*G*p[0]*x*(x+p[1])**-3])
+        aux = p[3] + p[4]
+        disk = np.array([G*x**2*(x**2 + aux**2)**-1.5, -3*G*p[2]*x**2*aux*(x**2 + aux**2)**-2.5, -3*G*p[2]*x**2*aux*(x**2 + aux**2)**-2.5])
+        nfw = np.array([2*p[5]*(p[6]/x*np.log(1+x.value/p[6].value) - (1+x.value/p[6].value)**-1), p[5]**2*(np.log(1+x.value/p[6].value)/x - (x+p[6])**-1 - x*(x+p[6])**-2), np.zeros(N), np.zeros(N)])
 
-    pder = np.vstack([bulge, disk, nfw])
-    
+        pder = np.vstack([bulge, disk, nfw])
+    else:
+        pder = np.array([2*p[0]*(p[1]/x*np.log(1+x.value/p[1].value) - (1+x.value/p[1].value)**-1), p[0]**2*(np.log(1+x.value/p[1].value)/x - (x+p[1])**-1 - x*(x+p[1])**-2), np.zeros(N), np.zeros(N)])
+        
     return pder
 
 def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='all', j=0, align=True, d=200, Nb=100, fast=False, scale=False):
@@ -2607,9 +2757,11 @@ def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
     labels = {'gd1': 'GD-1', 'atlas': 'ATLAS', 'tri': 'Triangulum'}
     colors = {'gd1': mpl.cm.bone(0), 'atlas': mpl.cm.bone(0.5), 'tri': mpl.cm.bone(0.8)}
     
-    for n in ['gd1', 'tri', 'atlas']:
+    for name in ['gd1', 'tri', 'atlas']:
         # read in full inverse CRB for stream modeling
-        cxi = np.load('../data/crb/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npy'.format(errmode, Ndim, n, align, vlabel))
+        #cxi = np.load('../data/crb/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npy'.format(errmode, Ndim, n, align, vlabel))
+        fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
+        cxi = fm['cxi']
         if fast:
             cx = np.linalg.inv(cxi)
         else:
@@ -2649,7 +2801,7 @@ def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
             cqi = stable_inverse(cq)
         
         if scale:
-            dp_opt = read_optimal_step(n, vary)
+            dp_opt = read_optimal_step(name, vary)
             dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
             
             scale_vec = np.array([x.value for x in dp[nstart[component]:nend[component]]])
@@ -2676,18 +2828,18 @@ def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
         mcomb = (vcomb*u.km**2*u.s**-2 * x / G).to(u.Msun)
 
         # relate to orbit
-        orbit = stream_orbit(name=n)
+        orbit = stream_orbit(name=name)
         r = np.linalg.norm(orbit['x'].to(u.kpc), axis=0)
         rmax = np.max(r)
         #print(rmax, np.median(r))
-        x = x/rmax
+        #x = x/rmax
         
         # plot
         plt.sca(ax[0])
-        plt.plot(x, np.sqrt(vcomb), '-', lw=3, color=colors[n], label=labels[n])
+        plt.plot(x, np.sqrt(vcomb), '-', lw=3, color=colors[name], label=labels[name])
         
         plt.sca(ax[1])
-        plt.plot(x, mcomb, '-', lw=3, color=colors[n], label=labels[n])
+        plt.plot(x, mcomb, '-', lw=3, color=colors[name], label=labels[name])
     
     plt.sca(ax[0])
     plt.xlabel('r/r$_{apo}$')
@@ -2708,12 +2860,13 @@ def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
 
 # flattening
 
-def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='halo', j=0, align=True, fast=False, scale=False):
+def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='all', j=0, align=True, fast=False, scale=False):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
     
     kq = {'x': 0, 'z': 2}
     iq = {'x': 2, 'z': 3}
+    
     labelq = {'x': '$_x$', 'z': '$_z$'}
     
     plt.close()
@@ -2726,7 +2879,9 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducia
     #for n in [-1,]:
         # read in full inverse CRB for stream modeling
         #cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
-        cxi = np.load('../data/crb/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npy'.format(errmode, Ndim, name, align, vlabel))
+        #cxi = np.load('../data/crb/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npy'.format(errmode, Ndim, name, align, vlabel))
+        fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
+        cxi = fm['cxi']
         if fast:
             cx = np.linalg.inv(cxi)
         else:
@@ -2748,6 +2903,8 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducia
         else:
             components = [x for x in vary if x!='progenitor']
         cq = cx[nstart[component]:nend[component], nstart[component]:nend[component]]
+        if ('progenitor' not in vary) & ('bary' not in vary):
+            cq = cx
         Npot = np.shape(cq)[0]
         
         if scale:
