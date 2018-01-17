@@ -87,7 +87,7 @@ observations that could be made of particular known streams.
  \item establish streams useful in constraining gravitational potential
  \item tied to parametric models (too complex for inference otherwise, at least in current approaches)
  \item constraints only as good as the model (VL2 results)
- \item so, since not likely that the true potential is NFW, what are the streams constraining? 
+ \item so, since not likely that the true potential is NFW, what are the streams actually constraining? 
  \item here we're building a framework to measure the information content of stellar streams regarding the gravitational potential
  \item two-fold goals: given a simple parametric model, what kind of data do we need? what aspect of a (non-parametric) potential do individual streams constrain?
 \end{itemize}
@@ -106,19 +106,23 @@ For some data set $\vec{y}$ (e.g., a vector of position and velocity measurement
 Given the model parameters $\vec{x}$ (e.g., a vector with the mass and scale radius of a dark matter halo), the Cram\' er--Rao bound is the covariance matrix $C_x$.
 The \CRLB\ is set by the inverse of a Fisher information matrix \citep{}:
 \begin{equation}
-C_x^{-1} = \left(\frac{d\vec{y}}{d\vec{x}}\right)^{T} C_y^{-1} \left(\frac{d\vec{y}}{d\vec{x}}\right)
+C_x^{-1} = \left(\frac{d\vec{y}}{d\vec{x}}\right)^{T} C_y^{-1} \left(\frac{d\vec{y}}{d\vec{x}}\right) + V_x^{-1}
 \label{eq:crlb}
 \end{equation}
-In the next two subsections, we describe individual terms of Equation~\ref{eq:crlb}: the change in stream observables $\vec{y}$ as a function of changes in the gravitational potential $\vec{x}$, i.e., the derivative $d\vec{y}/d\vec{x}$ (\S\ref{sec:derivatives}), and the adopted observational uncertainties, which set the covariance matrix $C_y$ ( \S\ref{sec:datasets}).
+where $V_x$ is a covariance matrix containing the prior knowledge of model parameters.
+In the next two subsections, we describe individual terms of Equation~\ref{eq:crlb}: model and its existing constraints (\S\ref{sec:model}), the change in stream observables $\vec{y}$ as a function of changes in the gravitational potential $\vec{x}$, i.e., the derivative $d\vec{y}/d\vec{x}$ (\S\ref{sec:derivatives}), and the adopted observational uncertainties, which set the covariance matrix $C_y$ (\S\ref{sec:datasets}).
 
-\subsection{Calculating numerical derivatives for the \CRLB}
-\label{sec:derivatives}
-The variation of observed quantities with the model parameters is the main ingredient when calculating the Cram\' er--Rao bounds.
-Stellar streams are characterized by positions and velocities of their member stars, so their observed quantities are the on-sky positions, distances, radial velocities and proper motions.
-If we have the present-day position of the stream progenitor, and a representation of the gravitational potential, we can create a forward model of a cold stream.
-So, the parameters of our model are a combination of parameters that define the gravitational potential, which are the parameters of interest, and the 6D position of the progenitor, which we treat as hyperparameters.
-In what follows, we describe how we measure differences in stream models of different input parameters.
+\subsection{Model}
+\label{sec:model}
+- can only answer questions in the context of a model -- we need a model of a stream.
+- in our case: the model consists of parameters defining the gravitational potential and parameters regarding the properties of the progenitor, which then uniquely define a stream (+ age?)
+- our gravitational potential has been chosen to match the Milky Way, and the adopted progenitor properties produce streams in this potential that represent well streams discovered in the Milky Way halo (see Appendix~\ref{sec:streams})
 
+% In the core of the Cram\' er--Rao bounds is the variation of observed quantities with the model parameters.
+% If we have the present-day position of the stream progenitor, and a representation of the gravitational potential, we can create a forward model of a cold stream.
+% So, the parameters of our model are a combination of parameters that define the gravitational potential, which are the parameters of interest, and the 6D position of the progenitor, which we treat as hyperparameters.
+
+- for the gravitational potential, we adopt a three component model with a Hernquist bulge (parameterized with mass and scale radius), Miyamoto-Nagai disk (with parameters for disk mass, scale length and scale height) and a spherical NFW halo (parameterized with scale velocity, scale radius, and axis ratios $q_x=q_z=1$).
 Our model of the gravitational potential is a composite of a Hernquist bulge, a Miyamoto-Nagai disk and a NFW halo.
 The fiducial potential is similar to MWPotential2014 \citep{galpy}, which fits a range of observables in the Milky Way, and the used parameters are listed in Table~\ref{t:phi}.
 We keep the bulge and disk contributions fixed, and only explore variations induced by changes in the distribution of dark matter.
@@ -135,13 +139,24 @@ where $V_h$ is the scale velocity, $R_h$ is the scale radius, and $q_y$ and $q_z
 In the fiducial potential, the halo is given by $V_h = 430\,\rm km\,s^{-1}$, $R_h = 30\,\rm kpc$, $q_y = q_z = 1$.
 
 - progenitor position today (below described in detail)
+
+\subsection{Calculating numerical derivatives for the \CRLB}
+\label{sec:derivatives}
+Intuitively, CRB is quantifying how much we can change the parameters of a model, without violating the observational uncertainties of our data
+- to calculate this, we need the inverse of how much observed quantities vary as a function of model parameters, or formally the derivative $d\vec{y}/d\vec{x}$.
+- non-trivial when our data is a collection of points in a 6-dimensional space ( Stellar streams are characterized by positions and velocities of their member stars, so their observed quantities are on-sky positions, distances, radial velocities and proper motions.)
 - using the streakline method \citep{bonaca}
 - timestep: tested time step small enough so that we're not introducing numerical noise that way
+In what follows, we describe how we measure differences in stream models of different input parameters.
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=\textwidth]{../plots/observable_steps_-1_p0_Ns6.png}
-\caption{
+\includegraphics[width=0.8\textwidth]{derivative_vis.pdf}
+\caption{We quantify the response of streams on changes in model parameters by calculating numerical derivatives, and in this figure we visualize the $d\eta / d V_h$ derivative (change in the sky position with the change in scale velocity of the underlying dark matter halo).
+(\emph{Top}) The on-sky positions of the fiducial stream are shown in gray points, while the colored points show models in a less massive (red) and more massive halo (blue).
+Solid lines show B-spline fits through these stream models.
+The coordinate system is rotated such that the $\xi$ coordinate is approximately along the fiducial stream model, and $\eta$ is perpendicular to this stream track. 
+(\emph{Bottom}) We define the $d\eta / d V_h$ numerical derivative at a fixed coordinate $\xi$ along the stream as the difference between $\eta$ coordinates of models in the more massive and the less massive halo, divided by the total difference in halo scale velocity between these two models (black solid line). 
 }
 \label{fig:derivative_steps}
 \end{center}
@@ -191,19 +206,19 @@ For simplicity, we assume that there are 50 observations uniformly distributed a
 \begin{itemize}
  \item fiducial (3D, 4D and 6D)
  \item DESI-like
- \item SDSS-5
- \item Gaia DR2
+%  \item SDSS-5
+%  \item Gaia DR2
  \item Gaia final
- \item MM
- \item Gaia final + MM
+%  \item MM
+%  \item Gaia final + MM
 \end{itemize}
-
-\subsection{Cold tidal streams in the Milky Way}
 
 
 \section{Results}
 
-
+\subsection{Individual stream}
+- covariances
+- triangle plot
 
 \begin{figure}
 \begin{center}
@@ -221,24 +236,37 @@ Even if only limited observational data is available for multiple streams, the o
 \end{center}
 \end{figure}
 
-\emph{Acknowledgements:} This work was improved upon through insightful conversations with Kathryn Johnston, Nikhil Padmanabhan and Hans-Walter Rix, and it is a pleasure to thank them.
+\subsection{Comparison between streams}
+- compare CRB ellipses for halo parameters between several streams
+
+\subsection{Joint constraints}
+- CRB on halo parameters using different combinations of streams
+
+\subsection{Different observing modes}
+
+
+\emph{Acknowledgements:} This work was improved upon following the thoughtful suggestions of Kathryn Johnston, Nikhil Padmanabhan and Hans-Walter Rix, and it is a pleasure to thank them.
 
 \bibliographystyle{aasjournal}
 \bibliography{crlb}
 
 \appendix
+\section{Cold tidal streams in the Milky Way}
+\label{sec:streams}
+
 \section{Robust matrix inversion}
+\label{sec:inversion}
 Inverting a Fisher matrix is a core operation in calculating Cram\' er--Rao lower bounds and thus measuring the information content in stellar streams. 
 Often, this problem is ill-conditioned, i.e. if the input Fisher matrix $I$ is modified only slightly, the standard numerical algorithms, such as that employed in \texttt{numpy.linalg.inv}, return a very different inverse $I^{-1}$.
 We adopt an iterative approach of rescaling the problem to ensure a robust inverse is obtained, and outline it below.
 
-Starting with matrix $A$, which may have a large condition number, we are looking for a matrix $Q$, such that $Q A = I$.
+Starting with a matrix $A$, which may have a large condition number, we are looking for a matrix $Q$, such that $Q A = I$.
 If we have a guess for $Q$, and the guess is good, then the matrix $QA$ has a low condition number, and can be reliably inverted using the standard algorithm for numerical inversion.
 Then it follows:
 \begin{equation*}
 (QA)^{-1} Q = A^{-1} Q^{-1} Q = A^{-1}
 \end{equation*}
-We have just obtained a better guess for the inverse of the original matrix $A$, and adopt it as matrix $Q$ in the next iteration.
+We have just obtained a better guess for the inverse of the original matrix $A$, and adopt it as the matrix $Q$ in the next iteration.
 This procedure is repeated until $Q$ converges to $A^{-1}$, i.e., $Q A = I$ to machine precision.
 
 In our current implementation, we use the standard, unreliable inverse as the starting guess $Q$. 
