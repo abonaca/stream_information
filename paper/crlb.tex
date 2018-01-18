@@ -112,33 +112,45 @@ C_x^{-1} = \left(\frac{d\vec{y}}{d\vec{x}}\right)^{T} C_y^{-1} \left(\frac{d\vec
 where $V_x$ is a covariance matrix containing the prior knowledge of model parameters.
 In the next two subsections, we describe individual terms of Equation~\ref{eq:crlb}: model and its existing constraints (\S\ref{sec:model}), the change in stream observables $\vec{y}$ as a function of changes in the gravitational potential $\vec{x}$, i.e., the derivative $d\vec{y}/d\vec{x}$ (\S\ref{sec:derivatives}), and the adopted observational uncertainties, which set the covariance matrix $C_y$ (\S\ref{sec:datasets}).
 
-\subsection{Model}
+\subsection{Model definition}
 \label{sec:model}
-- can only answer questions in the context of a model -- we need a model of a stream.
-- in our case: the model consists of parameters defining the gravitational potential and parameters regarding the properties of the progenitor, which then uniquely define a stream (+ age?)
-- our gravitational potential has been chosen to match the Milky Way, and the adopted progenitor properties produce streams in this potential that represent well streams discovered in the Milky Way halo (see Appendix~\ref{sec:streams})
+The \CRLB\ formalism can only quantify information in the context of a model, which in our case is a model of a stellar stream.
+We only consider cold stellar streams originating from disrupting globular clusters.
+Direct N-body simulations have shown that the phase-space distribution of the resulting debris is predominantly set by properties of the gravitational potential and the orbit of the progenitor, with a weaker dependence on the internal properties of the progenitor (cit).
+Hence, our model consists of parameters defining the gravitational potential and parameters regarding the properties of the progenitor, which we describe in more detail below.
 
 % In the core of the Cram\' er--Rao bounds is the variation of observed quantities with the model parameters.
 % If we have the present-day position of the stream progenitor, and a representation of the gravitational potential, we can create a forward model of a cold stream.
 % So, the parameters of our model are a combination of parameters that define the gravitational potential, which are the parameters of interest, and the 6D position of the progenitor, which we treat as hyperparameters.
 
-- for the gravitational potential, we adopt a three component model with a Hernquist bulge (parameterized with mass and scale radius), Miyamoto-Nagai disk (with parameters for disk mass, scale length and scale height) and a spherical NFW halo (parameterized with scale velocity, scale radius, and axis ratios $q_x=q_z=1$).
-Our model of the gravitational potential is a composite of a Hernquist bulge, a Miyamoto-Nagai disk and a NFW halo.
-The fiducial potential is similar to MWPotential2014 \citep{galpy}, which fits a range of observables in the Milky Way, and the used parameters are listed in Table~\ref{t:phi}.
-We keep the bulge and disk contributions fixed, and only explore variations induced by changes in the distribution of dark matter.
-The dark matter halo is defined by four parameters: two for setting the mass and concentration, and two for the shape of the halo ellipsoid.
-To form the streams, we use the following potential form:
-\begin{equation}
-\begin{aligned}
-& \Phi_{dm}(x, y, z) = -V_h^2\, \frac{R_h}{r}\, \ln\left(1 + \frac{r}{R_h}\right) \\
-& r^2 = x^2 + \left(\frac{y}{q_y}\right)^2 + \left(\frac{z}{q_z}\right)^2
-\end{aligned}
-\label{eq:nfw}
-\end{equation}
-where $V_h$ is the scale velocity, $R_h$ is the scale radius, and $q_y$ and $q_z$ are the $x/y$ and $x/z$ axis ratios, respectively.
-In the fiducial potential, the halo is given by $V_h = 430\,\rm km\,s^{-1}$, $R_h = 30\,\rm kpc$, $q_y = q_z = 1$.
+Our gravitational potential matches the global properties of the Milky Way and consists of a Hernquist bulge (parameterized with mass and scale radius), a Miyamoto-Nagai disk (with parameters for disk mass, scale length and scale height) and a spherical NFW halo (parameterized with scale velocity, scale radius, and axis ratios $q_x=q_z=1$).
+We provide the fiducial values for this model in Table~, along with measurement uncertainties where available.
+This potential is similar to MWPotential2014 \citep{galpy}, and fits a range of observables in the Milky Way (e.g., rotation curve, ..., cit)
 
+
+% Our model of the gravitational potential is a composite of a Hernquist bulge, a Miyamoto-Nagai disk and a NFW halo.
+% The fiducial potential is similar to MWPotential2014 \citep{galpy}, which fits a range of observables in the Milky Way, and the used parameters are listed in Table~\ref{t:phi}.
+% We keep the bulge and disk contributions fixed, and only explore variations induced by changes in the distribution of dark matter.
+% The dark matter halo is defined by four parameters: two for setting the mass and concentration, and two for the shape of the halo ellipsoid.
+% To form the streams, we use the following potential form:
+% \begin{equation}
+% \begin{aligned}
+% & \Phi_{dm}(x, y, z) = -V_h^2\, \frac{R_h}{r}\, \ln\left(1 + \frac{r}{R_h}\right) \\
+% & r^2 = x^2 + \left(\frac{y}{q_y}\right)^2 + \left(\frac{z}{q_z}\right)^2
+% \end{aligned}
+% \label{eq:nfw}
+% \end{equation}
+% where $V_h$ is the scale velocity, $R_h$ is the scale radius, and $q_y$ and $q_z$ are the $x/y$ and $x/z$ axis ratios, respectively.
+% In the fiducial potential, the halo is given by $V_h = 430\,\rm km\,s^{-1}$, $R_h = 30\,\rm kpc$, $q_y = q_z = 1$.
+
+The adopted progenitor properties produce streams in this potential that represent well streams discovered in the Milky Way halo (see Appendix~\ref{sec:streams}).
 - progenitor position today (below described in detail)
+% , which then uniquely define a stream (+ age?)
+
+- priors:
+- putting priors on baryonic components, as independent measurements exist from star counts? (cit)
+- a few streams have known progenitors: apply observational uncertainties there, but progenitors of most streams unknown, so we leave those completely free
+- interested in mapping dark matter -- don't adopt there
 
 \subsection{Calculating numerical derivatives for the \CRLB}
 \label{sec:derivatives}
@@ -156,7 +168,9 @@ In what follows, we describe how we measure differences in stream models of diff
 (\emph{Top}) The on-sky positions of the fiducial stream are shown in gray points, while the colored points show models in a less massive (red) and more massive halo (blue).
 Solid lines show B-spline fits through these stream models.
 The coordinate system is rotated such that the $\xi$ coordinate is approximately along the fiducial stream model, and $\eta$ is perpendicular to this stream track. 
-(\emph{Bottom}) We define the $d\eta / d V_h$ numerical derivative at a fixed coordinate $\xi$ along the stream as the difference between $\eta$ coordinates of models in the more massive and the less massive halo, divided by the total difference in halo scale velocity between these two models (black solid line). 
+(\emph{Bottom}) We define the derivative $d\eta / d V_h$ as the numerical derivative $\Delta\eta / \Delta V_h$.
+At a fixed coordinate $\xi$ along the stream, the numerical derivative is the ration of the difference between $\eta$ coordinates of models in the more massive and the less massive halo ($\Delta\eta$, marked with arrows in the top panel), and the total difference in halo scale velocity between these two models ($\Delta V_h$).
+This numerical derivative as a function of position along the stream is shown in a black line on the bottom panel.
 }
 \label{fig:derivative_steps}
 \end{center}
@@ -243,6 +257,20 @@ Even if only limited observational data is available for multiple streams, the o
 - CRB on halo parameters using different combinations of streams
 
 \subsection{Different observing modes}
+
+
+\section{Discussion}
+
+\subsection{Physical interpretation of constraints}
+- enclosed mass
+- flattening
+
+\subsection{More flexible potential models}
+
+\subsubsection{LMC}
+
+\subsubsection{Basis function expansion}
+
 
 
 \emph{Acknowledgements:} This work was improved upon following the thoughtful suggestions of Kathryn Johnston, Nikhil Padmanabhan and Hans-Walter Rix, and it is a pleasure to thank them.
