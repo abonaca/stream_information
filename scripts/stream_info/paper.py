@@ -76,7 +76,7 @@ def derivative_vis(name='atlas'):
 
     plt.sca(ax[1])
     
-    plt.plot(ra, (bs_stream2(ra) - bs_stream1(ra))/(2*dV), 'k-', lw=lw)
+    plt.plot(ra, (bs_stream2(ra) - bs_stream1(ra))/(2*dV), 'k-', lw=1.5*lw)
     
     plt.xlabel('$\\xi$ (deg)')
     plt.ylabel('$\Delta$ $\eta$ / $\Delta$ $V_h$ (deg km$^{-1}$ s)')
