@@ -92,6 +92,7 @@ def derivative_stepsize(name='atlas', tolerance=2, Nstep=10, log=True, layer=1):
     nrow = 6
     ncol = 6
     
+    mpl.rcParams.update({'font.size': 22})
     plt.close()
     fig, ax = plt.subplots(nrow, ncol, figsize=(da*ncol, da*3.9), squeeze=False, gridspec_kw = {'height_ratios':[1.2, 3, 1.2, 3, 1.2, 3]})
     
@@ -118,22 +119,17 @@ def derivative_stepsize(name='atlas', tolerance=2, Nstep=10, log=True, layer=1):
             opt_id = step[p]==opt_step
             best[p] = opt_step
             
-            ## largest step w deviation smaller than 1e-4
-            #opt_step = np.max(step[p][dev[p]<1e-4])
-            #opt_id = step[p]==opt_step
-            #best[p] = opt_step
-            
             plt.sca(ax[e*2][p])
             for i in range(5):
                 for j in range(10):
-                    plt.plot(steps_all[p], np.tanh(dydx[p,:,i,np.int64(j*Nra/10)]), '-', color='{}'.format(i/10), lw=0.5, alpha=0.5)
+                    plt.plot(steps_all[p], np.tanh(dydx[p,:,i,np.int64(j*Nra/10)]), '-', color='{}'.format(i/5), lw=0.5, alpha=0.5)
 
             plt.axvline(opt_step, ls='-', color='crimson', lw=3)
             plt.ylim(-1,1)
             plt.gca().set_xscale('log')
             
             if p==0:
-                plt.ylabel('Derivative')
+                plt.ylabel('$\dot{y}$', fontsize=28)
             #plt.title('{}'.format(plabels[p])+'$_{best}$ = '+'{:2.2g}'.format(opt_step), fontsize='small')
             
             plt.sca(ax[e*2+1][p])
@@ -148,9 +144,9 @@ def derivative_stepsize(name='atlas', tolerance=2, Nstep=10, log=True, layer=1):
             
             plt.gca().set_yscale('log')
             plt.gca().set_xscale('log')
-            plt.xlabel('$\Delta$ {} {}'.format(plabels[p], punits[p]))
+            plt.xlabel('$\Delta$ {} {}'.format(plabels[p], punits[p]), fontsize=28)
             if p==0:
-                plt.ylabel('Derivative deviation')
+                plt.ylabel('$\Delta$ $\dot{y}$', fontsize=28)
             
             # share x axis in rows of 2
             ax[e*2][p].set_xlim(ax[e*2+1][p].get_xlim())
@@ -161,8 +157,13 @@ def derivative_stepsize(name='atlas', tolerance=2, Nstep=10, log=True, layer=1):
             plt.axis('off')
             plt.sca(ax[e*2+1][poff])
             plt.axis('off')
-        
-    plt.tight_layout(h_pad=0)
+    
+    plt.text(0.95, 0.2, '$\dot{y}$ = tanh (d$y_i$ / dx) for data dimensions i', transform=fig.transFigure, ha='right', va='center', fontsize=24)
+    plt.text(0.95, 0.12, '$\Delta$ $\dot{y}$ = $\sum_i ((dy_i/dx)|_{x0} - (dy_i/dx)|_{x0-\Delta x})^2$\n$+ \sum_i  ((dy_i/dx)|_{x0} - (dy_i/dx)|_{x0+\Delta x})^2]$', transform=fig.transFigure, ha='right', va='center', fontsize=24)
+    
+    plt.tight_layout(h_pad=0, w_pad=0)
     plt.savefig('../paper/derivative_steps.pdf')
+    
+    mpl.rcParams.update({'font.size': 18})
 
 
