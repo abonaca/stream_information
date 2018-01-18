@@ -84,6 +84,85 @@ def derivative_vis(name='atlas'):
     plt.tight_layout()
     plt.savefig('../paper/derivative_vis.pdf')
 
+def derivative_stepsize(name='atlas', tolerance=2, Nstep=10, log=True, layer=1):
+    """Plot change in numerical derivative Delta y / Delta x as a function of step size Delta x"""
+    
+    # plot setup
+    da = 4
+    nrow = 6
+    ncol = 6
+    
+    plt.close()
+    fig, ax = plt.subplots(nrow, ncol, figsize=(da*ncol, da*3.9), squeeze=False, gridspec_kw = {'height_ratios':[1.2, 3, 1.2, 3, 1.2, 3]})
+    
+    for e, vary in enumerate(['progenitor', 'bary', 'halo']):
+        pid, dp, vlabel = get_varied_pars(vary)
+        Np = len(pid)
+        plabels, units = get_parlabel(pid)
+        punits = ['({})'.format(x) if len(x) else '' for x in units]
+        
+        t = np.load('../data/step_convergence_{}_{}_Ns{}_log{}_l{}.npz'.format(name, vlabel, Nstep, log, layer))
+        dev = t['dev']
+        step = t['step']
+        dydx = t['ders']
+        steps_all = t['steps_all'][:,::-1]
+        Nra = np.shape(dydx)[-1]
+        
+        best = np.empty(Np)
+    
+        for p in range(Np):
+            # choose step
+            dmin = np.min(dev[p])
+            dtol = tolerance * dmin
+            opt_step = np.min(step[p][dev[p]<dtol])
+            opt_id = step[p]==opt_step
+            best[p] = opt_step
+            
+            ## largest step w deviation smaller than 1e-4
+            #opt_step = np.max(step[p][dev[p]<1e-4])
+            #opt_id = step[p]==opt_step
+            #best[p] = opt_step
+            
+            plt.sca(ax[e*2][p])
+            for i in range(5):
+                for j in range(10):
+                    plt.plot(steps_all[p], np.tanh(dydx[p,:,i,np.int64(j*Nra/10)]), '-', color='{}'.format(i/10), lw=0.5, alpha=0.5)
 
+            plt.axvline(opt_step, ls='-', color='crimson', lw=3)
+            plt.ylim(-1,1)
+            plt.gca().set_xscale('log')
+            
+            if p==0:
+                plt.ylabel('Derivative')
+            #plt.title('{}'.format(plabels[p])+'$_{best}$ = '+'{:2.2g}'.format(opt_step), fontsize='small')
+            
+            plt.sca(ax[e*2+1][p])
+            plt.plot(step[p], dev[p], 'ko', ms=8)
+            
+            plt.axvline(opt_step, ls='-', color='crimson', lw=3)
+            plt.plot(step[p][opt_id], dev[p][opt_id], 'o', ms=8, color='crimson')
+            
+            plt.axhline(dtol, ls='-', color='salmon', lw=2)
+            y0, y1 = plt.gca().get_ylim()
+            plt.axhspan(y0, dtol, color='salmon', alpha=0.3, zorder=0)
+            
+            plt.gca().set_yscale('log')
+            plt.gca().set_xscale('log')
+            plt.xlabel('$\Delta$ {} {}'.format(plabels[p], punits[p]))
+            if p==0:
+                plt.ylabel('Derivative deviation')
+            
+            # share x axis in rows of 2
+            ax[e*2][p].set_xlim(ax[e*2+1][p].get_xlim())
+            ax[e*2][p].tick_params(labelbottom='off')
+            
+        for poff in range(p+1,ncol):
+            plt.sca(ax[e*2][poff])
+            plt.axis('off')
+            plt.sca(ax[e*2+1][poff])
+            plt.axis('off')
+        
+    plt.tight_layout(h_pad=0)
+    plt.savefig('../paper/derivative_steps.pdf')
 
 
