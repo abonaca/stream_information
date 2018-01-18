@@ -94,9 +94,14 @@ def derivative_stepsize(name='atlas', tolerance=2, Nstep=10, log=True, layer=1):
     
     mpl.rcParams.update({'font.size': 22})
     plt.close()
-    fig, ax = plt.subplots(nrow, ncol, figsize=(da*ncol, da*3.9), squeeze=False, gridspec_kw = {'height_ratios':[1.2, 3, 1.2, 3, 1.2, 3]})
+    #fig, ax = plt.subplots(nrow, ncol, figsize=(da*ncol, da*3.9), squeeze=False, gridspec_kw = {'height_ratios':[1.2, 3, 1.2, 3, 1.2, 3]})
+    
+    fig = plt.figure(figsize=(da*ncol, da*3.9))
+    outer_grid = mpl.gridspec.GridSpec(3, 1, wspace=0.0, hspace=0.35)
     
     for e, vary in enumerate(['progenitor', 'bary', 'halo']):
+        inner_grid = mpl.gridspec.GridSpecFromSubplotSpec(2, ncol, subplot_spec=outer_grid[e], wspace=0.35, hspace=0.05, height_ratios=[1.2,3])
+        
         pid, dp, vlabel = get_varied_pars(vary)
         Np = len(pid)
         plabels, units = get_parlabel(pid)
@@ -119,20 +124,10 @@ def derivative_stepsize(name='atlas', tolerance=2, Nstep=10, log=True, layer=1):
             opt_id = step[p]==opt_step
             best[p] = opt_step
             
-            plt.sca(ax[e*2][p])
-            for i in range(5):
-                for j in range(10):
-                    plt.plot(steps_all[p], np.tanh(dydx[p,:,i,np.int64(j*Nra/10)]), '-', color='{}'.format(i/5), lw=0.5, alpha=0.5)
-
-            plt.axvline(opt_step, ls='-', color='crimson', lw=3)
-            plt.ylim(-1,1)
-            plt.gca().set_xscale('log')
+            # derivative deviation
+            ax = plt.Subplot(fig, inner_grid[ncol+p])
+            ax1 = fig.add_subplot(ax)
             
-            if p==0:
-                plt.ylabel('$\dot{y}$', fontsize=28)
-            #plt.title('{}'.format(plabels[p])+'$_{best}$ = '+'{:2.2g}'.format(opt_step), fontsize='small')
-            
-            plt.sca(ax[e*2+1][p])
             plt.plot(step[p], dev[p], 'ko', ms=8)
             
             plt.axvline(opt_step, ls='-', color='crimson', lw=3)
@@ -145,23 +140,32 @@ def derivative_stepsize(name='atlas', tolerance=2, Nstep=10, log=True, layer=1):
             plt.gca().set_yscale('log')
             plt.gca().set_xscale('log')
             plt.xlabel('$\Delta$ {} {}'.format(plabels[p], punits[p]), fontsize=28)
+            plt.gca().xaxis.labelpad = 0.2
             if p==0:
                 plt.ylabel('$\Delta$ $\dot{y}$', fontsize=28)
             
-            # share x axis in rows of 2
-            ax[e*2][p].set_xlim(ax[e*2+1][p].get_xlim())
-            ax[e*2][p].tick_params(labelbottom='off')
+            # derivative
+            ax = plt.Subplot(fig, inner_grid[p])
+            ax0 = fig.add_subplot(ax, sharex=ax1)
             
-        for poff in range(p+1,ncol):
-            plt.sca(ax[e*2][poff])
-            plt.axis('off')
-            plt.sca(ax[e*2+1][poff])
-            plt.axis('off')
+            for i in range(5):
+                for j in range(10):
+                    plt.plot(steps_all[p], np.tanh(dydx[p,:,i,np.int64(j*Nra/10)]), '-', color='{}'.format(i/5), lw=0.5, alpha=0.5)
+
+            plt.axvline(opt_step, ls='-', color='crimson', lw=3)
+            ax0.set_xlim(ax1.get_xlim())
+            plt.gca().set_xscale('log')
+            plt.gca().tick_params(labelbottom='off')
+            
+            plt.ylim(-1,1)
+            if p==0:
+                plt.ylabel('$\dot{y}$', fontsize=28)
+            
+    plt.text(0.67, 0.3, 'for data dimensions $y_i$ and parameter x:', transform=fig.transFigure, ha='left', va='center', fontsize=24)
+    plt.text(0.68, 0.25, '$\dot{y}$ = tanh (d$y_i$ / dx)', transform=fig.transFigure, ha='left', va='center', fontsize=24)
+    plt.text(0.68, 0.17, '$\Delta$ $\dot{y}$ = $\sum_i [(dy_i/dx)|_{\Delta x_j} - (dy_i/dx)|_{\Delta x_{j-1}}]^2$\n$+ \sum_i  [(dy_i/dx)|_{\Delta x_j} - (dy_i/dx)|_{\Delta x_{j+1}}]^2$', transform=fig.transFigure, ha='left', va='center', fontsize=24)
     
-    plt.text(0.95, 0.2, '$\dot{y}$ = tanh (d$y_i$ / dx) for data dimensions i', transform=fig.transFigure, ha='right', va='center', fontsize=24)
-    plt.text(0.95, 0.12, '$\Delta$ $\dot{y}$ = $\sum_i ((dy_i/dx)|_{x0} - (dy_i/dx)|_{x0-\Delta x})^2$\n$+ \sum_i  ((dy_i/dx)|_{x0} - (dy_i/dx)|_{x0+\Delta x})^2]$', transform=fig.transFigure, ha='right', va='center', fontsize=24)
-    
-    plt.tight_layout(h_pad=0, w_pad=0)
+    #plt.tight_layout(h_pad=0, w_pad=0)
     plt.savefig('../paper/derivative_steps.pdf')
     
     mpl.rcParams.update({'font.size': 18})
