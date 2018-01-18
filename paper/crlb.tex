@@ -114,18 +114,18 @@ In the next two subsections, we describe individual terms of Equation~\ref{eq:cr
 
 \subsection{Model definition}
 \label{sec:model}
-The \CRLB\ formalism can only quantify information in the context of a model, which in our case is a model of a stellar stream.
-We only consider cold stellar streams originating from disrupting globular clusters.
-Direct N-body simulations have shown that the phase-space distribution of the resulting debris is predominantly set by properties of the gravitational potential and the orbit of the progenitor, with a weaker dependence on the internal properties of the progenitor (cit).
-Hence, our model consists of parameters defining the gravitational potential and parameters regarding the properties of the progenitor, which we describe in more detail below.
+The \CRLB\ formalism can only quantify information in the context of a model, which in our case is a model of a stellar stream in the gravitational potential of the Milky Way.
+We consider cold stellar streams originating from disrupting globular clusters, which have been well-modeled with direct N-body simulations (refs).
+These studies have shown that the phase-space distribution of the resulting debris is predominantly set by properties of the gravitational potential and the orbit of the progenitor, with a weaker dependence on the internal properties of the progenitor.
+Hence, our model consists of parameters defining the gravitational potential and a 6-dimensional position of the progenitor.
 
 % In the core of the Cram\' er--Rao bounds is the variation of observed quantities with the model parameters.
 % If we have the present-day position of the stream progenitor, and a representation of the gravitational potential, we can create a forward model of a cold stream.
 % So, the parameters of our model are a combination of parameters that define the gravitational potential, which are the parameters of interest, and the 6D position of the progenitor, which we treat as hyperparameters.
 
-Our gravitational potential matches the global properties of the Milky Way and consists of a Hernquist bulge (parameterized with mass and scale radius), a Miyamoto-Nagai disk (with parameters for disk mass, scale length and scale height) and a spherical NFW halo (parameterized with scale velocity, scale radius, and axis ratios $q_x=q_z=1$).
+To represent the global properties of the Milky Way, we represent the gravitational potential as a combination of a Hernquist bulge (parameterized with mass and scale radius), a Miyamoto-Nagai disk (with parameters for disk mass, scale length and scale height) and a spherical NFW halo (parameterized with scale velocity, scale radius, and axis ratios $q_x=q_z=1$).
 We provide the fiducial values for this model in Table~, along with measurement uncertainties where available.
-This potential is similar to MWPotential2014 \citep{galpy}, and fits a range of observables in the Milky Way (e.g., rotation curve, ..., cit)
+This potential is similar to MWPotential2014 \citep{galpy}, and fits a range of observables in the Milky Way (e.g., rotation curve, ..., cit).
 
 
 % Our model of the gravitational potential is a composite of a Hernquist bulge, a Miyamoto-Nagai disk and a NFW halo.
@@ -203,7 +203,12 @@ Thus defined derivatives are shown in the last row of Figure~\ref{fig:derivative
 \begin{figure}
 \begin{center}
 \includegraphics[width=\textwidth]{derivative_steps.pdf}
-\caption{
+\caption{Optimal steps in parameter space for calculating numerical derivatives are marked with red vertical lines.
+The top two rows present progenitor parameters, starting with progenitor position, $\rm RA_p$, on the left, until progenitor proper motion $\mu_p$ on the right.
+The first of these two rows shows the values of evaluated numerical derivative, $\Delta y/\Delta x$, as a function of step size for parameter $x$ used in calculation, $\Delta x$, and the second row shows how the derivatives along the stream observables evaluated at a step size $\Delta x_j$ deviate from derivatives at adjacent step sizes $\Delta x_{j-1}$ and $\Delta x_{j+1}$.
+Similarly, the middle two rows present derivatives for parameters defining the bulge and the disk, while the bottom two rows are dedicated to parameters of the dark matter halo.
+For all of the model parameters, there is a local minimum in derivative deviation.
+We adopt the optimal step size (red points and vertical lines) as the smallest step with a derivative deviation within a factor of 2 from the local minimum.
 }
 \label{fig:derivative_conv}
 \end{center}
