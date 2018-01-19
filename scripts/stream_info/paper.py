@@ -149,8 +149,8 @@ def derivative_stepsize(name='atlas', tolerance=2, Nstep=10, log=True, layer=1):
             ax0 = fig.add_subplot(ax, sharex=ax1)
             
             for i in range(5):
-                for j in range(10):
-                    plt.plot(steps_all[p], np.tanh(dydx[p,:,i,np.int64(j*Nra/10)]), '-', color='{}'.format(i/5), lw=0.5, alpha=0.5)
+                for j in range(3):
+                    plt.plot(steps_all[p], np.tanh(dydx[p,:,i,np.int64(j*Nra/3)]), '-', color='{}'.format(i/5), lw=1, alpha=1)
 
             plt.axvline(opt_step, ls='-', color='crimson', lw=3)
             ax0.set_xlim(ax1.get_xlim())
@@ -162,8 +162,8 @@ def derivative_stepsize(name='atlas', tolerance=2, Nstep=10, log=True, layer=1):
                 plt.ylabel('$\dot{y}$', fontsize=28)
             
     plt.text(0.67, 0.3, 'for data dimensions $y_i$ and parameter x:', transform=fig.transFigure, ha='left', va='center', fontsize=24)
-    plt.text(0.68, 0.25, '$\dot{y}$ = tanh (d$y_i$ / dx)', transform=fig.transFigure, ha='left', va='center', fontsize=24)
-    plt.text(0.68, 0.17, '$\Delta$ $\dot{y}$ = $\sum_i [(dy_i/dx)|_{\Delta x_j} - (dy_i/dx)|_{\Delta x_{j-1}}]^2$\n$+ \sum_i  [(dy_i/dx)|_{\Delta x_j} - (dy_i/dx)|_{\Delta x_{j+1}}]^2$', transform=fig.transFigure, ha='left', va='center', fontsize=24)
+    plt.text(0.69, 0.25, '$\dot{y}$ = tanh (d$y_i$ / dx)', transform=fig.transFigure, ha='left', va='center', fontsize=24)
+    plt.text(0.89, 0.17, '$\Delta$ $\dot{y}$ = $\sum_i [(dy_i/dx)|_{\Delta x_j} - (dy_i/dx)|_{\Delta x_{j-1}}]^2$\n$+ \sum_i  [(dy_i/dx)|_{\Delta x_j} - (dy_i/dx)|_{\Delta x_{j+1}}]^2$', transform=fig.transFigure, ha='right', va='center', fontsize=24)
     
     #plt.tight_layout(h_pad=0, w_pad=0)
     plt.savefig('../paper/derivative_steps.pdf')
