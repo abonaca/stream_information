@@ -121,7 +121,7 @@ These studies have shown that the phase-space distribution of the resulting debr
 Hence, our model consists of parameters defining the gravitational potential and a 6-dimensional position of the progenitor.
 
 To represent the global properties of the Milky Way, we represent the gravitational potential as a combination of a Hernquist bulge (parameterized with mass and scale radius), a Miyamoto-Nagai disk (with parameters for disk mass, scale length and scale height) and a spherical NFW halo (parameterized with scale velocity, scale radius, and axis ratios $q_x=q_z=1$).
-We provide the fiducial values for this model in Table~, along with measurement uncertainties where available.
+We provide the fiducial values for this model in Table~\ref{t:model}, along with measurement uncertainties where available.
 This potential is similar to MWPotential2014 \citep{galpy}, and fits a range observed Milky Way properties (e.g., rotation curve, ..., cit).
 
 Next, we search for globular cluster orbits in the fiducial gravitational potential that produce stellar streams similar to those observed in the Milky Way.
@@ -132,11 +132,44 @@ Some streams have been better characterized, for example, with radial velocities
 In Appendix~\ref{sec:streams}, we provide current progenitor positions, initial masses and stream ages, which reproduce observations for most of the Galactic streams present in the PanSTARRS1 footprint, as well as more details on the above procedure.
 When calculating the \CRLB\ for streams, we keep the progenitor mass and age fixed at their best-fitting values, as they are highly degenerate, and only use the present-day position of the progenitor as model parameters (defined in the observable space with the progenitor's two on-sky position angles, distance, radial velocity and two proper motion components). 
 
-The complete model is defined in Table~, and has 15 parameters: six for the progenitor position, two for bulge, three for disk and four for dark matter halo.
+The complete model is defined in Table~\ref{t:model}, and has 15 parameters: six for the progenitor position, two for bulge, three for disk and four for dark matter halo.
 - priors:
 - putting priors on baryonic components, as independent measurements exist from star counts? (cit)
 - a few streams have known progenitors: apply observational uncertainties there, but progenitors of most streams unknown, so we leave those completely free
 - interested in mapping dark matter -- don't adopt there
+
+\begin{center}
+\begin{table}
+\begin{tabular}{l c c c l}
+\hline
+\hline
+Parameter & Symbol & Fiducial value & Uncertainty & Reference \\
+\hline
+\hline
+Bulge mass & $M_b$ & & & \\
+Bulge scale radius & $a_b$ & & & \\
+Disk mass & $M_d$ & & & \\
+Disk scale radius & $a_d$ & & & \\
+Disk scale height & $b_d$ & & & \\
+\hline
+Halo scale velocity & $V_h$ & & & \\
+Halo scale radius & $R_h$ & & & \\
+Halo $y$ axis ratio & $q_y$ & & & \\
+Halo $z$ axis ratio & $q_z$ & & & \\
+\hline
+Progenitor RA & $RA_p$ & & & \\
+Progenitor Dec & $Dec_p$ & & & \\
+Progenitor distance & $d_p$ & & & \\
+Progenitor radial velocity & $V_{r,p}$ & & & \\
+Progenitor RA proper motion & $\mu_{\alpha,p}$ & & & \\
+Progenitor Dec proper motion & $\mu_{\delta,p}$ & & & \\
+\hline
+\hline
+\end{tabular}
+\caption{Model parameters}
+\label{t:model}
+\end{table}
+\end{center}
 
 \subsection{Calculating numerical derivatives for the \CRLB}
 \label{sec:derivatives}
@@ -204,20 +237,58 @@ We adopt the optimal step size (red points and vertical lines) as the smallest s
 - choice of step size for numerical derivative such that the derivative converged
 
 \subsection{Sets of observational data}
-For simplicity, we assume that there are 50 observations uniformly distributed along the length of each stream.
-
-
 \label{sec:datasets}
-\begin{itemize}
- \item fiducial (3D, 4D and 6D)
- \item DESI-like
-%  \item SDSS-5
-%  \item Gaia DR2
- \item Gaia final
-%  \item MM
-%  \item Gaia final + MM
-\end{itemize}
 
+\begin{table}
+\begin{center}
+\begin{tabular}{l c c c c c c}
+\hline
+\hline
+Data set & $\sigma_\alpha$ & $\sigma_\delta$ & $\sigma_d$ & $\sigma_{V_r}$ & $\sigma_{\mu_\alpha}$ & $\sigma_{\mu_\alpha}$ \\
+\hline
+Fiducial & & & & & & \\
+DESI & & & & & N/A & N/A \\
+Gaia & & & & & & \\
+\hline
+\hline
+\end{tabular}
+\caption{Observational data sets}
+\label{t:datasets}
+\end{center}
+\end{table}
+
+We measure the information content in the Milky Way streams as currently observed, and also quantify improvements expected from the upcoming observational campaigns.
+In total, we consider three classes of observational data:
+\begin{enumerate}
+\item fiducial data set with data obtainable at the present,
+\item including present data on positions of stream stars with radial velocities from DESI and DESI-like surveys, and
+\item data on stream members from the final data release from the Gaia mission.
+\end{enumerate}
+Observational uncertainties in each of these cases are summarized in Table~\ref{t:datasets}, which we describe in more detail below.
+
+In the fiducial data set, we assume that the positions of stream members come from photometric surveys, radial velocities from targeted spectroscopic follow-up, and proper motions from long-baseline, spacecraft observations.
+- on-sky positions uncertain by the width of the stream, typically x deg (cit)
+- distances from msto position, uncertain to x \% (cit)
+- a number of medium-resolution spectrographs have demonstrated radial velocities measured to 1\,km/s level (cit), which we adopt
+- HST measurements of proper motions for individual members of the Sgr stream were typically uncertain by 0.1\,mas/yr
+- these uncertainties, especially for the kinematic data, are currently best attainable
+- most of the streams, however, only have positional data, and a few have kinematic information from radial velocities
+- so within the fiducial case, we consider separate situations of having access to 3D, 4D and 6D data
+
+- second case, we consider data on positions from photometric surveys, same as in the fiducial case, but with velocities from lower resolution, but large scale spectroscopic surveys
+- a number of such surveys (cit) are about to launch, with the expected uncertainty of 10\,km/s in radial velocity of a g=20 star
+- albeit an order of magnitude worse precision, we consider this case for its potential to provide kinematics for all of the known streams, and potentially many fainter stream discoveries. 
+
+Our final case studies data in the post-Gaia era, where the distances come from Gaia parallaxes, radial velocities from RVS, and proper motions from the 5 year Gaia astrometry.
+- stream positions still limited by their intrinsic width, but the distance is improved an order of magnitude wrt the fiducial case (cit typical Gaia parallax uncertainty)
+- streams far away, so we adopt RVS performance for faintest stars of x\,km/s
+- similarly, proper motion precision is x\,mas/yr for faint, blue stars, such as those at the main sequence turn-off of stellar streams.
+
+For simplicity, we assume that there are 50 observations uniformly distributed along the length of each stream, and also that the uncertainties are the same for all of the observations.
+As there are density inhomogeneities along the streams, the likely members are hardly equidistant.
+Furthermore, realistic observational uncertainties are a function of stellar brightness, color, and often distance.
+However, the idealized scenario adopted here serves as a demonstration for the framework of calculating the information content of a stream data set.
+More realistic data can be analyzed in the same way to produce specific predictions.
 
 \section{Results}
 
