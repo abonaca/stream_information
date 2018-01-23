@@ -242,7 +242,7 @@ def plot_ps1(name='ps1a', get_coords=False, npoint=10):
 
 
 def poly_streamline(name='atlas'):
-    """"""
+    """Fit polynomial to the stream track"""
     
     t = Table.read('../data/streams/{}_coords.fits'.format(name))
     t.pprint()
@@ -352,6 +352,80 @@ def wfit_plane(x, r, p=None):
     return lsq
 
 
+import sfd
+
+def make_catalog(name='atlas', test=True, cut=True):
+    """"""
+    
+    d = 5
+    ra, dec = np.loadtxt('../data/streams/tiles_{}'.format(name), unpack=True)
+    ra1 = np.min(ra)
+    ra2 = np.max(ra) + d
+    dec1 = np.min(dec)
+    dec2 = np.max(dec) + d
+    print(ra1, ra2, dec1, dec2)
+    
+#def br():
+    #if test:
+        #t = read_rect([0, 5, -30, -25])
+        #plt.close()
+        #fig, ax = plt.subplots(1,2)
+        #plt.sca(ax[0])
+        #plt.plot(t['median'][:,2], t['median_ap'][:,2], 'ko', ms=1, alpha=0.01)
+        #plt.plot(np.linspace(12,24,10), np.linspace(12,24,10)-0.2, 'r-')
+        #plt.plot(np.linspace(12,24,10), np.linspace(12,24,10)+0.2, 'r-')
+        #plt.xlim(18,24)
+        #plt.ylim(18,24)
+        
+        #plt.sca(ax[1])
+        #plt.plot(t['median'][:,0]-t['median'][:,1],t['median'][:,1], 'ko', ms=1, alpha=0.1)
+        #plt.plot(t['median'][:,0][stars]-t['median'][:,1][stars],t['median'][:,1][stars], 'ro', ms=1, alpha=0.1)
+        #plt.xlim(-1,3)
+        #plt.ylim(23,13)
+    #else:
+    t = read_rect([ra1, ra2, dec1, dec2])
+
+    # select stars
+    stars = np.abs(t['median_ap'][:,2] - t['median'][:,2]) < 0.2
+    if cut:
+        t = t[stars]
+        label = ''
+    else:
+        label = '_nocut'
+    
+    # correct for reddening
+    c = coord.SkyCoord(ra=t['ra_ok']*u.deg, dec=t['dec_ok']*u.deg)
+    reddening = sfd.reddening(c, survey='PS1', filters='gri')
+    
+    tout = Table(np.array([t['ra_ok'], t['dec_ok'], t['median'][:,0] - reddening[:,0], t['median'][:,1] - reddening[:,1], t['median'][:,2] - reddening[:,2]]).T, names=('ra', 'dec', 'g', 'r', 'i'))
+    
+    tout.write('../data/streams/{:s}_catalog{:s}.fits'.format(name, label), overwrite=True)
+
+def read_rect(rect, d=5, verbose=False):
+    """Read PS1 tiles"""
+    
+    ra1, ra2, dec1, dec2 = rect
+    
+    ramin = np.int64(np.floor(ra1/d))*d
+    ramax = np.int64(np.ceil(ra2/d))*d
+    decmin = np.int64(np.floor(dec1/d))*d
+    decmax = np.int64(np.ceil(dec2/d))*d
+    
+    for i_, ra in enumerate(range(ramin, ramax, d)):
+        for j_, dec in enumerate(range(decmin, decmax, d)):
+            if verbose: print('reading {} {}'.format(ra, dec))
+            
+            tin = Table.read(home+'/data/ps1/ps1_{:d}.{:d}.fits'.format(ra, dec))
+            ind = (tin['ra']<=ra2) & (tin['ra']>=ra1) & (tin['dec']<=dec2) & (tin['dec']>=dec1)
+            tin = tin[ind]
+            
+            if (i_==0) & (j_==0):
+                tout = tin.copy()
+            else:
+                tout = astropy.table.vstack([tout, tin])
+    
+    return(tout)
+
 def stream_coords(name='atlas'):
     """"""
     # streakline
@@ -389,7 +463,8 @@ def stream_coords(name='atlas'):
     plt.close()
     plt.figure()
     
-    plt.plot(ts['ra'], ts['dec'], 'ko')
+    plt.plot(tout['ra'], tout['dec'], 'k.')
+    plt.plot(ts['ra'], ts['dec'], 'ro')
 
 def filter_weights(t, xe, ye, filter, b1='g', b2='r', d0=0, d=0):
     """"""
@@ -411,6 +486,11 @@ def filter_weights(t, xe, ye, filter, b1='g', b2='r', d0=0, d=0):
 def stream_probabilities(name='atlas', sigma=0.25, d=22, Ntop=100, sigma_d=2, seed=98):
     """"""
     t = Table.read('../data/streams/{}_allcoords.fits'.format(name))
+    s = Table.read('../data/streams/stream_shape.txt', format='ascii.commented_header')
+    s = s[s['name']==name]
+    sigma = s['sigma_w']
+    d = s['d']
+    sigma_d = s['sigma_d']
     
     # spatial
     gauss = scipy.stats.norm(0, sigma)
@@ -424,7 +504,7 @@ def stream_probabilities(name='atlas', sigma=0.25, d=22, Ntop=100, sigma_d=2, se
     prob_tot = prob_cmd * prob_spatial
     
     # select top 100
-    ind = np.argpartition(prob_cmd, -Ntop)[-Ntop:]
+    ind = np.argpartition(prob_tot, -Ntop)[-Ntop:]
     t = t[ind]
     prob_tot = prob_tot[ind]
     
