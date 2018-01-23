@@ -134,11 +134,31 @@ def map_distances():
     np.save('../data/ps1_maps_distances', dist)
 
 # stream track
-def plot_ps1(stream='ps1a'):
+coords = []
+
+def onclick_storecoords(event, fig, name, npoint):
+    """Store coordinates of clicked points"""
+    global ix, iy
+    ix, iy = event.xdata, event.ydata
+
+    global coords
+    coords.append((ix, iy))
+    print(len(coords))
+
+    if len(coords)==npoint:
+        print('done')
+        carr = np.array(coords)
+        c = Table(np.array(coords), names=('ra', 'dec'))
+        
+        c.pprint()
+        c.write('../data/streams/{}_coords.fits'.format(name), overwrite=True)
+        coords = []
+
+def plot_ps1(name='ps1a', get_coords=False, npoint=10):
     """"""
     
     shape = Table.read('../data/streams/stream_shape.txt', format='ascii.commented_header')
-    dist = shape['d'][shape['name']==stream]
+    dist = shape['d'][shape['name']==name]
     
     map_dist = np.load('../data/ps1_maps_distances.npy')
     idist = np.argmin(np.abs(map_dist - dist))
@@ -151,7 +171,7 @@ def plot_ps1(stream='ps1a'):
     print(map_distance)
     
     t = Table.read('{}/projects/python/galstreams/footprints/galstreams.footprint.ALL.dat'.format(home), format='ascii.commented_header')
-    ind = t['IDst']==translate_name(stream)
+    ind = t['IDst']==translate_name(name)
     t = t[ind]
     
     dx = 3
@@ -166,10 +186,13 @@ def plot_ps1(stream='ps1a'):
     decmin = np.int64(np.floor(dec1/d))*d
     decmax = np.int64(np.ceil(dec2/d))*d
     
-    #ramin = -60
-    #ramax = 300
-    #decmin = -30
-    #decmax = 90
+    # PS-1 tiles to download
+    xg = np.arange(ramin, ramax, d)
+    yg = np.arange(decmin, decmax, d)
+    xx, yy = np.meshgrid(xg, yg)
+    tf = Table([xx.ravel(), yy.ravel()], names=('ra', 'dec'))
+    tf.pprint()
+    tf.write('../data/streams/tiles_{}'.format(name), format='ascii.no_header', overwrite=True)
     
     # slice array
     ra_fid = head['CRVAL1']
@@ -184,9 +207,6 @@ def plot_ps1(stream='ps1a'):
     j1 = np.int64(y_fid + dy**-1*(decmin - dec_fid))
     j2 = np.int64(y_fid + dy**-1*(decmax - dec_fid))
     
-    if j1<0: j1=0
-    if i2<0: i2=0
-    
     data = data[j1:j2,i2:i1]
     
     # smooth
@@ -197,8 +217,6 @@ def plot_ps1(stream='ps1a'):
     data += 0.01
     data /= np.max(data)
     
-    w = 6
-    h = w * (decmax - decmin) / (ramax-ramin)
     h = 8
     w = h * (ramax-ramin) / (decmax - decmin)
     
@@ -216,6 +234,9 @@ def plot_ps1(stream='ps1a'):
     plt.plot(t['RA_deg'][isort], t['DEC_deg'][isort], 'r-', alpha=0.2)
     plt.xlabel('RA')
     plt.ylabel('Dec')
+    
+    if get_coords:
+        cid = fig.canvas.mpl_connect('button_press_event', lambda event: onclick_storecoords(event, fig, name, npoint))
     
     plt.tight_layout()
 
