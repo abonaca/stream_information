@@ -229,7 +229,7 @@ class Stream():
         self.trailing['x'] = stream[3:6]*u.m
         self.trailing['v'] = stream[9:12]*u.m/u.s
     
-    def observe(self, mode='cartesian', units=[], errors=[], nstars=-1, sequential=False, present=[], logerr=False, observer={'z_sun': 0.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_ra': 300*u.deg, 'galcen_dec': 20*u.deg}, vobs={'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}, footprint='none', rotmatrix=None):
+    def observe(self, mode='cartesian', units=[], errors=[], nstars=-1, sequential=False, present=[], logerr=False, observer={'z_sun': 0.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_ra': 300*u.deg, 'galcen_dec': 20*u.deg}, vobs={'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}, footprint='none', rotmatrix=np.eye(3)):
         """Observe the stream
         stream.obs holds all observations
         stream.err holds all errors"""
@@ -908,7 +908,7 @@ def bestfit(name='Sty'):
     vobs['vcirc'] = vcirc_potential(observer['galcen_distance'], pparams=pparams)
     
     # stream model parameters
-    params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 100, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [0.5*u.deg, 0.5*u.deg, 1*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': None}}
+    params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': 100, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': [0.5*u.deg, 0.5*u.deg, 1*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': np.eye(3)}}
     
     model = Stream(**params['generate'])
     model.generate()
@@ -947,7 +947,7 @@ def lnprob_prog(x, potential, pparams, mf, dt, nstar, obsmode, mod_err, observer
         age = x[7]*u.Gyr
         
         # stream model parameters
-        params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': nstar, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': mod_err, 'present': [], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': None}}
+        params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': nstar, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'nstars':-1, 'sequential':True, 'errors': mod_err, 'present': [], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': np.eye(3)}}
         
         model = Stream(**params['generate'])
         model.generate()
