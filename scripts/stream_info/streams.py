@@ -79,7 +79,7 @@ def show_streams():
 
 def wrap_angles(name):
     """Save wrap angle in a stream params file"""
-    angles = {'gd1': 360, 'tri': 180, 'atlas': 180}
+    angles = {'gd1': 360, 'tri': 180, 'atlas': 180, 'ps1a': 180, 'ps1b': 180, 'ps1c': 360, 'ps1e': 360}
     
     f = open('../data/mock_{}.params'.format(name), 'rb')
     mock = pickle.load(f)
@@ -96,7 +96,12 @@ def progenitor_prior(name):
     priors = {'gd1': np.zeros(6),
               'tri': np.zeros(6),
               'atlas': np.zeros(6),
-              'pal5': np.array([0.1, 0.1, 1, 1, 0.2, 0.2])**-2}
+              'pal5': np.array([0.1, 0.1, 1, 1, 0.2, 0.2])**-2,
+              'ps1a': np.zeros(6),
+              'ps1b': np.zeros(6),
+              'ps1c': np.zeros(6),
+              'ps1e': np.zeros(6),
+              }
     
     f = open('../data/mock_{}.params'.format(name), 'rb')
     mock = pickle.load(f)

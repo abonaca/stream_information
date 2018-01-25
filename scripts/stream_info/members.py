@@ -365,24 +365,6 @@ def make_catalog(name='atlas', test=True, cut=True):
     dec2 = np.max(dec) + d
     print(ra1, ra2, dec1, dec2)
     
-#def br():
-    #if test:
-        #t = read_rect([0, 5, -30, -25])
-        #plt.close()
-        #fig, ax = plt.subplots(1,2)
-        #plt.sca(ax[0])
-        #plt.plot(t['median'][:,2], t['median_ap'][:,2], 'ko', ms=1, alpha=0.01)
-        #plt.plot(np.linspace(12,24,10), np.linspace(12,24,10)-0.2, 'r-')
-        #plt.plot(np.linspace(12,24,10), np.linspace(12,24,10)+0.2, 'r-')
-        #plt.xlim(18,24)
-        #plt.ylim(18,24)
-        
-        #plt.sca(ax[1])
-        #plt.plot(t['median'][:,0]-t['median'][:,1],t['median'][:,1], 'ko', ms=1, alpha=0.1)
-        #plt.plot(t['median'][:,0][stars]-t['median'][:,1][stars],t['median'][:,1][stars], 'ro', ms=1, alpha=0.1)
-        #plt.xlim(-1,3)
-        #plt.ylim(23,13)
-    #else:
     t = read_rect([ra1, ra2, dec1, dec2])
 
     # select stars
