@@ -12,7 +12,8 @@ import streakline
 import myutils
 import ffwd
 
-from streams import load_stream, vcirc_potential
+from streams import load_stream, vcirc_potential, store_progparams, wrap_angles, progenitor_prior
+#import streams
 
 import astropy
 import astropy.units as u
@@ -1715,8 +1716,9 @@ def unity_scale(dp):
 def test_inversion(name='gd1', Ndim=6, vary=['progenitor', 'bary', 'halo'], align=True, errmode='fiducial'):
     """"""
     pid, dp, vlabel = get_varied_pars(vary)
-        
-    cxi = np.load('../data/crb/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npy'.format(errmode, Ndim, name, align, vlabel))
+
+    d = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
+    cxi = d['cxi']
     N = np.shape(cxi)[0]
     
     cx_ = np.linalg.inv(cxi)
@@ -1724,8 +1726,8 @@ def test_inversion(name='gd1', Ndim=6, vary=['progenitor', 'bary', 'halo'], alig
     #cx_ii = stable_inverse(cx, verbose=True, maxiter=50)
     
     print('condition {:g}'.format(np.linalg.cond(cxi)))
-    print('stable inverse', np.allclose(np.matmul(cx,cxi), np.eye(N)))
     print('linalg inverse', np.allclose(np.matmul(cx_,cxi), np.eye(N)))
+    print('stable inverse', np.allclose(np.matmul(cx,cxi), np.eye(N)))
     #print(np.matmul(cx,cxi))
     #print('inverse inverse', np.allclose(cx_ii, cxi))
 
@@ -1914,6 +1916,24 @@ def compare_optimal_steps():
     for name in ['gd1', 'tri']:
         print(name)
         print(read_optimal_step(name, vary))
+
+
+def get_crb(name, Nstep=10, vary=['progenitor', 'bary', 'halo']):
+    """"""
+    
+    store_progparams(name)
+    wrap_angles(name)
+    progenitor_prior(name)
+    
+    find_greatcircle(name=name)
+    endpoints(name)
+    
+    for v in vary:
+        step_convergence(name=name, Nstep=Nstep, vary=v)
+        choose_step(name=name, Nstep=Nstep, vary=v)
+    
+    calculate_crb(name=name, vary=vary, verbose=True)
+    crb_triangle_alldim(name=name, vary=vary)
 
 
 ########################
@@ -2724,8 +2744,37 @@ def summary(n, mode='scalar', vary=['progenitor', 'bary', 'halo', 'dipole', 'qua
     pp.close()
 
 
-# circular velocity
+#########
+# Summary
+def full_names():
+    """"""
+    full = {'gd1': 'GD-1', 'atlas': 'ATLAS', 'tri': 'Triangulum', 'ps1a': 'PS1A', 'ps1b': 'PS1B', 'ps1c': 'PS1C', 'ps1e': 'PS1E'}
+    return full
 
+def get_done():
+    """"""
+    done = ['gd1', 'tri', 'atlas', 'ps1a', 'ps1b', 'ps1c', 'ps1e']
+    return done
+
+def extract_crbs(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', j=0, align=True, fast=False, scale=False):
+    """"""
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    
+    names = get_done()
+    
+    for name in names:
+        fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
+        cxi = fm['cxi']
+        if fast:
+            cx = np.linalg.inv(cxi)
+        else:
+            cx = stable_inverse(cxi)
+
+# circular velocity
 def pder_vc(x, p=[pparams_fid[j] for j in [0,1,2,3,4,5,6,8,10]], components=['bary', 'halo']):
     """"""
     N = np.size(x)
@@ -2743,39 +2792,30 @@ def pder_vc(x, p=[pparams_fid[j] for j in [0,1,2,3,4,5,6,8,10]], components=['ba
         
     return pder
 
-def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='all', j=0, align=True, d=200, Nb=100, fast=False, scale=False):
+def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='all', j=0, align=True, d=200, Nb=1000, fast=False, scale=False, ascale=False):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
     if align:
         alabel = '_align'
     else:
         alabel = ''
-        
+    
+    names = get_done()
+    labels = full_names()
+    colors = {x: mpl.cm.bone(e/len(names)) for e, x in enumerate(names)}
+    #colors = {'gd1': mpl.cm.bone(0), 'atlas': mpl.cm.bone(0.5), 'tri': mpl.cm.bone(0.8)}
+    
     plt.close()
     fig, ax = plt.subplots(1,2,figsize=(10,5))
     
-    labels = {'gd1': 'GD-1', 'atlas': 'ATLAS', 'tri': 'Triangulum'}
-    colors = {'gd1': mpl.cm.bone(0), 'atlas': mpl.cm.bone(0.5), 'tri': mpl.cm.bone(0.8)}
-    
-    for name in ['gd1', 'tri', 'atlas']:
+    for name in names:
         # read in full inverse CRB for stream modeling
-        #cxi = np.load('../data/crb/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npy'.format(errmode, Ndim, n, align, vlabel))
         fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
         cxi = fm['cxi']
         if fast:
             cx = np.linalg.inv(cxi)
         else:
             cx = stable_inverse(cxi)
-    #labels = {-1: 'GD-1', -2: 'Palomar 5', -3: 'Triangulum'}
-    #colors = {-1: mpl.cm.bone(0), -2: mpl.cm.bone(0.5), -3: mpl.cm.bone(0.8)}
-    
-    #for n in [-1, -2, -3]:
-        ## read in full inverse CRB for stream modeling
-        #cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
-        #if fast:
-            #cx = np.linalg.inv(cxi)
-        #else:
-            #cx = stable_inverse(cxi)
         
         # choose the appropriate components:
         Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
@@ -2826,40 +2866,120 @@ def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
             #label = ['Eig {} $a_{}$'.format(np.abs(j), x) for x in ['X', 'Y', 'Z']]
 
         mcomb = (vcomb*u.km**2*u.s**-2 * x / G).to(u.Msun)
-
+        vc_true = vcirc_potential(x, pparams=pparams_fid)
+        
         # relate to orbit
         orbit = stream_orbit(name=name)
         r = np.linalg.norm(orbit['x'].to(u.kpc), axis=0)
+        rmin = np.min(r)
         rmax = np.max(r)
-        #print(rmax, np.median(r))
-        #x = x/rmax
+        rcur = r[-1]
+        r0 = r[0]
+        
+        e = (rmax - rmin)/(rmax + rmin)
+        l = np.cross(orbit['x'].to(u.kpc), orbit['v'].to(u.km/u.s), axisa=0, axisb=0)
+        
+        np.savez('../data/crb/vcirc_{:s}{:1d}_{:s}_a{:1d}_{:s}'.format(errmode, Ndim, name, align, vlabel), dvc=np.sqrt(vcomb), vc=vc_true.value, r=x.value, rperi=rmin, rapo=rmax, rcur=rcur, r0=r0, ecc=e, l=l)
+
+        if ascale:
+            x = x/rmax
         
         # plot
         plt.sca(ax[0])
         plt.plot(x, np.sqrt(vcomb), '-', lw=3, color=colors[name], label=labels[name])
+        #plt.plot(x, vc_true, 'r-')
         
         plt.sca(ax[1])
-        plt.plot(x, mcomb, '-', lw=3, color=colors[name], label=labels[name])
+        plt.plot(x, np.sqrt(vcomb)/vc_true, '-', lw=3, color=colors[name], label=labels[name])
+        #plt.plot(x, mcomb, '-', lw=3, color=colors[name], label=labels[name])
     
     plt.sca(ax[0])
-    plt.xlabel('r/r$_{apo}$')
+    if ascale:
+        plt.xlim(0,5)
+        plt.xlabel('r/r$_{apo}$')
+    else:
+        plt.xlabel('r (kpc)')
     plt.ylabel('$\Delta$ $V_c$ (km s$^{-1}$)')
-    #plt.xlim(0,2)
     #plt.ylim(0, 100)
     
     plt.sca(ax[1])
-    plt.legend(frameon=False, handlelength=1, fontsize='small')
-    plt.xlabel('r/r$_{apo}$')
-    plt.ylabel('$\Delta$ $M_{enc}$ ($M_\odot$)')
-    #plt.xlim(0,2)
+    plt.legend(loc=1, frameon=True, handlelength=1, fontsize='small')
+    if ascale:
+        plt.xlim(0,5)
+        plt.xlabel('r/r$_{apo}$')
+    else:
+        plt.xlabel('r (kpc)')
+    plt.ylabel('$\Delta$ $V_c$ / $V_c$')
+    #plt.ylabel('$\Delta$ $M_{enc}$ ($M_\odot$)')
     #plt.ylim(0, 1e11)
     
     plt.tight_layout()
-    plt.savefig('../plots/vc_r_summary_new.png')
+    plt.savefig('../plots/vc_r_summary_apo{:d}.pdf'.format(ascale))
 
+def delta_vc_correlations(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='all', j=0, align=True, d=200, Nb=1000, fast=False, scale=False):
+    """"""
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    
+    names = get_done()
+    labels = full_names()
+    
+    plt.close()
+    fig, ax = plt.subplots(2,3,figsize=(15,9))
+    
+    for name in names:
+        d = np.load('../data/crb/vcirc_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
+        rel_dvc = np.min(d['dvc'] / d['vc'])
+        
+        mock = pickle.load(open('../data/mock_{}.params'.format(name), 'rb'))
+        dlambda = np.max(mock['xi_range']) - np.min(mock['xi_range'])
+        
+        plt.sca(ax[0][0])
+        plt.plot(d['rapo'], rel_dvc, 'ko')
+        
+        plt.xlabel('$r_{apo}$ (kpc)')
+        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+        
+        plt.sca(ax[0][1])
+        plt.plot(d['rperi'], rel_dvc, 'ko')
+        
+        plt.xlabel('$r_{peri}$ (kpc)')
+        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+        
+        plt.sca(ax[0][2])
+        ecc = np.sqrt(1 - (d['rperi']/d['rapo'])**2)
+        ecc = d['ecc']
+        plt.plot(ecc, rel_dvc, 'ko')
+        
+        plt.xlabel('Eccentricity')
+        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+        
+        plt.sca(ax[1][0])
+        plt.plot(np.median(np.abs(d['l'][:,2])/np.linalg.norm(d['l'], axis=1)), rel_dvc, 'ko')
+        
+        plt.xlabel('|L_z|/|L|')
+        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+        
+        plt.sca(ax[1][1])
+        plt.plot(d['rcur']/d['rapo'], rel_dvc, 'ko')
+        #plt.plot(d['r0'], rel_dvc, 'ro')
+        
+        plt.xlabel('$r_{current}$ / $r_{apo}$')
+        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+        
+        plt.sca(ax[1][2])
+        plt.plot(dlambda, rel_dvc, 'ko')
+        
+        plt.xlabel('$\Delta$ $\\xi$ (deg)')
+        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+    
+    plt.tight_layout()
+    plt.savefig('../plots/delta_vc_correlations.pdf')
 
 # flattening
-
 def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='all', j=0, align=True, fast=False, scale=False):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
@@ -2869,13 +2989,14 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducia
     
     labelq = {'x': '$_x$', 'z': '$_z$'}
     
+    names = get_done()
+    labels = full_names()
+    colors = {x: mpl.cm.bone(e/len(names)) for e, x in enumerate(names)}
+    
     plt.close()
     fig, ax = plt.subplots(1,3,figsize=(15,5))
     
-    labels = {'gd1': 'GD-1', 'atlas': 'ATLAS', 'tri': 'Triangulum'}
-    colors = {'gd1': mpl.cm.bone(0), 'atlas': mpl.cm.bone(0.5), 'tri': mpl.cm.bone(0.8)}
-    
-    for name in ['gd1', 'tri', 'atlas']:
+    for name in names:
     #for n in [-1,]:
         # read in full inverse CRB for stream modeling
         #cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
@@ -2923,6 +3044,7 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducia
         rmin = np.min(r)
         rmax = np.max(r)
         e = (rmax - rmin)/(rmax + rmin)
+        e = rmin/rmax
         
         l = np.cross(orbit['x'].to(u.kpc), orbit['v'].to(u.km/u.s), axisa=0, axisb=0)
         ltheta = np.median(l[:,kq[q]]/np.linalg.norm(l, axis=1))
@@ -2936,7 +3058,7 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducia
         plt.plot(sigltheta, delta_q, 'o', color=colors[name], label=labels[name])
 
         plt.sca(ax[2])
-        plt.plot(ltheta, delta_q, 'o', color=colors[name], label=labels[name])
+        plt.plot(np.abs(ltheta), delta_q, 'o', color=colors[name], label=labels[name])
     
     plt.sca(ax[0])
     plt.legend(frameon=False, handlelength=1, fontsize='small')
@@ -2950,11 +3072,11 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducia
     plt.ylabel('$\Delta$ q{}'.format(labelq[q]))
 
     plt.sca(ax[2])
-    plt.xlabel('L{} / |L|'.format(labelq[q]))
+    plt.xlabel('|L{}| / |L|'.format(labelq[q]))
     plt.ylabel('$\Delta$ q{}'.format(labelq[q]))
     
     plt.tight_layout()
-    plt.savefig('../plots/delta_q{}_new.png'.format(q))
+    plt.savefig('../plots/delta_q{}.pdf'.format(q))
 
 
 # compare observing modes
