@@ -2756,7 +2756,7 @@ def get_done():
     done = ['gd1', 'tri', 'atlas', 'ps1a', 'ps1b', 'ps1c', 'ps1e']
     return done
 
-def extract_crbs(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', j=0, align=True, fast=False, scale=False):
+def extract_crbs(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', errmode='fiducial', j=0, align=True, fast=False, scale=False):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
     if align:
@@ -2766,13 +2766,50 @@ def extract_crbs(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
     
     names = get_done()
     
-    for name in names:
+    tout = Table(names=('name', 'crb'))
+    
+    pparams0 = pparams_fid
+    pid_comp, dp_fid2, vlabel2 = get_varied_pars(component)
+    Np = len(pid_comp)
+    pid_crb = myutils.wherein(np.array(pid), np.array(pid_comp))
+    
+    plt.close()
+    fig, ax = plt.subplots(Np,1,figsize=(7,10), sharex=True)
+    
+    for name in names[:]:
         fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
         cxi = fm['cxi']
         if fast:
             cx = np.linalg.inv(cxi)
         else:
             cx = stable_inverse(cxi)
+        
+        crb = np.sqrt(np.diag(cx))
+        #print([pparams0[pid_comp[i]] for i in range(Np)])
+        crb_frac = [crb[pid_crb[i]]/pparams0[pid_comp[i]].value for i in range(Np)]
+        print(name, crb_frac)
+        
+        stream = stream_model(name=name)
+        
+        for i in range(Np):
+            plt.sca(ax[i])
+            color_index = np.array(crb_frac[:])
+            color_index[color_index>0.2] = 0.2
+            color_index /= 0.2
+            color = mpl.cm.viridis(color_index[i])
+            
+            plt.plot(stream.obs[0], stream.obs[1], 'o', color=color)
+    
+    for i in range(Np):
+        plt.sca(ax[i])
+        #plt.xlabel('RA')
+        plt.ylabel('Dec')
+        plt.text(0.1, 0.9, '$\Delta$ {}'.format(get_parlabel(pid_comp[i])[0]), fontsize='medium', transform=plt.gca().transAxes, va='top')
+    
+    plt.xlabel('RA')
+    
+    plt.tight_layout()
+    plt.savefig('../plots/crb_onsky_{}.png'.format(component))
 
 # circular velocity
 def pder_vc(x, p=[pparams_fid[j] for j in [0,1,2,3,4,5,6,8,10]], components=['bary', 'halo']):
