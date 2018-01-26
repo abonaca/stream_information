@@ -2774,9 +2774,9 @@ def extract_crbs(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', 
     pid_crb = myutils.wherein(np.array(pid), np.array(pid_comp))
     
     plt.close()
-    fig, ax = plt.subplots(Np,1,figsize=(7,10), sharex=True)
+    fig, ax = plt.subplots(Np,1,figsize=(7,10), subplot_kw=dict(projection='mollweide'))
     
-    for name in names[:]:
+    for name in names[:2]:
         fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
         cxi = fm['cxi']
         if fast:
@@ -2798,14 +2798,15 @@ def extract_crbs(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', 
             color_index /= 0.2
             color = mpl.cm.viridis(color_index[i])
             
-            plt.plot(stream.obs[0], stream.obs[1], 'o', color=color)
+            plt.plot(np.radians(stream.obs[0]), np.radians(stream.obs[1]), 'o', color=color)
     
     for i in range(Np):
         plt.sca(ax[i])
         #plt.xlabel('RA')
         plt.ylabel('Dec')
-        plt.text(0.1, 0.9, '$\Delta$ {}'.format(get_parlabel(pid_comp[i])[0]), fontsize='medium', transform=plt.gca().transAxes, va='top')
-    
+        plt.text(0.9, 0.9, '$\Delta$ {}'.format(get_parlabel(pid_comp[i])[0]), fontsize='medium', transform=plt.gca().transAxes, va='bottom', ha='left')
+        plt.grid()
+        
     plt.xlabel('RA')
     
     plt.tight_layout()
