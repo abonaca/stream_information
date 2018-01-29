@@ -1531,15 +1531,15 @@ def define_obsmodes():
 
 # crbs using bspline
 
-def calculate_crb(name='gd1', dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'], ra=np.nan, Nobs=50, verbose=False, align=True, scale=False, errmode='fiducial', k=3):
+def calculate_crb(name='gd1', dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'], ra=np.nan, dd=0.5, Nobs=50, verbose=False, align=True, scale=False, errmode='fiducial', k=3):
     """"""
     mock = pickle.load(open('../data/mock_{}.params'.format(name),'rb'))
     if align:
         rotmatrix = mock['rotmatrix']
-        xmm = mock['xi_range']
+        xmm = np.sort(mock['xi_range'])
     else:
         rotmatrix = np.eye(3)
-        xmm = mock['ra_range']
+        xmm = np.sort(mock['ra_range'])
         
     # typical uncertainties and data availability
     obsmodes = pickle.load(open('../data/observing_modes.info', 'rb'))
@@ -1550,9 +1550,12 @@ def calculate_crb(name='gd1', dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'],
     
     # mock observations
     if np.any(~np.isfinite(ra)):
-        ra = np.linspace(xmm[0]*1.05, xmm[1]*0.95, Nobs)
-    else:
-        Nobs = np.size(ra)
+        #print(xmm)
+        ra = np.arange(xmm[0], xmm[1]+dd, dd)
+        #ra = np.linspace(xmm[0]*1.05, xmm[1]*0.95, Nobs)
+    #else:
+    Nobs = np.size(ra)
+    print(name, Nobs)
     err = np.tile(sig_obs, Nobs).reshape(Nobs,-1)
 
     # varied parameters
@@ -2753,8 +2756,20 @@ def full_names():
 
 def get_done():
     """"""
-    done = ['gd1', 'tri', 'atlas', 'ps1a', 'ps1b', 'ps1c', 'ps1e']
+    done = ['gd1', 'tri', 'atlas', 'ps1a', 'ps1c', 'ps1e']
     return done
+
+def period(name):
+    """Return orbital period in units of stepsize and number of complete periods"""
+    
+    orbit = stream_orbit(name=name)
+    r = np.linalg.norm(orbit['x'].to(u.kpc), axis=0)
+    
+    a = np.abs(np.fft.rfft(r))
+    f = np.argmax(a[1:]) + 1
+    p = np.size(a)/f
+    
+    return (p, f)
 
 def extract_crbs(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', errmode='fiducial', j=0, align=True, fast=False, scale=False):
     """"""
@@ -2776,7 +2791,7 @@ def extract_crbs(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', 
     plt.close()
     fig, ax = plt.subplots(Np,1,figsize=(7,10), subplot_kw=dict(projection='mollweide'))
     
-    for name in names[:2]:
+    for name in names[:]:
         fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
         cxi = fm['cxi']
         if fast:
@@ -2917,10 +2932,12 @@ def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
         e = (rmax - rmin)/(rmax + rmin)
         l = np.cross(orbit['x'].to(u.kpc), orbit['v'].to(u.km/u.s), axisa=0, axisb=0)
         
-        np.savez('../data/crb/vcirc_{:s}{:1d}_{:s}_a{:1d}_{:s}'.format(errmode, Ndim, name, align, vlabel), dvc=np.sqrt(vcomb), vc=vc_true.value, r=x.value, rperi=rmin, rapo=rmax, rcur=rcur, r0=r0, ecc=e, l=l)
+        p, Np = period(name)
+        
+        np.savez('../data/crb/vcirc_{:s}{:1d}_{:s}_a{:1d}_{:s}'.format(errmode, Ndim, name, align, vlabel), dvc=np.sqrt(vcomb), vc=vc_true.value, r=x.value, rperi=rmin, rapo=rmax, rcur=rcur, r0=r0, ecc=e, l=l, p=p, Np=Np)
 
         if ascale:
-            x = x/rmax
+            x = x * rmax**-1
         
         # plot
         plt.sca(ax[0])
@@ -2964,6 +2981,7 @@ def delta_vc_correlations(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='
     
     names = get_done()
     labels = full_names()
+    colors = {x: mpl.cm.bone(e/len(names)) for e, x in enumerate(names)}
     
     plt.close()
     fig, ax = plt.subplots(2,3,figsize=(15,9))
@@ -2976,43 +2994,47 @@ def delta_vc_correlations(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='
         dlambda = np.max(mock['xi_range']) - np.min(mock['xi_range'])
         
         plt.sca(ax[0][0])
-        plt.plot(d['rapo'], rel_dvc, 'ko')
+        plt.plot(d['rapo'], rel_dvc, 'o', ms=10, color=colors[name], label=labels[name])
         
         plt.xlabel('$r_{apo}$ (kpc)')
         plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
         
         plt.sca(ax[0][1])
-        plt.plot(d['rperi'], rel_dvc, 'ko')
+        plt.plot(d['Np'], rel_dvc, 'o', ms=10, color=colors[name])
         
-        plt.xlabel('$r_{peri}$ (kpc)')
+        #plt.xlabel('$r_{peri}$ (kpc)')
+        plt.xlabel('Completed periods')
         plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
         
         plt.sca(ax[0][2])
         ecc = np.sqrt(1 - (d['rperi']/d['rapo'])**2)
         ecc = d['ecc']
-        plt.plot(ecc, rel_dvc, 'ko')
+        plt.plot(ecc, rel_dvc, 'o', ms=10, color=colors[name])
         
         plt.xlabel('Eccentricity')
         plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
         
         plt.sca(ax[1][0])
-        plt.plot(np.median(np.abs(d['l'][:,2])/np.linalg.norm(d['l'], axis=1)), rel_dvc, 'ko')
+        plt.plot(np.median(np.abs(d['l'][:,2])/np.linalg.norm(d['l'], axis=1)), rel_dvc, 'o', ms=10, color=colors[name])
         
         plt.xlabel('|L_z|/|L|')
         plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
         
         plt.sca(ax[1][1])
-        plt.plot(d['rcur']/d['rapo'], rel_dvc, 'ko')
+        plt.plot(d['rcur']/d['rapo'], rel_dvc, 'o', ms=10, color=colors[name])
         #plt.plot(d['r0'], rel_dvc, 'ro')
         
         plt.xlabel('$r_{current}$ / $r_{apo}$')
         plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
         
         plt.sca(ax[1][2])
-        plt.plot(dlambda, rel_dvc, 'ko')
+        plt.plot(dlambda, rel_dvc, 'o', ms=10, color=colors[name])
         
         plt.xlabel('$\Delta$ $\\xi$ (deg)')
         plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+    
+    plt.sca(ax[0][0])
+    plt.legend(fontsize='small', handlelength=0.1)
     
     plt.tight_layout()
     plt.savefig('../plots/delta_vc_correlations.pdf')
