@@ -3139,7 +3139,143 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducia
     plt.savefig('../plots/delta_q{}.pdf'.format(q))
 
 
+###
+# multiple streams
+###
+
+def pairs_pdf(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='halo', align=True, summary=False):
+    """"""
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    
+    # choose the appropriate components:
+    Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
+    if 'progenitor' not in vary:
+        Nprog = 0
+    nstart = {'bary': Nprog, 'halo': Nprog + Nbary, 'dipole': Nprog + Nbary + Nhalo, 'quad': Nprog + Nbary + Nhalo + Ndipole, 'all': Nprog, 'point': 0}
+    nend = {'bary': Nprog + Nbary, 'halo': Nprog + Nbary + Nhalo, 'dipole': Nprog + Nbary + Nhalo + Ndipole, 'quad': Nprog + Nbary + Nhalo + Ndipole + Nquad} #, 'all': np.shape(cx)[0], 'point': 1}
+    
+    if 'progenitor' not in vary:
+        nstart['dipole'] = Npoint
+        nend['dipole'] = Npoint + Ndipole
+    
+    if component in ['bary', 'halo', 'dipole', 'quad', 'point']:
+        components = [component]
+    else:
+        components = [x for x in vary if x!='progenitor']
+    
+    pid_comp = pid[nstart[component]:nend[component]]
+    plabels, units = get_parlabel(pid_comp)
+    punits = [' ({})'.format(x) if len(x) else '' for x in units]
+    params = ['$\Delta$ {}{}'.format(x, y) for x,y in zip(plabels, punits)]
+    
+    done = get_done()
+    N = len(done)
+    pp = PdfPages('../plots/corner_pairs_{:s}{:1d}_a{:1d}_{:s}_{:s}_{:d}.pdf'.format(errmode, Ndim, align, vlabel, component, summary))
+    fig = None
+    ax = None
+    
+    for i in range(N):
+        di = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, done[i], align, vlabel))
+        cxi_i = di['cxi']
+        for j in range(i+1,N):
+            dj = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, done[j], align, vlabel))
+            cxi_j = dj['cxi']
+            
+            cxi = cxi_i + cxi_j
+            cx = stable_inverse(cxi)
+            cx_i = stable_inverse(cxi_i)
+            cx_j = stable_inverse(cxi_j)
+            
+            # select component of the parameter space
+            cq = cx[nstart[component]:nend[component], nstart[component]:nend[component]]
+            cq_i = cx_i[nstart[component]:nend[component], nstart[component]:nend[component]]
+            cq_j = cx_j[nstart[component]:nend[component], nstart[component]:nend[component]]
+            
+            Nvar = np.shape(cq)[0]
+            
+            print(done[i], done[j])
+            print(np.sqrt(np.diag(cq)))
+            print(np.sqrt(np.diag(cq_i)))
+            print(np.sqrt(np.diag(cq_j)))
+            
+            if summary==False:
+                fig = None
+                ax = None
+                
+                # plot ellipses
+                fig, ax = corner_ellipses(cq, fig=fig, ax=ax)
+                fig, ax = corner_ellipses(cq_i, alpha=0.5, fig=fig, ax=ax)
+                fig, ax = corner_ellipses(cq_j, alpha=0.5, fig=fig, ax=ax)
+                
+                # labels
+                plt.title('{} & {}'.format(done[i], done[j]))
+                
+                for k in range(Nvar-1):
+                    plt.sca(ax[-1][k])
+                    plt.xlabel(params[k])
+                    
+                    plt.sca(ax[k][0])
+                    plt.ylabel(params[k+1])
+                pp.savefig(fig)
+            else:
+                fig, ax = corner_ellipses(cq, fig=fig, ax=ax, alpha=0.5)
+    
+    if summary:
+        # labels
+        for k in range(Nvar-1):
+            plt.sca(ax[-1][k])
+            plt.xlabel(params[k])
+            
+            plt.sca(ax[k][0])
+            plt.ylabel(params[k+1])
+        pp.savefig(fig)
+    pp.close()
+
+def corner_ellipses(cx, dax=2, color='k', alpha=1, fig=None, ax=None, autoscale=True):
+    """Corner plot with ellipses given by an input matrix"""
+    
+    # assert square matrix
+    Nvar = np.shape(cx)[0]
+    
+    if (np.any(fig)==None) | (np.any(ax)==None):
+        plt.close()
+        fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(dax*Nvar, dax*Nvar), sharex='col', sharey='row')
+    
+    for i in range(0,Nvar-1):
+        for j in range(i+1,Nvar):
+            plt.sca(ax[j-1][i])
+
+            cx_2d = np.array([[cx[i][i], cx[i][j]], [cx[j][i], cx[j][j]]])
+            
+            w, v = np.linalg.eig(cx_2d)
+            if np.all(np.isreal(v)):
+                theta = np.degrees(np.arctan2(v[1][0], v[0][0]))
+                width = np.sqrt(w[0])*2
+                height = np.sqrt(w[1])*2
+                
+                e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=color, alpha=alpha, lw=2)
+                plt.gca().add_patch(e)
+            
+            if autoscale:
+                plt.gca().autoscale_view()
+    
+    # turn off unused axes
+    for i in range(0,Nvar-1):
+        for j in range(i+1,Nvar-1):
+            plt.sca(ax[i][j])
+            plt.axis('off')
+    
+    #plt.sca(ax[int(Nvar/2-1)][int(Nvar/2-1)])
+    #plt.legend(loc=2, bbox_to_anchor=(1,1))
+    
+    plt.tight_layout()
+    
+    return (fig, ax)
+
+
+###
 # compare observing modes
+###
 
 def comp_errmodes(n, errmodes=['binospec', 'fiducial', 'hectochelle'], Ndim=4, vary=['progenitor', 'bary', 'halo'], plot='halo', align=True, fast=False, scale=False):
     """"""
