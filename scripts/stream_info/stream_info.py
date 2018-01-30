@@ -26,6 +26,7 @@ import scipy.linalg as la
 import scipy.interpolate
 import scipy.optimize
 import zscale
+import itertools
 
 import copy
 import pickle
@@ -934,7 +935,7 @@ def get_parlabel(pid):
     Parameter:
     pid - list of parameter ids"""
     
-    master = ['log $M_b$', '$a_b$', 'log $M_d$', '$a_d$', '$b_d$', '$V_h$', '$R_h$', '$\phi$', '$q_1$', '$q_2$', '$q_z$', '$a_{1,-1}$', '$a_{1,0}$', '$a_{1,1}$', '$a_{2,-2}$', '$a_{2,-1}$', '$a_{2,0}$', '$a_{2,1}$', '$a_{2,2}$', '$RA_p$', '$Dec_p$', '$d_p$', '$V_{r_p}$', '$\mu_{\\alpha_p}$', '$\mu_{\delta_p}$', ]
+    master = ['log $M_b$', '$a_b$', 'log $M_d$', '$a_d$', '$b_d$', '$V_h$', '$R_h$', '$\phi$', '$q_x$', '$q_y$', '$q_z$', '$a_{1,-1}$', '$a_{1,0}$', '$a_{1,1}$', '$a_{2,-2}$', '$a_{2,-1}$', '$a_{2,0}$', '$a_{2,1}$', '$a_{2,2}$', '$RA_p$', '$Dec_p$', '$d_p$', '$V_{r_p}$', '$\mu_{\\alpha_p}$', '$\mu_{\delta_p}$', ]
     master_units = ['dex', 'kpc', 'dex', 'kpc', 'kpc', 'km/s', 'kpc', 'rad', '', '', '', 'pc/Myr$^2$', 'pc/Myr$^2$', 'pc/Myr$^2$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'deg', 'deg', 'kpc', 'km/s', 'mas/yr', 'mas/yr', ]
     
     if type(pid) is list:
@@ -3230,6 +3231,191 @@ def pairs_pdf(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', c
             plt.ylabel(params[k+1])
         pp.savefig(fig)
     pp.close()
+
+def multi_pdf(Nmulti=3, Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='halo', align=True):
+    """Create a pdf with each page containing a corner plot with constraints on a given component of the model from multiple streams"""
+    
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    Ntot = len(pid)
+    
+    # choose the appropriate components:
+    Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
+    if 'progenitor' not in vary:
+        Nprog = 0
+    nstart = {'bary': Nprog, 'halo': Nprog + Nbary, 'dipole': Nprog + Nbary + Nhalo, 'quad': Nprog + Nbary + Nhalo + Ndipole, 'all': Nprog, 'point': 0}
+    nend = {'bary': Nprog + Nbary, 'halo': Nprog + Nbary + Nhalo, 'dipole': Nprog + Nbary + Nhalo + Ndipole, 'quad': Nprog + Nbary + Nhalo + Ndipole + Nquad} #, 'all': np.shape(cx)[0], 'point': 1}
+    
+    if 'progenitor' not in vary:
+        nstart['dipole'] = Npoint
+        nend['dipole'] = Npoint + Ndipole
+    
+    if component in ['bary', 'halo', 'dipole', 'quad', 'point']:
+        components = [component]
+    else:
+        components = [x for x in vary if x!='progenitor']
+    
+    pid_comp = pid[nstart[component]:nend[component]]
+    plabels, units = get_parlabel(pid_comp)
+    punits = [' ({})'.format(x) if len(x) else '' for x in units]
+    params = ['$\Delta$ {}{}'.format(x, y) for x,y in zip(plabels, punits)]
+    Nvar = len(pid_comp)
+    
+    pp = PdfPages('../plots/corner_multi{:d}_{:s}{:1d}_a{:1d}_{:s}_{:s}.pdf'.format(Nmulti, errmode, Ndim, align, vlabel, component))
+    fig = None
+    ax = None
+    
+    done = get_done()
+    N = len(done)
+    
+    if Nmulti>N:
+        Nmulti = N
+
+    t = np.arange(N, dtype=np.int64).tolist()
+    all_comb = list(itertools.combinations(t, Nmulti))
+    comb = sorted(list(set(all_comb)))
+    Ncomb = len(comb)
+    
+    for i in range(Ncomb):
+        print(i, [done[i_] for i_ in comb[i]])
+        cxi = np.zeros((Ntot, Ntot))
+        fig = None
+        ax = None
+        for j in range(Nmulti):
+            ind = comb[i][j]
+            #print('{} '.format(done[ind]), end='')
+            
+            dj = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, done[ind], align, vlabel))
+            cxi_ = dj['cxi']
+            cxi = cxi + cxi_
+            
+            # select component of the parameter space
+            cx_ = stable_inverse(cxi_)
+            cq_ = cx_[nstart[component]:nend[component], nstart[component]:nend[component]]
+            if Ncomb==1:
+                np.save('../data/crb/cx_multi1_{:s}{:1d}_{:s}_a{:1d}_{:s}_{:s}'.format(errmode, Ndim, done[ind], align, vlabel, component), cq_)
+            
+            print(np.sqrt(np.diag(cq_)))
+            
+            fig, ax = corner_ellipses(cq_, alpha=0.5, fig=fig, ax=ax)
+
+        cx = stable_inverse(cxi)
+        cq = cx[nstart[component]:nend[component], nstart[component]:nend[component]]
+        print(np.sqrt(np.diag(cq)))
+        
+        label = '.'.join([done[comb[i][i_]] for i_ in range(Nmulti)])
+        np.save('../data/crb/cx_multi{:d}_{:s}{:1d}_{:s}_a{:1d}_{:s}_{:s}'.format(Nmulti, errmode, Ndim, label, align, vlabel, component), cq)
+
+        fig, ax = corner_ellipses(cq, fig=fig, ax=ax)
+        
+        # labels
+        title = ' + '.join([done[comb[i][i_]] for i_ in range(Nmulti)])
+        plt.suptitle(title)
+        
+        for k in range(Nvar-1):
+            plt.sca(ax[-1][k])
+            plt.xlabel(params[k])
+            
+            plt.sca(ax[k][0])
+            plt.ylabel(params[k+1])
+        
+        plt.tight_layout(rect=(0,0,1,0.95))
+        pp.savefig(fig)
+    
+    pp.close()
+
+def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='halo', align=True, relative=False):
+    """Show how much parameters improve by including additional streams"""
+    
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    done = get_done()
+    N = len(done)
+    
+    # choose the appropriate components:
+    Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
+    if 'progenitor' not in vary:
+        Nprog = 0
+    nstart = {'bary': Nprog, 'halo': Nprog + Nbary, 'dipole': Nprog + Nbary + Nhalo, 'quad': Nprog + Nbary + Nhalo + Ndipole, 'all': Nprog, 'point': 0}
+    nend = {'bary': Nprog + Nbary, 'halo': Nprog + Nbary + Nhalo, 'dipole': Nprog + Nbary + Nhalo + Ndipole, 'quad': Nprog + Nbary + Nhalo + Ndipole + Nquad} #, 'all': np.shape(cx)[0], 'point': 1}
+    
+    if 'progenitor' not in vary:
+        nstart['dipole'] = Npoint
+        nend['dipole'] = Npoint + Ndipole
+    
+    if component in ['bary', 'halo', 'dipole', 'quad', 'point']:
+        components = [component]
+    else:
+        components = [x for x in vary if x!='progenitor']
+    
+    pid_comp = pid[nstart[component]:nend[component]]
+    plabels, units = get_parlabel(pid_comp)
+    if relative:
+        punits = [' (%)' for x in units]
+    else:
+        punits = [' ({})'.format(x) if len(x) else '' for x in units]
+    params = ['$\Delta$ {}{}'.format(x, y) for x,y in zip(plabels, punits)]
+    Nvar = len(pid_comp)
+    
+    pparams0 = pparams_fid
+    pparams_comp = [pparams0[x] for x in pid_comp]
+    pparams_arr = np.array([x.value for x in pparams_comp])
+
+    median = np.empty((Nvar, N))
+    x = np.arange(N) + 1
+    
+    da = 2.5
+    ncol = 1
+    nrow = Nvar
+    w = 3 * da
+    h = nrow * da
+
+    plt.close()
+    fig, ax = plt.subplots(nrow, ncol, figsize=(w,h), sharex='col')
+    
+    for i in range(N):
+        Nmulti = i+1
+        t = np.arange(N, dtype=np.int64).tolist()
+        all_comb = list(itertools.combinations(t, Nmulti))
+        comb = sorted(list(set(all_comb)))
+        Ncomb = len(comb)
+        
+        med_comb = np.empty((Nvar, Ncomb))
+
+        for j in range(Ncomb):
+            label = '.'.join([done[comb[j][i_]] for i_ in range(Nmulti)])
+            cq = np.load('../data/crb/cx_multi{:d}_{:s}{:1d}_{:s}_a{:1d}_{:s}_{:s}.npy'.format(Nmulti, errmode, Ndim, label, align, vlabel, component))
+            
+            p = np.sqrt(np.diag(cq))
+            if relative:
+                p = 100 * p / pparams_arr
+            med_comb[:,j] = p
+            
+            for k in range(Nvar):
+                plt.sca(ax[k])
+                if (j==0) & (i==0):
+                    plt.plot(Nmulti, p[k], 'o', color='0.8', ms=10, label='Single combination of N streams')
+                else:
+                    plt.plot(Nmulti, p[k], 'o', color='0.8', ms=10)
+        
+        median[:,i] = np.median(med_comb, axis=1)
+    
+    for k in range(Nvar):
+        plt.sca(ax[k])
+        plt.gca().set_yscale('log')
+        if relative:
+            plt.gca().yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
+        
+        plt.ylabel(params[k])
+        
+        plt.plot(x, median[k], 'wo', mec='k', mew=2, ms=10, label='Median over different\ncombinations of N streams')
+        
+        if k==0:
+            plt.legend(frameon=False, fontsize='small', loc=1)
+    
+    plt.sca(ax[Nvar-1])
+    plt.xlabel('Number of streams in a combination')
+    
+    plt.tight_layout()
+    plt.savefig('../plots/nstream_improvement_{:s}{:1d}_a{:1d}_{:s}_{:s}_{:1d}.pdf'.format(errmode, Ndim, align, vlabel, component, relative))
 
 def corner_ellipses(cx, dax=2, color='k', alpha=1, fig=None, ax=None, autoscale=True):
     """Corner plot with ellipses given by an input matrix"""
