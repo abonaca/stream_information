@@ -13,6 +13,7 @@ from astropy.wcs import WCS
 
 import sfd
 import myutils
+import zscale
 
 import scipy.stats
 import scipy.interpolate
@@ -168,7 +169,7 @@ def plot_ps1(name='ps1a', get_coords=False, npoint=10):
     data = hdul[0].data
     head = hdul[0].header
     map_distance = head['EXTNAME']
-    print(map_distance)
+    #print(map_distance)
     
     t = Table.read('{}/projects/python/galstreams/footprints/galstreams.footprint.ALL.dat'.format(home), format='ascii.commented_header')
     ind = t['IDst']==translate_name(name)
@@ -191,7 +192,7 @@ def plot_ps1(name='ps1a', get_coords=False, npoint=10):
     yg = np.arange(decmin, decmax, d)
     xx, yy = np.meshgrid(xg, yg)
     tf = Table([xx.ravel(), yy.ravel()], names=('ra', 'dec'))
-    tf.pprint()
+    #tf.pprint()
     tf.write('../data/streams/tiles_{}'.format(name), format='ascii.no_header', overwrite=True)
     
     # slice array
@@ -219,17 +220,18 @@ def plot_ps1(name='ps1a', get_coords=False, npoint=10):
     
     h = 8
     w = h * (ramax-ramin) / (decmax - decmin)
+    vmin, vmax = zscale.zscale(data)
     
     plt.close()
     fig, ax = plt.subplots(1,2, figsize=(2*w,h))
     
     plt.sca(ax[0])
-    plt.imshow(data, origin='lower', extent=[ramax, ramin, decmin, decmax], cmap='binary', norm=mpl.colors.LogNorm())
+    plt.imshow(data, origin='lower', extent=[ramax, ramin, decmin, decmax], cmap='binary', norm=mpl.colors.LogNorm(), vmin=vmin, vmax=vmax)
     plt.xlabel('RA')
     plt.ylabel('Dec')
     
     plt.sca(ax[1])
-    plt.imshow(data, origin='lower', extent=[ramax, ramin, decmin, decmax], cmap='binary', norm=mpl.colors.LogNorm())
+    plt.imshow(data, origin='lower', extent=[ramax, ramin, decmin, decmax], cmap='binary', norm=mpl.colors.LogNorm(), vmin=vmin, vmax=vmax)
     isort = np.argsort(t['RA_deg'])
     plt.plot(t['RA_deg'][isort], t['DEC_deg'][isort], 'r-', alpha=0.2)
     plt.xlabel('RA')
