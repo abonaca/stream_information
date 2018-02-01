@@ -1532,7 +1532,7 @@ def define_obsmodes():
 
 # crbs using bspline
 
-def calculate_crb(name='gd1', dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'], ra=np.nan, dd=0.5, Nobs=50, verbose=False, align=True, scale=False, errmode='fiducial', k=3):
+def calculate_crb(name='gd1', dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'], ra=np.nan, dd=0.5, Nmin=15, verbose=False, align=True, scale=False, errmode='fiducial', k=3):
     """"""
     mock = pickle.load(open('../data/mock_{}.params'.format(name),'rb'))
     if align:
@@ -1551,7 +1551,8 @@ def calculate_crb(name='gd1', dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'],
     
     # mock observations
     if np.any(~np.isfinite(ra)):
-        #print(xmm)
+        if (np.int64((xmm[1]-xmm[0])/dd + 1) < Nmin):
+            dd = (xmm[1]-xmm[0])/Nmin
         ra = np.arange(xmm[0], xmm[1]+dd, dd)
         #ra = np.linspace(xmm[0]*1.05, xmm[1]*0.95, Nobs)
     #else:
@@ -2752,12 +2753,12 @@ def summary(n, mode='scalar', vary=['progenitor', 'bary', 'halo', 'dipole', 'qua
 # Summary
 def full_names():
     """"""
-    full = {'gd1': 'GD-1', 'atlas': 'ATLAS', 'tri': 'Triangulum', 'ps1a': 'PS1A', 'ps1b': 'PS1B', 'ps1c': 'PS1C', 'ps1e': 'PS1E'}
+    full = {'gd1': 'GD-1', 'atlas': 'ATLAS', 'tri': 'Triangulum', 'ps1a': 'PS1A', 'ps1b': 'PS1B', 'ps1c': 'PS1C', 'ps1e': 'PS1E', 'ophiuchus': 'Ophiuchus'}
     return full
 
 def get_done():
     """"""
-    done = ['gd1', 'tri', 'atlas', 'ps1a', 'ps1c', 'ps1e']
+    done = ['gd1', 'tri', 'atlas', 'ps1a', 'ps1c', 'ps1e', 'ophiuchus']
     return done
 
 def period(name):
@@ -2927,8 +2928,9 @@ def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
         r = np.linalg.norm(orbit['x'].to(u.kpc), axis=0)
         rmin = np.min(r)
         rmax = np.max(r)
-        rcur = r[-1]
-        r0 = r[0]
+        rcur = r[0]
+        r0 = r[-1]
+        print(name, rcur, r0)
         
         e = (rmax - rmin)/(rmax + rmin)
         l = np.cross(orbit['x'].to(u.kpc), orbit['v'].to(u.km/u.s), axisa=0, axisb=0)
@@ -2939,6 +2941,7 @@ def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
 
         if ascale:
             x = x * rmax**-1
+            #x = x * rcur**-1
         
         # plot
         plt.sca(ax[0])
