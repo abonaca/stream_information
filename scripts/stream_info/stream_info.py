@@ -12,7 +12,8 @@ import streakline
 import myutils
 import ffwd
 
-from streams import load_stream, vcirc_potential
+from streams import load_stream, vcirc_potential, store_progparams, wrap_angles, progenitor_prior
+#import streams
 
 import astropy
 import astropy.units as u
@@ -25,6 +26,7 @@ import scipy.linalg as la
 import scipy.interpolate
 import scipy.optimize
 import zscale
+import itertools
 
 import copy
 import pickle
@@ -933,7 +935,7 @@ def get_parlabel(pid):
     Parameter:
     pid - list of parameter ids"""
     
-    master = ['log $M_b$', '$a_b$', 'log $M_d$', '$a_d$', '$b_d$', '$V_h$', '$R_h$', '$\phi$', '$q_1$', '$q_2$', '$q_z$', '$a_{1,-1}$', '$a_{1,0}$', '$a_{1,1}$', '$a_{2,-2}$', '$a_{2,-1}$', '$a_{2,0}$', '$a_{2,1}$', '$a_{2,2}$', '$RA_p$', '$Dec_p$', '$d_p$', '$V_{r_p}$', '$\mu_{\\alpha_p}$', '$\mu_{\delta_p}$', ]
+    master = ['log $M_b$', '$a_b$', 'log $M_d$', '$a_d$', '$b_d$', '$V_h$', '$R_h$', '$\phi$', '$q_x$', '$q_y$', '$q_z$', '$a_{1,-1}$', '$a_{1,0}$', '$a_{1,1}$', '$a_{2,-2}$', '$a_{2,-1}$', '$a_{2,0}$', '$a_{2,1}$', '$a_{2,2}$', '$RA_p$', '$Dec_p$', '$d_p$', '$V_{r_p}$', '$\mu_{\\alpha_p}$', '$\mu_{\delta_p}$', ]
     master_units = ['dex', 'kpc', 'dex', 'kpc', 'kpc', 'km/s', 'kpc', 'rad', '', '', '', 'pc/Myr$^2$', 'pc/Myr$^2$', 'pc/Myr$^2$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'deg', 'deg', 'kpc', 'km/s', 'mas/yr', 'mas/yr', ]
     
     if type(pid) is list:
@@ -1530,15 +1532,15 @@ def define_obsmodes():
 
 # crbs using bspline
 
-def calculate_crb(name='gd1', dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'], ra=np.nan, Nobs=50, verbose=False, align=True, scale=False, errmode='fiducial', k=3):
+def calculate_crb(name='gd1', dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'], ra=np.nan, dd=0.5, Nobs=50, verbose=False, align=True, scale=False, errmode='fiducial', k=3):
     """"""
     mock = pickle.load(open('../data/mock_{}.params'.format(name),'rb'))
     if align:
         rotmatrix = mock['rotmatrix']
-        xmm = mock['xi_range']
+        xmm = np.sort(mock['xi_range'])
     else:
         rotmatrix = np.eye(3)
-        xmm = mock['ra_range']
+        xmm = np.sort(mock['ra_range'])
         
     # typical uncertainties and data availability
     obsmodes = pickle.load(open('../data/observing_modes.info', 'rb'))
@@ -1549,9 +1551,12 @@ def calculate_crb(name='gd1', dt=0.2*u.Myr, vary=['progenitor', 'bary', 'halo'],
     
     # mock observations
     if np.any(~np.isfinite(ra)):
-        ra = np.linspace(xmm[0]*1.05, xmm[1]*0.95, Nobs)
-    else:
-        Nobs = np.size(ra)
+        #print(xmm)
+        ra = np.arange(xmm[0], xmm[1]+dd, dd)
+        #ra = np.linspace(xmm[0]*1.05, xmm[1]*0.95, Nobs)
+    #else:
+    Nobs = np.size(ra)
+    print(name, Nobs)
     err = np.tile(sig_obs, Nobs).reshape(Nobs,-1)
 
     # varied parameters
@@ -1715,8 +1720,9 @@ def unity_scale(dp):
 def test_inversion(name='gd1', Ndim=6, vary=['progenitor', 'bary', 'halo'], align=True, errmode='fiducial'):
     """"""
     pid, dp, vlabel = get_varied_pars(vary)
-        
-    cxi = np.load('../data/crb/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npy'.format(errmode, Ndim, name, align, vlabel))
+
+    d = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
+    cxi = d['cxi']
     N = np.shape(cxi)[0]
     
     cx_ = np.linalg.inv(cxi)
@@ -1724,8 +1730,8 @@ def test_inversion(name='gd1', Ndim=6, vary=['progenitor', 'bary', 'halo'], alig
     #cx_ii = stable_inverse(cx, verbose=True, maxiter=50)
     
     print('condition {:g}'.format(np.linalg.cond(cxi)))
-    print('stable inverse', np.allclose(np.matmul(cx,cxi), np.eye(N)))
     print('linalg inverse', np.allclose(np.matmul(cx_,cxi), np.eye(N)))
+    print('stable inverse', np.allclose(np.matmul(cx,cxi), np.eye(N)))
     #print(np.matmul(cx,cxi))
     #print('inverse inverse', np.allclose(cx_ii, cxi))
 
@@ -1914,6 +1920,24 @@ def compare_optimal_steps():
     for name in ['gd1', 'tri']:
         print(name)
         print(read_optimal_step(name, vary))
+
+
+def get_crb(name, Nstep=10, vary=['progenitor', 'bary', 'halo']):
+    """"""
+    
+    store_progparams(name)
+    wrap_angles(name)
+    progenitor_prior(name)
+    
+    find_greatcircle(name=name)
+    endpoints(name)
+    
+    for v in vary:
+        step_convergence(name=name, Nstep=Nstep, vary=v)
+        choose_step(name=name, Nstep=Nstep, vary=v)
+    
+    calculate_crb(name=name, vary=vary, verbose=True)
+    crb_triangle_alldim(name=name, vary=vary)
 
 
 ########################
@@ -2724,8 +2748,87 @@ def summary(n, mode='scalar', vary=['progenitor', 'bary', 'halo', 'dipole', 'qua
     pp.close()
 
 
-# circular velocity
+#########
+# Summary
+def full_names():
+    """"""
+    full = {'gd1': 'GD-1', 'atlas': 'ATLAS', 'tri': 'Triangulum', 'ps1a': 'PS1A', 'ps1b': 'PS1B', 'ps1c': 'PS1C', 'ps1e': 'PS1E'}
+    return full
 
+def get_done():
+    """"""
+    done = ['gd1', 'tri', 'atlas', 'ps1a', 'ps1c', 'ps1e']
+    return done
+
+def period(name):
+    """Return orbital period in units of stepsize and number of complete periods"""
+    
+    orbit = stream_orbit(name=name)
+    r = np.linalg.norm(orbit['x'].to(u.kpc), axis=0)
+    
+    a = np.abs(np.fft.rfft(r))
+    f = np.argmax(a[1:]) + 1
+    p = np.size(a)/f
+    
+    return (p, f)
+
+def extract_crbs(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', errmode='fiducial', j=0, align=True, fast=False, scale=False):
+    """"""
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    
+    names = get_done()
+    
+    tout = Table(names=('name', 'crb'))
+    
+    pparams0 = pparams_fid
+    pid_comp, dp_fid2, vlabel2 = get_varied_pars(component)
+    Np = len(pid_comp)
+    pid_crb = myutils.wherein(np.array(pid), np.array(pid_comp))
+    
+    plt.close()
+    fig, ax = plt.subplots(Np,1,figsize=(7,10), subplot_kw=dict(projection='mollweide'))
+    
+    for name in names[:]:
+        fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
+        cxi = fm['cxi']
+        if fast:
+            cx = np.linalg.inv(cxi)
+        else:
+            cx = stable_inverse(cxi)
+        
+        crb = np.sqrt(np.diag(cx))
+        #print([pparams0[pid_comp[i]] for i in range(Np)])
+        crb_frac = [crb[pid_crb[i]]/pparams0[pid_comp[i]].value for i in range(Np)]
+        print(name, crb_frac)
+        
+        stream = stream_model(name=name)
+        
+        for i in range(Np):
+            plt.sca(ax[i])
+            color_index = np.array(crb_frac[:])
+            color_index[color_index>0.2] = 0.2
+            color_index /= 0.2
+            color = mpl.cm.viridis(color_index[i])
+            
+            plt.plot(np.radians(stream.obs[0]), np.radians(stream.obs[1]), 'o', color=color)
+    
+    for i in range(Np):
+        plt.sca(ax[i])
+        #plt.xlabel('RA')
+        plt.ylabel('Dec')
+        plt.text(0.9, 0.9, '$\Delta$ {}'.format(get_parlabel(pid_comp[i])[0]), fontsize='medium', transform=plt.gca().transAxes, va='bottom', ha='left')
+        plt.grid()
+        
+    plt.xlabel('RA')
+    
+    plt.tight_layout()
+    plt.savefig('../plots/crb_onsky_{}.png'.format(component))
+
+# circular velocity
 def pder_vc(x, p=[pparams_fid[j] for j in [0,1,2,3,4,5,6,8,10]], components=['bary', 'halo']):
     """"""
     N = np.size(x)
@@ -2743,39 +2846,30 @@ def pder_vc(x, p=[pparams_fid[j] for j in [0,1,2,3,4,5,6,8,10]], components=['ba
         
     return pder
 
-def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='all', j=0, align=True, d=200, Nb=100, fast=False, scale=False):
+def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='all', j=0, align=True, d=200, Nb=1000, fast=False, scale=False, ascale=False):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
     if align:
         alabel = '_align'
     else:
         alabel = ''
-        
+    
+    names = get_done()
+    labels = full_names()
+    colors = {x: mpl.cm.bone(e/len(names)) for e, x in enumerate(names)}
+    #colors = {'gd1': mpl.cm.bone(0), 'atlas': mpl.cm.bone(0.5), 'tri': mpl.cm.bone(0.8)}
+    
     plt.close()
     fig, ax = plt.subplots(1,2,figsize=(10,5))
     
-    labels = {'gd1': 'GD-1', 'atlas': 'ATLAS', 'tri': 'Triangulum'}
-    colors = {'gd1': mpl.cm.bone(0), 'atlas': mpl.cm.bone(0.5), 'tri': mpl.cm.bone(0.8)}
-    
-    for name in ['gd1', 'tri', 'atlas']:
+    for name in names:
         # read in full inverse CRB for stream modeling
-        #cxi = np.load('../data/crb/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npy'.format(errmode, Ndim, n, align, vlabel))
         fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
         cxi = fm['cxi']
         if fast:
             cx = np.linalg.inv(cxi)
         else:
             cx = stable_inverse(cxi)
-    #labels = {-1: 'GD-1', -2: 'Palomar 5', -3: 'Triangulum'}
-    #colors = {-1: mpl.cm.bone(0), -2: mpl.cm.bone(0.5), -3: mpl.cm.bone(0.8)}
-    
-    #for n in [-1, -2, -3]:
-        ## read in full inverse CRB for stream modeling
-        #cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
-        #if fast:
-            #cx = np.linalg.inv(cxi)
-        #else:
-            #cx = stable_inverse(cxi)
         
         # choose the appropriate components:
         Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
@@ -2826,40 +2920,127 @@ def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
             #label = ['Eig {} $a_{}$'.format(np.abs(j), x) for x in ['X', 'Y', 'Z']]
 
         mcomb = (vcomb*u.km**2*u.s**-2 * x / G).to(u.Msun)
-
+        vc_true = vcirc_potential(x, pparams=pparams_fid)
+        
         # relate to orbit
         orbit = stream_orbit(name=name)
         r = np.linalg.norm(orbit['x'].to(u.kpc), axis=0)
+        rmin = np.min(r)
         rmax = np.max(r)
-        #print(rmax, np.median(r))
-        #x = x/rmax
+        rcur = r[-1]
+        r0 = r[0]
+        
+        e = (rmax - rmin)/(rmax + rmin)
+        l = np.cross(orbit['x'].to(u.kpc), orbit['v'].to(u.km/u.s), axisa=0, axisb=0)
+        
+        p, Np = period(name)
+        
+        np.savez('../data/crb/vcirc_{:s}{:1d}_{:s}_a{:1d}_{:s}'.format(errmode, Ndim, name, align, vlabel), dvc=np.sqrt(vcomb), vc=vc_true.value, r=x.value, rperi=rmin, rapo=rmax, rcur=rcur, r0=r0, ecc=e, l=l, p=p, Np=Np)
+
+        if ascale:
+            x = x * rmax**-1
         
         # plot
         plt.sca(ax[0])
         plt.plot(x, np.sqrt(vcomb), '-', lw=3, color=colors[name], label=labels[name])
+        #plt.plot(x, vc_true, 'r-')
         
         plt.sca(ax[1])
-        plt.plot(x, mcomb, '-', lw=3, color=colors[name], label=labels[name])
+        plt.plot(x, np.sqrt(vcomb)/vc_true, '-', lw=3, color=colors[name], label=labels[name])
+        #plt.plot(x, mcomb, '-', lw=3, color=colors[name], label=labels[name])
     
     plt.sca(ax[0])
-    plt.xlabel('r/r$_{apo}$')
+    if ascale:
+        plt.xlim(0,5)
+        plt.xlabel('r/r$_{apo}$')
+    else:
+        plt.xlabel('r (kpc)')
     plt.ylabel('$\Delta$ $V_c$ (km s$^{-1}$)')
-    #plt.xlim(0,2)
     #plt.ylim(0, 100)
     
     plt.sca(ax[1])
-    plt.legend(frameon=False, handlelength=1, fontsize='small')
-    plt.xlabel('r/r$_{apo}$')
-    plt.ylabel('$\Delta$ $M_{enc}$ ($M_\odot$)')
-    #plt.xlim(0,2)
+    plt.legend(loc=1, frameon=True, handlelength=1, fontsize='small')
+    if ascale:
+        plt.xlim(0,5)
+        plt.xlabel('r/r$_{apo}$')
+    else:
+        plt.xlabel('r (kpc)')
+    plt.ylabel('$\Delta$ $V_c$ / $V_c$')
+    #plt.ylabel('$\Delta$ $M_{enc}$ ($M_\odot$)')
     #plt.ylim(0, 1e11)
     
     plt.tight_layout()
-    plt.savefig('../plots/vc_r_summary_new.png')
+    plt.savefig('../plots/vc_r_summary_apo{:d}.pdf'.format(ascale))
 
+def delta_vc_correlations(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='all', j=0, align=True, d=200, Nb=1000, fast=False, scale=False):
+    """"""
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    if align:
+        alabel = '_align'
+    else:
+        alabel = ''
+    
+    names = get_done()
+    labels = full_names()
+    colors = {x: mpl.cm.bone(e/len(names)) for e, x in enumerate(names)}
+    
+    plt.close()
+    fig, ax = plt.subplots(2,3,figsize=(15,9))
+    
+    for name in names:
+        d = np.load('../data/crb/vcirc_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
+        rel_dvc = np.min(d['dvc'] / d['vc'])
+        
+        mock = pickle.load(open('../data/mock_{}.params'.format(name), 'rb'))
+        dlambda = np.max(mock['xi_range']) - np.min(mock['xi_range'])
+        
+        plt.sca(ax[0][0])
+        plt.plot(d['rapo'], rel_dvc, 'o', ms=10, color=colors[name], label=labels[name])
+        
+        plt.xlabel('$r_{apo}$ (kpc)')
+        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+        
+        plt.sca(ax[0][1])
+        plt.plot(d['Np'], rel_dvc, 'o', ms=10, color=colors[name])
+        
+        #plt.xlabel('$r_{peri}$ (kpc)')
+        plt.xlabel('Completed periods')
+        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+        
+        plt.sca(ax[0][2])
+        ecc = np.sqrt(1 - (d['rperi']/d['rapo'])**2)
+        ecc = d['ecc']
+        plt.plot(ecc, rel_dvc, 'o', ms=10, color=colors[name])
+        
+        plt.xlabel('Eccentricity')
+        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+        
+        plt.sca(ax[1][0])
+        plt.plot(np.median(np.abs(d['l'][:,2])/np.linalg.norm(d['l'], axis=1)), rel_dvc, 'o', ms=10, color=colors[name])
+        
+        plt.xlabel('|L_z|/|L|')
+        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+        
+        plt.sca(ax[1][1])
+        plt.plot(d['rcur']/d['rapo'], rel_dvc, 'o', ms=10, color=colors[name])
+        #plt.plot(d['r0'], rel_dvc, 'ro')
+        
+        plt.xlabel('$r_{current}$ / $r_{apo}$')
+        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+        
+        plt.sca(ax[1][2])
+        plt.plot(dlambda, rel_dvc, 'o', ms=10, color=colors[name])
+        
+        plt.xlabel('$\Delta$ $\\xi$ (deg)')
+        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+    
+    plt.sca(ax[0][0])
+    plt.legend(fontsize='small', handlelength=0.1)
+    
+    plt.tight_layout()
+    plt.savefig('../plots/delta_vc_correlations.pdf')
 
 # flattening
-
 def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='all', j=0, align=True, fast=False, scale=False):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
@@ -2869,13 +3050,14 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducia
     
     labelq = {'x': '$_x$', 'z': '$_z$'}
     
+    names = get_done()
+    labels = full_names()
+    colors = {x: mpl.cm.bone(e/len(names)) for e, x in enumerate(names)}
+    
     plt.close()
     fig, ax = plt.subplots(1,3,figsize=(15,5))
     
-    labels = {'gd1': 'GD-1', 'atlas': 'ATLAS', 'tri': 'Triangulum'}
-    colors = {'gd1': mpl.cm.bone(0), 'atlas': mpl.cm.bone(0.5), 'tri': mpl.cm.bone(0.8)}
-    
-    for name in ['gd1', 'tri', 'atlas']:
+    for name in names:
     #for n in [-1,]:
         # read in full inverse CRB for stream modeling
         #cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
@@ -2923,6 +3105,7 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducia
         rmin = np.min(r)
         rmax = np.max(r)
         e = (rmax - rmin)/(rmax + rmin)
+        e = rmin/rmax
         
         l = np.cross(orbit['x'].to(u.kpc), orbit['v'].to(u.km/u.s), axisa=0, axisb=0)
         ltheta = np.median(l[:,kq[q]]/np.linalg.norm(l, axis=1))
@@ -2936,7 +3119,7 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducia
         plt.plot(sigltheta, delta_q, 'o', color=colors[name], label=labels[name])
 
         plt.sca(ax[2])
-        plt.plot(ltheta, delta_q, 'o', color=colors[name], label=labels[name])
+        plt.plot(np.abs(ltheta), delta_q, 'o', color=colors[name], label=labels[name])
     
     plt.sca(ax[0])
     plt.legend(frameon=False, handlelength=1, fontsize='small')
@@ -2950,14 +3133,335 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducia
     plt.ylabel('$\Delta$ q{}'.format(labelq[q]))
 
     plt.sca(ax[2])
-    plt.xlabel('L{} / |L|'.format(labelq[q]))
+    plt.xlabel('|L{}| / |L|'.format(labelq[q]))
     plt.ylabel('$\Delta$ q{}'.format(labelq[q]))
     
     plt.tight_layout()
-    plt.savefig('../plots/delta_q{}_new.png'.format(q))
+    plt.savefig('../plots/delta_q{}.pdf'.format(q))
 
 
+###
+# multiple streams
+###
+
+def pairs_pdf(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='halo', align=True, summary=False):
+    """"""
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    
+    # choose the appropriate components:
+    Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
+    if 'progenitor' not in vary:
+        Nprog = 0
+    nstart = {'bary': Nprog, 'halo': Nprog + Nbary, 'dipole': Nprog + Nbary + Nhalo, 'quad': Nprog + Nbary + Nhalo + Ndipole, 'all': Nprog, 'point': 0}
+    nend = {'bary': Nprog + Nbary, 'halo': Nprog + Nbary + Nhalo, 'dipole': Nprog + Nbary + Nhalo + Ndipole, 'quad': Nprog + Nbary + Nhalo + Ndipole + Nquad} #, 'all': np.shape(cx)[0], 'point': 1}
+    
+    if 'progenitor' not in vary:
+        nstart['dipole'] = Npoint
+        nend['dipole'] = Npoint + Ndipole
+    
+    if component in ['bary', 'halo', 'dipole', 'quad', 'point']:
+        components = [component]
+    else:
+        components = [x for x in vary if x!='progenitor']
+    
+    pid_comp = pid[nstart[component]:nend[component]]
+    plabels, units = get_parlabel(pid_comp)
+    punits = [' ({})'.format(x) if len(x) else '' for x in units]
+    params = ['$\Delta$ {}{}'.format(x, y) for x,y in zip(plabels, punits)]
+    
+    done = get_done()
+    N = len(done)
+    pp = PdfPages('../plots/corner_pairs_{:s}{:1d}_a{:1d}_{:s}_{:s}_{:d}.pdf'.format(errmode, Ndim, align, vlabel, component, summary))
+    fig = None
+    ax = None
+    
+    for i in range(N):
+        di = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, done[i], align, vlabel))
+        cxi_i = di['cxi']
+        for j in range(i+1,N):
+            dj = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, done[j], align, vlabel))
+            cxi_j = dj['cxi']
+            
+            cxi = cxi_i + cxi_j
+            cx = stable_inverse(cxi)
+            cx_i = stable_inverse(cxi_i)
+            cx_j = stable_inverse(cxi_j)
+            
+            # select component of the parameter space
+            cq = cx[nstart[component]:nend[component], nstart[component]:nend[component]]
+            cq_i = cx_i[nstart[component]:nend[component], nstart[component]:nend[component]]
+            cq_j = cx_j[nstart[component]:nend[component], nstart[component]:nend[component]]
+            
+            Nvar = np.shape(cq)[0]
+            
+            print(done[i], done[j])
+            print(np.sqrt(np.diag(cq)))
+            print(np.sqrt(np.diag(cq_i)))
+            print(np.sqrt(np.diag(cq_j)))
+            
+            if summary==False:
+                fig = None
+                ax = None
+                
+                # plot ellipses
+                fig, ax = corner_ellipses(cq, fig=fig, ax=ax)
+                fig, ax = corner_ellipses(cq_i, alpha=0.5, fig=fig, ax=ax)
+                fig, ax = corner_ellipses(cq_j, alpha=0.5, fig=fig, ax=ax)
+                
+                # labels
+                plt.title('{} & {}'.format(done[i], done[j]))
+                
+                for k in range(Nvar-1):
+                    plt.sca(ax[-1][k])
+                    plt.xlabel(params[k])
+                    
+                    plt.sca(ax[k][0])
+                    plt.ylabel(params[k+1])
+                pp.savefig(fig)
+            else:
+                fig, ax = corner_ellipses(cq, fig=fig, ax=ax, alpha=0.5)
+    
+    if summary:
+        # labels
+        for k in range(Nvar-1):
+            plt.sca(ax[-1][k])
+            plt.xlabel(params[k])
+            
+            plt.sca(ax[k][0])
+            plt.ylabel(params[k+1])
+        pp.savefig(fig)
+    pp.close()
+
+def multi_pdf(Nmulti=3, Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='halo', align=True):
+    """Create a pdf with each page containing a corner plot with constraints on a given component of the model from multiple streams"""
+    
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    Ntot = len(pid)
+    
+    # choose the appropriate components:
+    Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
+    if 'progenitor' not in vary:
+        Nprog = 0
+    nstart = {'bary': Nprog, 'halo': Nprog + Nbary, 'dipole': Nprog + Nbary + Nhalo, 'quad': Nprog + Nbary + Nhalo + Ndipole, 'all': Nprog, 'point': 0}
+    nend = {'bary': Nprog + Nbary, 'halo': Nprog + Nbary + Nhalo, 'dipole': Nprog + Nbary + Nhalo + Ndipole, 'quad': Nprog + Nbary + Nhalo + Ndipole + Nquad} #, 'all': np.shape(cx)[0], 'point': 1}
+    
+    if 'progenitor' not in vary:
+        nstart['dipole'] = Npoint
+        nend['dipole'] = Npoint + Ndipole
+    
+    if component in ['bary', 'halo', 'dipole', 'quad', 'point']:
+        components = [component]
+    else:
+        components = [x for x in vary if x!='progenitor']
+    
+    pid_comp = pid[nstart[component]:nend[component]]
+    plabels, units = get_parlabel(pid_comp)
+    punits = [' ({})'.format(x) if len(x) else '' for x in units]
+    params = ['$\Delta$ {}{}'.format(x, y) for x,y in zip(plabels, punits)]
+    Nvar = len(pid_comp)
+    
+    pp = PdfPages('../plots/corner_multi{:d}_{:s}{:1d}_a{:1d}_{:s}_{:s}.pdf'.format(Nmulti, errmode, Ndim, align, vlabel, component))
+    fig = None
+    ax = None
+    
+    done = get_done()
+    N = len(done)
+    
+    if Nmulti>N:
+        Nmulti = N
+
+    t = np.arange(N, dtype=np.int64).tolist()
+    all_comb = list(itertools.combinations(t, Nmulti))
+    comb = sorted(list(set(all_comb)))
+    Ncomb = len(comb)
+    
+    for i in range(Ncomb):
+        print(i, [done[i_] for i_ in comb[i]])
+        cxi = np.zeros((Ntot, Ntot))
+        fig = None
+        ax = None
+        for j in range(Nmulti):
+            ind = comb[i][j]
+            #print('{} '.format(done[ind]), end='')
+            
+            dj = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, done[ind], align, vlabel))
+            cxi_ = dj['cxi']
+            cxi = cxi + cxi_
+            
+            # select component of the parameter space
+            cx_ = stable_inverse(cxi_)
+            cq_ = cx_[nstart[component]:nend[component], nstart[component]:nend[component]]
+            if Ncomb==1:
+                np.save('../data/crb/cx_multi1_{:s}{:1d}_{:s}_a{:1d}_{:s}_{:s}'.format(errmode, Ndim, done[ind], align, vlabel, component), cq_)
+            
+            print(np.sqrt(np.diag(cq_)))
+            
+            fig, ax = corner_ellipses(cq_, alpha=0.5, fig=fig, ax=ax)
+
+        cx = stable_inverse(cxi)
+        cq = cx[nstart[component]:nend[component], nstart[component]:nend[component]]
+        print(np.sqrt(np.diag(cq)))
+        
+        label = '.'.join([done[comb[i][i_]] for i_ in range(Nmulti)])
+        np.save('../data/crb/cx_multi{:d}_{:s}{:1d}_{:s}_a{:1d}_{:s}_{:s}'.format(Nmulti, errmode, Ndim, label, align, vlabel, component), cq)
+
+        fig, ax = corner_ellipses(cq, fig=fig, ax=ax)
+        
+        # labels
+        title = ' + '.join([done[comb[i][i_]] for i_ in range(Nmulti)])
+        plt.suptitle(title)
+        
+        for k in range(Nvar-1):
+            plt.sca(ax[-1][k])
+            plt.xlabel(params[k])
+            
+            plt.sca(ax[k][0])
+            plt.ylabel(params[k+1])
+        
+        plt.tight_layout(rect=(0,0,1,0.95))
+        pp.savefig(fig)
+    
+    pp.close()
+
+def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='halo', align=True, relative=False):
+    """Show how much parameters improve by including additional streams"""
+    
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    done = get_done()
+    N = len(done)
+    
+    # choose the appropriate components:
+    Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
+    if 'progenitor' not in vary:
+        Nprog = 0
+    nstart = {'bary': Nprog, 'halo': Nprog + Nbary, 'dipole': Nprog + Nbary + Nhalo, 'quad': Nprog + Nbary + Nhalo + Ndipole, 'all': Nprog, 'point': 0}
+    nend = {'bary': Nprog + Nbary, 'halo': Nprog + Nbary + Nhalo, 'dipole': Nprog + Nbary + Nhalo + Ndipole, 'quad': Nprog + Nbary + Nhalo + Ndipole + Nquad} #, 'all': np.shape(cx)[0], 'point': 1}
+    
+    if 'progenitor' not in vary:
+        nstart['dipole'] = Npoint
+        nend['dipole'] = Npoint + Ndipole
+    
+    if component in ['bary', 'halo', 'dipole', 'quad', 'point']:
+        components = [component]
+    else:
+        components = [x for x in vary if x!='progenitor']
+    
+    pid_comp = pid[nstart[component]:nend[component]]
+    plabels, units = get_parlabel(pid_comp)
+    if relative:
+        punits = [' (%)' for x in units]
+    else:
+        punits = [' ({})'.format(x) if len(x) else '' for x in units]
+    params = ['$\Delta$ {}{}'.format(x, y) for x,y in zip(plabels, punits)]
+    Nvar = len(pid_comp)
+    
+    pparams0 = pparams_fid
+    pparams_comp = [pparams0[x] for x in pid_comp]
+    pparams_arr = np.array([x.value for x in pparams_comp])
+
+    median = np.empty((Nvar, N))
+    x = np.arange(N) + 1
+    
+    da = 2.5
+    ncol = 1
+    nrow = Nvar
+    w = 3 * da
+    h = nrow * da
+
+    plt.close()
+    fig, ax = plt.subplots(nrow, ncol, figsize=(w,h), sharex='col')
+    
+    for i in range(N):
+        Nmulti = i+1
+        t = np.arange(N, dtype=np.int64).tolist()
+        all_comb = list(itertools.combinations(t, Nmulti))
+        comb = sorted(list(set(all_comb)))
+        Ncomb = len(comb)
+        
+        med_comb = np.empty((Nvar, Ncomb))
+
+        for j in range(Ncomb):
+            label = '.'.join([done[comb[j][i_]] for i_ in range(Nmulti)])
+            cq = np.load('../data/crb/cx_multi{:d}_{:s}{:1d}_{:s}_a{:1d}_{:s}_{:s}.npy'.format(Nmulti, errmode, Ndim, label, align, vlabel, component))
+            
+            p = np.sqrt(np.diag(cq))
+            if relative:
+                p = 100 * p / pparams_arr
+            med_comb[:,j] = p
+            
+            for k in range(Nvar):
+                plt.sca(ax[k])
+                if (j==0) & (i==0):
+                    plt.plot(Nmulti, p[k], 'o', color='0.8', ms=10, label='Single combination of N streams')
+                else:
+                    plt.plot(Nmulti, p[k], 'o', color='0.8', ms=10)
+        
+        median[:,i] = np.median(med_comb, axis=1)
+    
+    for k in range(Nvar):
+        plt.sca(ax[k])
+        plt.gca().set_yscale('log')
+        if relative:
+            plt.gca().yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
+        
+        plt.ylabel(params[k])
+        
+        plt.plot(x, median[k], 'wo', mec='k', mew=2, ms=10, label='Median over different\ncombinations of N streams')
+        
+        if k==0:
+            plt.legend(frameon=False, fontsize='small', loc=1)
+    
+    plt.sca(ax[Nvar-1])
+    plt.xlabel('Number of streams in a combination')
+    
+    plt.tight_layout()
+    plt.savefig('../plots/nstream_improvement_{:s}{:1d}_a{:1d}_{:s}_{:s}_{:1d}.pdf'.format(errmode, Ndim, align, vlabel, component, relative))
+
+def corner_ellipses(cx, dax=2, color='k', alpha=1, fig=None, ax=None, autoscale=True):
+    """Corner plot with ellipses given by an input matrix"""
+    
+    # assert square matrix
+    Nvar = np.shape(cx)[0]
+    
+    if (np.any(fig)==None) | (np.any(ax)==None):
+        plt.close()
+        fig, ax = plt.subplots(Nvar-1, Nvar-1, figsize=(dax*Nvar, dax*Nvar), sharex='col', sharey='row')
+    
+    for i in range(0,Nvar-1):
+        for j in range(i+1,Nvar):
+            plt.sca(ax[j-1][i])
+
+            cx_2d = np.array([[cx[i][i], cx[i][j]], [cx[j][i], cx[j][j]]])
+            
+            w, v = np.linalg.eig(cx_2d)
+            if np.all(np.isreal(v)):
+                theta = np.degrees(np.arctan2(v[1][0], v[0][0]))
+                width = np.sqrt(w[0])*2
+                height = np.sqrt(w[1])*2
+                
+                e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=color, alpha=alpha, lw=2)
+                plt.gca().add_patch(e)
+            
+            if autoscale:
+                plt.gca().autoscale_view()
+    
+    # turn off unused axes
+    for i in range(0,Nvar-1):
+        for j in range(i+1,Nvar-1):
+            plt.sca(ax[i][j])
+            plt.axis('off')
+    
+    #plt.sca(ax[int(Nvar/2-1)][int(Nvar/2-1)])
+    #plt.legend(loc=2, bbox_to_anchor=(1,1))
+    
+    plt.tight_layout()
+    
+    return (fig, ax)
+
+
+###
 # compare observing modes
+###
 
 def comp_errmodes(n, errmodes=['binospec', 'fiducial', 'hectochelle'], Ndim=4, vary=['progenitor', 'bary', 'halo'], plot='halo', align=True, fast=False, scale=False):
     """"""

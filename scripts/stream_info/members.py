@@ -10,9 +10,11 @@ import astropy.units as u
 import astropy.coordinates as coord
 from astropy.io import fits
 from astropy.wcs import WCS
+import gala.coordinates as gc
 
 import sfd
 import myutils
+import zscale
 
 import scipy.stats
 import scipy.interpolate
@@ -23,6 +25,8 @@ from os.path import expanduser
 home = expanduser("~")
 
 north = ['ACS', 'ATLAS', 'Ach', 'Coc', 'GD1', 'Hyl', 'Kwa', 'Let', 'Mol', 'Mur', 'NGC5466', 'Oph', 'Orp', 'PS1A', 'PS1B', 'PS1C', 'PS1D', 'PS1E', 'Pal5', 'San', 'Sca', 'Sty', 'TriPis']
+mw_observer = {'z_sun': 27.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_coord': coord.SkyCoord(ra=266.4051*u.deg, dec=-28.936175*u.deg, frame='icrs')}
+vsun = {'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 
 
 def split_extensions():
@@ -134,8 +138,9 @@ def map_distances():
     np.save('../data/ps1_maps_distances', dist)
 
 # stream track
-coords = []
 
+# for streams in PS only
+coords = []
 def onclick_storecoords(event, fig, name, npoint):
     """Store coordinates of clicked points"""
     global ix, iy
@@ -168,7 +173,7 @@ def plot_ps1(name='ps1a', get_coords=False, npoint=10):
     data = hdul[0].data
     head = hdul[0].header
     map_distance = head['EXTNAME']
-    print(map_distance)
+    #print(map_distance, dist, idist)
     
     t = Table.read('{}/projects/python/galstreams/footprints/galstreams.footprint.ALL.dat'.format(home), format='ascii.commented_header')
     ind = t['IDst']==translate_name(name)
@@ -186,12 +191,16 @@ def plot_ps1(name='ps1a', get_coords=False, npoint=10):
     decmin = np.int64(np.floor(dec1/d))*d
     decmax = np.int64(np.ceil(dec2/d))*d
     
+    decmin = max(decmin, -30)
+    dec1 = max(dec1, -30)
+    
     # PS-1 tiles to download
     xg = np.arange(ramin, ramax, d)
     yg = np.arange(decmin, decmax, d)
     xx, yy = np.meshgrid(xg, yg)
     tf = Table([xx.ravel(), yy.ravel()], names=('ra', 'dec'))
-    tf.pprint()
+    tf = tf[tf['dec']>=-30]
+    #tf.pprint()
     tf.write('../data/streams/tiles_{}'.format(name), format='ascii.no_header', overwrite=True)
     
     # slice array
@@ -207,6 +216,13 @@ def plot_ps1(name='ps1a', get_coords=False, npoint=10):
     j1 = np.int64(y_fid + dy**-1*(decmin - dec_fid))
     j2 = np.int64(y_fid + dy**-1*(decmax - dec_fid))
     
+    if (ra1<0) | (ra2>360):
+        Nx, Ny = np.shape(data)
+        i1 = Nx
+        i2 = 0
+    
+    print(ra1, ra2, dec1, dec2)
+    print(j1, j2, i2, i1)
     data = data[j1:j2,i2:i1]
     
     # smooth
@@ -217,38 +233,97 @@ def plot_ps1(name='ps1a', get_coords=False, npoint=10):
     data += 0.01
     data /= np.max(data)
     
-    h = 8
-    w = h * (ramax-ramin) / (decmax - decmin)
+    da = 6
+    oa = 2
+    delta_ra = np.abs(ramax - ramin)
+    delta_dec = np.abs(decmax - decmin)
+    hwr = delta_dec / delta_ra
+    h = da + oa
+    w = 2 * da / hwr + oa
+    
+    print(hwr, h, w)
+    vmin, vmax = zscale.zscale(data)
     
     plt.close()
-    fig, ax = plt.subplots(1,2, figsize=(2*w,h))
+    fig, ax = plt.subplots(1,2, figsize=(w,h))
     
     plt.sca(ax[0])
-    plt.imshow(data, origin='lower', extent=[ramax, ramin, decmin, decmax], cmap='binary', norm=mpl.colors.LogNorm())
+    plt.imshow(data, origin='lower', extent=[ramax, ramin, decmin, decmax], cmap='binary', norm=mpl.colors.LogNorm(), vmin=vmin, vmax=vmax)
     plt.xlabel('RA')
     plt.ylabel('Dec')
     
     plt.sca(ax[1])
-    plt.imshow(data, origin='lower', extent=[ramax, ramin, decmin, decmax], cmap='binary', norm=mpl.colors.LogNorm())
+    plt.imshow(data, origin='lower', extent=[ramax, ramin, decmin, decmax], cmap='binary', norm=mpl.colors.LogNorm(), vmin=vmin, vmax=vmax)
     isort = np.argsort(t['RA_deg'])
     plt.plot(t['RA_deg'][isort], t['DEC_deg'][isort], 'r-', alpha=0.2)
     plt.xlabel('RA')
     plt.ylabel('Dec')
+    plt.ylim(decmin, decmax)
     
     if get_coords:
         cid = fig.canvas.mpl_connect('button_press_event', lambda event: onclick_storecoords(event, fig, name, npoint))
     
     plt.tight_layout()
 
+# for streams with kinematics
+def reformat_input(name='ophiuchus'):
+    """Create an input file for getting the streamline
+    Also creates a list of PS1 tiles to download"""
+    
+    t = Table.read('../data/streams/{}_input.txt'.format(name), format='ascii.commented_header')
+    #t.pprint()
+    
+    d = dm2d(t['dm'])
+    de = 0.5 * (dm2d(t['dm'] + t['dme']) - dm2d(t['dm'] - t['dme']))
+    c = coord.SkyCoord(ra=t['ra']*u.deg, dec=t['dec']*u.deg, distance=d.to(u.kpc), **mw_observer)
+    cgal = c.transform_to(coord.Galactic)
+    #print(cgal)
+    v = gc.vhel_to_gal(c, rv=t['vr']*u.km/u.s, pm=[t['mul']*u.mas/u.yr, t['mub']*u.mas/u.yr], **vsun)
+    veq = gc.vgal_to_hel(c, v, **vsun)
+    #print(veq[-1].to(u.km/u.s))
+    
+    tout = Table([t['ra']*u.deg, t['dec']*u.deg, d.to(u.kpc), de.to(u.kpc), veq[-1].to(u.km/u.s), t['vre'], veq[0].to(u.mas/u.yr), t['mule'], veq[1].to(u.mas/u.yr), t['mube']], names=('ra', 'dec', 'd', 'd_err', 'vr', 'vr_err', 'pmra', 'pmra_err', 'pmdec', 'pmdec_err'))
+    tout.pprint()
+    tout.write('../data/streams/{}_coords.fits'.format(name), overwrite=True)
+    
+    # stream limits
+    dx = 3
+    ra1 = np.min(t['ra']) - dx
+    ra2 = np.max(t['ra']) + dx
+    dec1 = np.min(t['dec']) - dx
+    dec2 = np.max(t['dec']) + dx
+    
+    d = 5
+    ramin = np.int64(np.floor(ra1/d))*d
+    ramax = np.int64(np.ceil(ra2/d))*d
+    decmin = np.int64(np.floor(dec1/d))*d
+    decmax = np.int64(np.ceil(dec2/d))*d
+    
+    decmin = max(decmin, -30)
+    dec1 = max(dec1, -30)
+    
+    # PS-1 tiles to download
+    xg = np.arange(ramin, ramax, d)
+    yg = np.arange(decmin, decmax, d)
+    xx, yy = np.meshgrid(xg, yg)
+    tf = Table([xx.ravel(), yy.ravel()], names=('ra', 'dec'))
+    tf = tf[tf['dec']>=-30]
+    tf.write('../data/streams/tiles_{}'.format(name), format='ascii.no_header', overwrite=True)
 
-def poly_streamline(name='atlas'):
+def dm2d(dm):
+    """Convert a distance modulus to distance"""
+    d = 10**(0.2*(dm+5)) * u.pc
+    
+    return d
+
+
+def poly_streamline(name='atlas', deg=3):
     """Fit polynomial to the stream track"""
     
     t = Table.read('../data/streams/{}_coords.fits'.format(name))
     t.pprint()
     
     # fit a polynomial
-    deg = 3
     p = np.polyfit(t['ra'], t['dec'], deg)
     polybest = np.poly1d(p)
     print(p)
@@ -354,7 +429,7 @@ def wfit_plane(x, r, p=None):
 
 import sfd
 
-def make_catalog(name='atlas', test=True, cut=True):
+def make_catalog(name='atlas', cut=True):
     """"""
     
     d = 5
@@ -365,24 +440,6 @@ def make_catalog(name='atlas', test=True, cut=True):
     dec2 = np.max(dec) + d
     print(ra1, ra2, dec1, dec2)
     
-#def br():
-    #if test:
-        #t = read_rect([0, 5, -30, -25])
-        #plt.close()
-        #fig, ax = plt.subplots(1,2)
-        #plt.sca(ax[0])
-        #plt.plot(t['median'][:,2], t['median_ap'][:,2], 'ko', ms=1, alpha=0.01)
-        #plt.plot(np.linspace(12,24,10), np.linspace(12,24,10)-0.2, 'r-')
-        #plt.plot(np.linspace(12,24,10), np.linspace(12,24,10)+0.2, 'r-')
-        #plt.xlim(18,24)
-        #plt.ylim(18,24)
-        
-        #plt.sca(ax[1])
-        #plt.plot(t['median'][:,0]-t['median'][:,1],t['median'][:,1], 'ko', ms=1, alpha=0.1)
-        #plt.plot(t['median'][:,0][stars]-t['median'][:,1][stars],t['median'][:,1][stars], 'ro', ms=1, alpha=0.1)
-        #plt.xlim(-1,3)
-        #plt.ylim(23,13)
-    #else:
     t = read_rect([ra1, ra2, dec1, dec2])
 
     # select stars
@@ -527,3 +584,26 @@ def stream_probabilities(name='atlas', sigma=0.25, d=22, Ntop=100, sigma_d=2, se
     #plt.scatter(t['g']-t['r'], t['r'], s=prob_tot*4)
     #plt.xlim(-0.5,1)
     #plt.ylim(24,14)
+
+def stream_kinematics(name='atlas'):
+    """Add kinematic data to the members' list"""
+    
+    t = Table.read('../data/lib/{}_members.fits'.format(name))
+    tkin = Table.read('../data/streams/{}_coords.fits'.format(name))
+    tkin.pprint()
+    
+    if ('vr' in tkin.colnames) & (np.all(np.isnan(t['vr']))):
+        Nkin = len(tkin)
+        
+        ind_min = t['p'].argsort()[:Nkin]
+        
+        for k in ['d', 'd_err', 'vr', 'vr_err', 'pmra', 'pmra_err', 'pmdec', 'pmdec_err']:
+            t[k][ind_min] = tkin[k]
+        
+        p = np.ones(Nkin)
+        t['p'][ind_min] = p
+        
+        t.pprint()
+        t.write('../data/lib/{}_members.fits'.format(name), overwrite=True)
+        
+        
