@@ -279,7 +279,7 @@ class Stream():
             veq = gc.vgal_to_hel(xeq, v, **vobs)
             
             # store coordinates
-            ra, dec, dist = [xeq.ra.to(units[0]).wrap_at(180*u.deg), xeq.dec.to(units[1]), xeq.distance.to(units[2])]
+            ra, dec, dist = [xeq.ra.to(units[0]).wrap_at(360*u.deg), xeq.dec.to(units[1]), xeq.distance.to(units[2])]
             vr, mua, mud = [veq[2].to(units[3]), veq[0].to(units[4]), veq[1].to(units[5])]
             
             obs = np.hstack([ra, dec, dist, vr, mua, mud]).value
@@ -776,28 +776,35 @@ def find_progenitor(name='gd1', test=False, verbose=False, cont=False, nstep=100
 def get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, mod_err, observer, vobs, footprint, ranges):
     """Pick the best direction for initializing progenitor velocity vector"""
 
-    N = 50
-    u_ = np.random.random(N)
-    v_ = np.random.random(N)
-    theta = np.arccos(2*u_ - 1)
-    phi = 2 * np.pi * v_
-    dp_list = np.array([np.sin(theta) * np.cos(phi),
-                np.sin(theta) * np.sin(phi),
-                np.cos(theta)]).T
+    Ndim = np.shape(observed.obs)[0]
     
-    ndp, ndim = np.shape(dp_list)
+    if Ndim<4:
+        N = 50
+        u_ = np.random.random(N)
+        v_ = np.random.random(N)
+        theta = np.arccos(2*u_ - 1)
+        phi = 2 * np.pi * v_
+        dp_list = np.array([np.sin(theta) * np.cos(phi),
+                    np.sin(theta) * np.sin(phi),
+                    np.cos(theta)]).T
     
-    lnp = np.empty(ndp)
-    v0 = [None]*ndp
+        ndp, ndim = np.shape(dp_list)
     
-    for i in range(ndp):
-        x0_obs, v0_obs = get_progenitor(observed, dp=dp_list[i], observer=mw_observer, pparams=pparams)
-        plist = [j.value for j in x0_obs] + [j.value for j in v0_obs] + [4, 3]
-        pinit = np.array(plist)
-        lnp[i] = lnprob_prog(pinit, potential, pparams, mf, dt, nstar, obsmode, mod_err, observer, vobs, footprint, observed, ranges)
-        v0[i] = v0_obs
+        lnp = np.empty(ndp)
+        v0 = [None]*ndp
     
-    return x0_obs, v0[np.argmax(lnp)]
+        for i in range(ndp):
+            x0_obs, v0_obs = get_progenitor(observed, dp=dp_list[i], observer=mw_observer, pparams=pparams)
+            plist = [j.value for j in x0_obs] + [j.value for j in v0_obs] + [4, 3]
+            pinit = np.array(plist)
+            lnp[i] = lnprob_prog(pinit, potential, pparams, mf, dt, nstar, obsmode, mod_err, observer, vobs, footprint, observed, ranges)
+            v0[i] = v0_obs
+        
+        v0_obs = v0[np.argmax(lnp)]
+    else:
+        x0_obs, v0_obs = get_progenitor(observed, observer=mw_observer, pparams=pparams)
+
+    return x0_obs, v0_obs
 
 def combine_results(f, fcont, nwalkers):
     """"""
@@ -916,17 +923,15 @@ def bestfit(name='Sty'):
     
     # load stream
     observed = load_stream(name)
+    print(observed.err[:,0])
     
     # plot observed stream
     plt.close()
     fig, ax = plt.subplots(1,5, figsize=(15,3), sharex=True)
     
-    for i in range(2):
-        plt.sca(ax[i])
-        plt.plot(observed.obs[0], observed.obs[i+1], 'ko')
-    
     for i in range(5):
         plt.sca(ax[i])
+        plt.plot(observed.obs[0], observed.obs[i+1], 'ko')
         plt.plot(model.obs[0], model.obs[i+1], 'ro')
     
     plt.gca().invert_xaxis()
@@ -1035,6 +1040,7 @@ def get_progenitor(stream, dp=np.nan, fc=0.8, **kwargs):
     
     pparams = kwargs['pparams']
     observer = kwargs['observer']
+    Ndim = np.shape(stream.obs)[0]
     
     # guess position
     # get point with maximal density
@@ -1062,6 +1068,13 @@ def get_progenitor(stream, dp=np.nan, fc=0.8, **kwargs):
     veq = gc.vgal_to_hel(xeq, progdv)
     
     pv = [veq[2].to(u.km/u.s), veq[0].to(u.mas/u.yr), veq[1].to(u.mas/u.yr)]
+    
+    if Ndim>=4:
+        pv[0] = np.nanmedian(stream.obs[3])*u.km/u.s
+    
+    if Ndim==6:
+        pv[1] = np.nanmedian(stream.obs[4])*u.mas/u.yr
+        pv[2] = np.nanmedian(stream.obs[5])*u.mas/u.yr
 
     return (px, pv)
 
