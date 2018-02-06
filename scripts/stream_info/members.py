@@ -553,12 +553,16 @@ def make_catalog(name='atlas', cut=True):
     
     d = 5
     ra, dec = np.loadtxt('../data/streams/tiles_{}'.format(name), unpack=True)
+    if (np.any(ra==355)) & (np.any(ra==0)):
+        ind = ra>180
+        ra[ind] = ra[ind] - 360
+
     ra1 = np.min(ra)
     ra2 = np.max(ra) + d
     dec1 = np.min(dec)
     dec2 = np.max(dec) + d
     print(ra1, ra2, dec1, dec2)
-    
+   
     t = read_rect([ra1, ra2, dec1, dec2])
 
     # select stars
@@ -581,6 +585,10 @@ def read_rect(rect, d=5, verbose=False):
     """Read PS1 tiles"""
     
     ra1, ra2, dec1, dec2 = rect
+    if ra1<0:
+        wrapped = True
+    else:
+        wrapped = False
     
     ramin = np.int64(np.floor(ra1/d))*d
     ramax = np.int64(np.ceil(ra2/d))*d
@@ -591,6 +599,8 @@ def read_rect(rect, d=5, verbose=False):
         for j_, dec in enumerate(range(decmin, decmax, d)):
             if verbose: print('reading {} {}'.format(ra, dec))
             
+            if wrapped & (ra<0):
+                ra += 360
             tin = Table.read(home+'/data/ps1/ps1_{:d}.{:d}.fits'.format(ra, dec))
             ind = (tin['ra']<=ra2) & (tin['ra']>=ra1) & (tin['dec']<=dec2) & (tin['dec']>=dec1)
             tin = tin[ind]
@@ -599,6 +609,10 @@ def read_rect(rect, d=5, verbose=False):
                 tout = tin.copy()
             else:
                 tout = astropy.table.vstack([tout, tin])
+    
+    if wrapped:
+        ind = tout['ra']>180
+        tout['ra'][ind] = tout['ra'][ind] - 360
     
     return(tout)
 
@@ -625,7 +639,7 @@ def stream_coords(name='atlas'):
     t = Table.read('../data/streams/{}_catalog.fits'.format(name))
     R = np.load('../data/streams/{}_rotmat.npy'.format(name))
     xi, eta = myutils.rotate_angles(t['ra'], t['dec'], R)
-    ind = np.abs(eta)<1
+    ind = np.abs(eta)<2
     t = t[ind]
 
     if var=='ra':
