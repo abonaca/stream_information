@@ -299,21 +299,21 @@ More realistic data can be analyzed in the same way to produce specific predicti
 - covariances
 - triangle plot
 
-\begin{figure}
-\begin{center}
-\includegraphics[width=\textwidth]{crlb_2d.pdf}
-\caption{Two-dimensional Cram\' er--Rao lower bounds that cold stellar streams put on parameters of the Milky Way dark matter halo.
-Parameters considered are the halo scale velocity $V_h$, scale radius $R_h$, $x/y$ and $z/y$ axis ratios $q_1$ and $q_z$, respectively.
-Parameter combination is the same across the rows.
-Bounds based on individual streams (GD-1, Pal~5, Triangulum and ATLAS) are shown in the first four columns, and their combination is presented in the last column.
-The ellipse color denotes the dimensionality of the observational data used to calculate the bound; the darkest ellipses are based on positional information only, medium-colored ellipses include positions and radial velocity, and the lightest ellipses are derived using the full 6-D phase space of streams.
-Not all streams are equally constraining for all of the parameters, but for a given stream, parameter constraints improve when more phase-space dimensions are included.
-Combining different streams results in the most precise recovery of the halo parameters.
-Even if only limited observational data is available for multiple streams, the obtained bounds are comparable to, or better than, the best bounds coming from any individual stream.
-}
-\label{fig:2dbounds}
-\end{center}
-\end{figure}
+% \begin{figure}
+% \begin{center}
+% \includegraphics[width=\textwidth]{crlb_2d.pdf}
+% \caption{Two-dimensional Cram\' er--Rao lower bounds that cold stellar streams put on parameters of the Milky Way dark matter halo.
+% Parameters considered are the halo scale velocity $V_h$, scale radius $R_h$, $x/y$ and $z/y$ axis ratios $q_1$ and $q_z$, respectively.
+% Parameter combination is the same across the rows.
+% Bounds based on individual streams (GD-1, Pal~5, Triangulum and ATLAS) are shown in the first four columns, and their combination is presented in the last column.
+% The ellipse color denotes the dimensionality of the observational data used to calculate the bound; the darkest ellipses are based on positional information only, medium-colored ellipses include positions and radial velocity, and the lightest ellipses are derived using the full 6-D phase space of streams.
+% Not all streams are equally constraining for all of the parameters, but for a given stream, parameter constraints improve when more phase-space dimensions are included.
+% Combining different streams results in the most precise recovery of the halo parameters.
+% Even if only limited observational data is available for multiple streams, the obtained bounds are comparable to, or better than, the best bounds coming from any individual stream.
+% }
+% \label{fig:2dbounds}
+% \end{center}
+% \end{figure}
 
 \subsection{Comparison between streams}
 - compare CRB ellipses for halo parameters between several streams
@@ -332,7 +332,7 @@ Even if only limited observational data is available for multiple streams, the o
 
 \subsection{More flexible potential models}
 
-\subsubsection{LMC}
+% \subsubsection{LMC}
 
 \subsubsection{Basis function expansion}
 
@@ -346,6 +346,28 @@ Even if only limited observational data is available for multiple streams, the o
 \appendix
 \section{Cold tidal streams in the Milky Way}
 \label{sec:streams}
+
+Steps for creating a mock stream:
+\begin{itemize}
+ \item obtain ridge points along the stream. This is done either by analyzing a match-filtered map showing the stream, or from published stream tracks (usually in a polynomial form).
+ \item fit a polynomial to the ridge points, and define a stream coordinate system with one axis along the polynomial, and the other along the normal on the polynomial.
+ \item query PanSTARRS1 star catalog and assign a membership probability. We assume that the total probability can be split in a spatial and color-magnitude component; $p = p_{spatial} \times p_{CMD}$. The spatial probability follows a normal distribution centered on the stream track (measured as described above), with dispersion matching the reported stream width. The color-magnitude probability is obtained from a matched filter based on the M13 globular cluster, and placed at the reported distance to the stream.
+ \item select a hundred most likely members. If kinematic information is present, the lowest probability members are replaced by stars with kinematic measurements.
+ \item these hundred members are then used to constrain parameters of the mock stream progenitor. The mock stream is created in a fiducial gravitational potential defined by the first 9 parameters listed in Table~\ref{t:model} and these parameters are kept fixed for all of the mock streams. The variable parameters are: 6D position of the progenitor today, initial mass of the progenitor (we assume the progenitor loses mass at a constant rate and disappears at the present, with the exception of Pal~5 and NGC~5466, where we use the present-day cluster mass), and the age of the stream. 
+\end{itemize}
+
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=\textwidth]{mocks.pdf}
+\caption{On-sky positions of streams analyzed in this work, with one stream per panel, and the stream name in the upper right corner.
+In each panel, the observed stream members are shown in black, whereas a best-fitting mock stream is plotted in gray.
+All of the mock streams have been generated in the same gravitational potential, and they fit the observations reasonably well.
+Streams where the mock deviates from observations likely experienced a different gravitational potential for at least a part of its evolution.
+}
+\label{fig:gallery}
+\end{center}
+\end{figure}
 
 \section{Robust matrix inversion}
 \label{sec:inversion}

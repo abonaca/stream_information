@@ -6,6 +6,80 @@ import matplotlib.pyplot as plt
 
 from .stream_info import *
 
+def all_mocks():
+    """"""
+    done = get_done()
+    N = len(done)
+    
+    ncol = 3
+    nrow = np.int64(np.ceil(N/ncol))
+    Np = ncol * nrow
+    da = 3
+    
+    plt.close()
+    fig, ax = plt.subplots(nrow, ncol, figsize=(ncol*da + 0.2*da, nrow*da))
+    
+    for i in range(N):
+        plt.sca(ax[int(i/ncol)][i%ncol])
+        
+        observed = load_stream(done[i])
+        model = stream_model(name=done[i])
+        #dp_ = np.load('../data/streams/{}_poly.npz'.format(name))
+        #p_ = dp_['p']
+        #var = dp_['var']
+        #poly = np.poly1d(p_)
+
+        #if var=='ra':
+            #x = np.linspace(np.min(ts['ra']), np.max(ts['ra']), 1000)
+        #else:
+            #x = np.linspace(np.min(ts['dec']), np.max(ts['dec']), 1000)
+        #y = np.polyval(poly, x)
+        
+        #p = np.loadtxt('../data/streams/{}_poly.txt'.format(done[i]))
+        #poly = np.poly1d(p)
+        #x = np.linspace(np.min(observed.obs[0]), np.max(observed.obs[0]), 100)
+        #y = poly(x)
+        
+        plt.plot(observed.obs[0], observed.obs[1], 'ko', ms=7, label='Observed')
+        plt.plot(model.obs[0], model.obs[1], 'o', color='0.7', ms=5, label='Mock')
+        #plt.plot(x, y, '-', color='cornflowerblue', lw=3, label='Track')
+        
+        xlims = list(plt.gca().get_xlim())
+        ylims = list(plt.gca().get_ylim())
+        dx = xlims[1] - xlims[0]
+        dy = ylims[1] - ylims[0]
+        
+        delta = np.abs(dx - dy)
+        if dx>dy:
+            ylims[0] = ylims[0] - 0.5*delta
+            ylims[1] = ylims[1] + 0.5*delta
+        else:
+            xlims[0] = xlims[0] - 0.5*delta
+            xlims[1] = xlims[1] + 0.5*delta
+        
+        plt.xlim(xlims[1], xlims[0])
+        plt.ylim(ylims[0], ylims[1])
+        
+        print(i, dx, dy)
+        fancy_name = full_name(done[i])
+        txt = plt.text(0.9, 0.9, fancy_name, fontsize='small', transform=plt.gca().transAxes, ha='right', va='top')
+        txt.set_bbox(dict(facecolor='w', alpha=0.5, ec='none'))
+        
+        if i==0:
+            plt.legend(frameon=False, fontsize='small', loc=3, handlelength=0.2)
+        
+        if int(i/ncol)==nrow-1:
+            plt.xlabel('R.A. (deg)')
+        if i%ncol==0:
+            plt.ylabel('Dec (deg)')
+    
+    for i in range(N, Np):
+        plt.sca(ax[int(i/ncol)][i%ncol])
+        plt.gca().axis('off')
+    
+    plt.tight_layout(h_pad=0, w_pad=0)
+    plt.savefig('../paper/mocks.pdf')
+
 def derivative_vis(name='atlas'):
     """Plot steps in calculating a stream derivative wrt a potential parameter"""
     
@@ -169,5 +243,6 @@ def derivative_stepsize(name='atlas', tolerance=2, Nstep=10, log=True, layer=1):
     plt.savefig('../paper/derivative_steps.pdf')
     
     mpl.rcParams.update({'font.size': 18})
+
 
 

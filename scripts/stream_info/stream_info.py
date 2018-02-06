@@ -2753,8 +2753,14 @@ def summary(n, mode='scalar', vary=['progenitor', 'bary', 'halo', 'dipole', 'qua
 # Summary
 def full_names():
     """"""
-    full = {'gd1': 'GD-1', 'atlas': 'ATLAS', 'tri': 'Triangulum', 'ps1a': 'PS1A', 'ps1b': 'PS1B', 'ps1c': 'PS1C', 'ps1e': 'PS1E', 'ophiuchus': 'Ophiuchus'}
+    full = {'gd1': 'GD-1', 'atlas': 'ATLAS', 'tri': 'Triangulum', 'ps1a': 'PS1A', 'ps1b': 'PS1B', 'ps1c': 'PS1C', 'ps1d': 'PS1D', 'ps1e': 'PS1E', 'ophiuchus': 'Ophiuchus'}
     return full
+
+def full_name(name):
+    """"""
+    full = full_names()
+    
+    return full[name]
 
 def get_done():
     """"""
