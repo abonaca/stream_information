@@ -28,6 +28,8 @@ north = ['ACS', 'ATLAS', 'Ach', 'Coc', 'GD1', 'Hyl', 'Kwa', 'Let', 'Mol', 'Mur',
 mw_observer = {'z_sun': 27.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_coord': coord.SkyCoord(ra=266.4051*u.deg, dec=-28.936175*u.deg, frame='icrs')}
 vsun = {'vcirc': 237.8*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 
+sample = ['atlas', 'acheron', 'cocytos', 'gd1', 'hermus', 'kwando', 'lethe', 'molonglo', 'murrumbidgee', 'ngc5466', 'ophiuchus', 'orinoco', 'ps1a', 'ps1b', 'ps1c', 'ps1d', 'ps1e', 'pal5', 'sangarius', 'scamander', 'styx', 'tri']
+mateudict = {'atlas': 'ATLAS', 'acheron': 'Ach', 'cocytos': 'Coc', 'gd1': 'GD1', 'hermus': 'Her', 'kwando': 'Kwa', 'lethe': 'Let', 'molonglo': 'Mol', 'murrumbidgee': 'Mur', 'ngc5466': 'NGC5466', 'ophiuchus': 'Oph', 'orinoco': 'Ori', 'ps1a': 'PS1A', 'ps1b': 'PS1B', 'ps1c': 'PS1C', 'ps1d': 'PS1D', 'ps1e': 'PS1E', 'pal5': 'Pal5', 'sangarius': 'San', 'scamander': 'Sca', 'styx': 'Sty', 'tri': 'TriPis'}
 
 def split_extensions():
     """"""
@@ -316,6 +318,92 @@ def dm2d(dm):
     
     return d
 
+# for literature tracks
+def g17b_endpoints():
+    """"""
+    
+    #kwando: 210,-85; 230,-75
+    #molonglo 70,-62; 70,-90
+    #murrumbidgee: 93,-15; 210, -85
+    #orinoco: 230,-83; 18,-45
+    l = np.array([210, 230, 70, 70, 93, 210, 230, 18])*u.deg
+    b = np.array([-85, -75, -62, -90, -15, -85, -83, -45])*u.deg
+    
+    gc = coord.SkyCoord(l=l, b=b, frame=coord.Galactic)
+    print(gc.icrs)
+    
+def poly_tracks(Ncoord=20):
+    """Create list of members based on literature tracks"""
+    
+    # first element lowest order -- exactly opposite of numpy convention
+    poly = {'hermus': [241.571, 1.37841, -0.148870, +0.00589502, -1.03927e-4, 7.28133e-7],
+            'kwando': [-7.817, -2.354, 0.1202, -0.00215],
+            'molonglo': [345.017, -0.5843, 0.01822],
+            'murrumbidgee': [367.893, -0.4647, -0.008626, 0.000118, 1.2347e-6, -1.13758e-7],
+            'orinoco': [-25.5146, 0.1672, -0.003827, -0.0002835, -5.3133e-6],
+            'ps1d': [141.017, 0.208, -0.02491, 0.000609, -1.20989e-6],
+            'sangarius': [148.9492, -0.03811, 0.001505],
+            'scamander': [155.642, -0.1, -0.00191, -0.0003346, 1.47775e-5]}
+    direction = {'hermus': 'ra', 'kwando': 'dec', 'molonglo': 'ra', 'murrumbidgee': 'ra', 'orinoco': 'dec', 'ps1d': 'ra', 'sangarius': 'ra', 'scamander': 'ra'}
+    minmax = {'hermus': [0,40], 'kwando': [18, 30], 'molonglo': [-27, -8], 'murrumbidgee': [-27, 39], 'orinoco': [0,20], 'scamander': [-5,35], 'ps1d': [-5, 25], 'sangarius': [-5, 35]}
+    streams_ = direction.keys()
+    Nst = len(streams_)
+    
+    t = Table.read('/home/ana/projects/python/galstreams/footprints/galstreams.footprint.ALL.dat', format='ascii.commented_header')
+    
+    for i in range(Nst):
+        name = streams_[i]
+        mname = mateudict[name]
+        print(streams_[i], np.sum(t['IDst']==mname))
+        
+        istream = t['IDst']==mname
+        p = np.poly1d(np.array(poly[name])[::-1])
+        print(name, p)
+        
+        if direction[name]=='ra':
+            dec = np.linspace(minmax[name][0], minmax[name][1], Ncoord)
+            ra = p(dec)
+        else:
+            ra = np.linspace(minmax[name][0], minmax[name][1], Ncoord)
+            dec = p(ra)
+        
+        tout = Table(np.array([ra, dec]).T, names=('ra', 'dec'))
+        tout.write('../data/streams/{}_coords.fits'.format(name), overwrite=True)
+        
+        stream_tiles(name=name)
+
+
+def stream_tiles(name='atlas', dx=1):
+    """Output a list of PS1 tiles to download"""
+    
+    t = Table.read('../data/streams/{}_coords.fits'.format(name))
+    # stream limits
+    ra1 = np.min(t['ra']) - dx
+    ra2 = np.max(t['ra']) + dx
+    dec1 = np.min(t['dec']) - dx
+    dec2 = np.max(t['dec']) + dx
+    
+    d = 5
+    ramin = np.int64(np.floor(ra1/d))*d
+    ramax = np.int64(np.ceil(ra2/d))*d
+    decmin = np.int64(np.floor(dec1/d))*d
+    decmax = np.int64(np.ceil(dec2/d))*d
+    
+    decmin = max(decmin, -30)
+    dec1 = max(dec1, -30)
+    
+    # PS-1 tiles to download
+    xg = np.arange(ramin, ramax, d)
+    yg = np.arange(decmin, decmax, d)
+    xx, yy = np.meshgrid(xg, yg)
+    
+    ind = xx>=360
+    xx[ind] -= 360
+    
+    tf = Table([xx.ravel(), yy.ravel()], names=('ra', 'dec'))
+    tf = tf[tf['dec']>=-30]
+    tf.write('../data/streams/tiles_{}'.format(name), format='ascii.no_header', overwrite=True)
+
 
 def poly_streamline(name='atlas', deg=3):
     """Fit polynomial to the stream track"""
@@ -323,37 +411,68 @@ def poly_streamline(name='atlas', deg=3):
     t = Table.read('../data/streams/{}_coords.fits'.format(name))
     t.pprint()
     
+    # decide whether ra or dec is a dependent variable
+    dra = np.max(t['ra']) - np.min(t['ra'])
+    ddec = np.max(t['dec']) - np.min(t['dec'])
+    
+    if ddec>dra:
+        x_ = t['dec']
+        y_ = t['ra']
+        var = 'dec'
+    else:
+        x_ = t['ra']
+        y_ = t['dec']
+        var = 'ra'
+    
+    print(var)
+    
     # fit a polynomial
-    p = np.polyfit(t['ra'], t['dec'], deg)
+    p = np.polyfit(x_, y_, deg)
     polybest = np.poly1d(p)
     print(p)
-    np.savetxt('../data/streams/{}_poly.txt'.format(name), p)
+    np.savez('../data/streams/{}_poly'.format(name), p=p, var=var)
     
-    x = np.linspace(np.min(t['ra']), np.max(t['ra']), 100)
+    x = np.linspace(np.min(x_), np.max(x_), 100)
     y = np.polyval(polybest, x)
-    R = find_greatcircle(x, y)
+    if var=='ra':
+        R = find_greatcircle(x, y)
+    else:
+        R = find_greatcircle(y, x)
+    
     np.save('../data/streams/{}_rotmat'.format(name), R)
     
-    xi = np.linspace(50, 75, 100)
+    xi = np.linspace(35, 100, 100)
     eta = np.ones(100)
     ra1, dec1 = myutils.rotate_angles(xi, eta, np.linalg.inv(R))
+    if np.any(t['ra']>360):
+        ind = ra1<180
+        ra1[ind] +=360
     
     plt.close()
     plt.figure()
     
-    plt.plot(t['ra'], t['dec'], 'ko')
-    plt.plot(x, y, 'r-')
+    plt.plot(t['ra'], t['dec'], 'k.', ms=4)
+    if var=='ra':
+        plt.plot(x, y, 'r-')
+    else:
+        plt.plot(y, x, 'r-')
     plt.plot(ra1, dec1, 'b-')
     
-    xi = np.linspace(50, 75, 100)
+    xi = np.linspace(35, 100, 100)
     eta = np.ones(100) * -1
     ra1, dec1 = myutils.rotate_angles(xi, eta, np.linalg.inv(R))
+    if np.any(t['ra']>360):
+        ind = ra1<180
+        ra1[ind] +=360
+    
     plt.plot(ra1, dec1, 'b-')
     
     plt.xlabel('R.A. (deg)')
     plt.ylabel('Dec (deg)')
+    plt.gca().set_aspect('equal')
     
     plt.tight_layout()
+    plt.savefig('../plots/streams/{}_track.png'.format(name))
 
 def sph2cart(ra, dec):
     """Convert two angles on a unit sphere to a 3d vector"""
@@ -487,12 +606,20 @@ def stream_coords(name='atlas'):
     """"""
     # streakline
     ts = Table.read('../data/streams/{}_coords.fits'.format(name))
-    p_ = np.loadtxt('../data/streams/{}_poly.txt'.format(name))
+    dp_ = np.load('../data/streams/{}_poly.npz'.format(name))
+    p_ = dp_['p']
+    var = dp_['var']
     poly = np.poly1d(p_)
     
-    x = np.linspace(np.min(ts['ra']), np.max(ts['ra']), 1000)
+    if var=='ra':
+        x = np.linspace(np.min(ts['ra']), np.max(ts['ra']), 1000)
+    else:
+        x = np.linspace(np.min(ts['dec']), np.max(ts['dec']), 1000)
     y = np.polyval(poly, x)
-    q = sph2cart(np.radians(x), np.radians(y))
+    if var=='ra':
+        q = sph2cart(np.radians(x), np.radians(y))
+    else:
+        q = sph2cart(np.radians(y), np.radians(x))
     
     # consider only stars within 1 deg of the best-fitting great circle
     t = Table.read('../data/streams/{}_catalog.fits'.format(name))
@@ -501,7 +628,10 @@ def stream_coords(name='atlas'):
     ind = np.abs(eta)<1
     t = t[ind]
 
-    xi, eta = myutils.rotate_angles(x, y, R)
+    if var=='ra':
+        xi, eta = myutils.rotate_angles(x, y, R)
+    else:
+        xi, eta = myutils.rotate_angles(y, x, R)
 
     p = sph2cart(np.radians(t['ra']), np.radians(t['dec']))
     
