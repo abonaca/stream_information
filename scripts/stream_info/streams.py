@@ -32,9 +32,14 @@ import pickle
 import shutil
 import inspect
 
-cold = ['ACS', 'ATLAS', 'Ach', 'Alp', 'Coc', 'GD1', 'Hyl', 'Kwa', 'Let', 'Mol', 'Mur', 'NGC5466', 'Oph', 'Ori', 'Orp', 'PS1A', 'PS1B', 'PS1C', 'PS1D', 'PS1E', 'Pal5', 'Pho', 'San', 'Sca', 'Sty', 'TriPis', 'WG1', 'WG2', 'WG3', 'WG4']
+cold = ['ACS', 'ATLAS', 'Ach', 'Alp', 'Coc', 'GD1', 'Her', 'Kwa', 'Let', 'Mol', 'Mur', 'NGC5466', 'Oph', 'Ori', 'Orp', 'PS1A', 'PS1B', 'PS1C', 'PS1D', 'PS1E', 'Pal5', 'Pho', 'San', 'Sca', 'Sty', 'TriPis', 'WG1', 'WG2', 'WG3', 'WG4']
 
-north = ['ACS', 'ATLAS', 'Ach', 'Coc', 'GD1', 'Hyl', 'Kwa', 'Let', 'Mol', 'Mur', 'NGC5466', 'Oph', 'Orp', 'PS1A', 'PS1B', 'PS1C', 'PS1D', 'PS1E', 'Pal5', 'San', 'Sca', 'Sty', 'TriPis']
+north = ['ACS', 'ATLAS', 'Ach', 'Coc', 'GD1', 'Her', 'Kwa', 'Let', 'Mol', 'Mur', 'NGC5466', 'Oph', 'Orp', 'PS1A', 'PS1B', 'PS1C', 'PS1D', 'PS1E', 'Pal5', 'San', 'Sca', 'Sty', 'TriPis']
+
+#sample = ['ATLAS', 'Ach', 'Coc', 'GD1', 'Her', 'Kwa', 'Let', 'Mol', 'Mur', 'NGC5466', 'Oph', 'Ori', 'PS1A', 'PS1B', 'PS1C', 'PS1E', 'Pal5', 'San', 'Sca', 'Sty', 'TriPis']
+
+sample = ['atlas', 'acheron', 'cocytos', 'gd1', 'hermus', 'kwando', 'lethe', 'molonglo', 'murrumbidgee', 'ngc5466', 'ophiuchus', 'orinoco', 'ps1a', 'ps1b', 'ps1c', 'ps1e', 'pal5', 'sangarius', 'scamander', 'styx', 'tri']
+mateudict = {'atlas': 'ATLAS', 'acheron': 'Ach', 'cocytos': 'Coc', 'gd1': 'GD1', 'hermus': 'Her', 'kwando': 'Kwa', 'lethe': 'Let', 'molonglo': 'Mol', 'murrumbidgee': 'Mur', 'ngc5466': 'NGC5466', 'ophiuchus': 'Oph', 'orinoco': 'Ori', 'ps1a': 'PS1A', 'ps1b': 'PS1B', 'ps1c': 'PS1C', 'ps1e': 'PS1E', 'pal5': 'Pal5', 'sangarius': 'San', 'scamander': 'Sca', 'styx': 'Sty', 'tri': 'TriPis'}
 
 def show_streams():
     """Read streams from Mateu+(2017) and plot them in equatorial coordinates"""
@@ -487,6 +492,9 @@ class Stream():
         # save to file
         t.write(fname, format='ascii.commented_header')
 
+
+
+    
 
 def reformat_stream_obs(name):
     """Reformat legacy table of stream observational data to the standardized library version"""

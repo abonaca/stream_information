@@ -2791,7 +2791,7 @@ def extract_crbs(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', 
     pid_crb = myutils.wherein(np.array(pid), np.array(pid_comp))
     
     plt.close()
-    fig, ax = plt.subplots(Np,1,figsize=(7,10), subplot_kw=dict(projection='mollweide'))
+    fig, ax = plt.subplots(Np,1,figsize=(10,15), subplot_kw=dict(projection='mollweide'))
     
     for name in names[:]:
         fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
@@ -2815,7 +2815,7 @@ def extract_crbs(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', 
             color_index /= 0.2
             color = mpl.cm.viridis(color_index[i])
             
-            plt.plot(np.radians(stream.obs[0]), np.radians(stream.obs[1]), 'o', color=color)
+            plt.plot(np.radians(stream.obs[0]), np.radians(stream.obs[1]), 'o', color=color, ms=4)
     
     for i in range(Np):
         plt.sca(ax[i])
@@ -2826,7 +2826,19 @@ def extract_crbs(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', 
         
     plt.xlabel('RA')
     
-    plt.tight_layout()
+    # add custom colorbar
+    sm = plt.cm.ScalarMappable(cmap=mpl.cm.viridis, norm=plt.Normalize(vmin=0, vmax=20))
+    # fake up the array of the scalar mappable. Urgh...
+    sm._A = []
+    
+    if component=='bary':
+        cb_pad = 0.1
+    else:
+        cb_pad = 0.06
+    cb = fig.colorbar(sm, ax=ax.ravel().tolist(), pad=cb_pad, aspect=40, ticks=np.arange(0,21,5))
+    cb.set_label('Cramer $-$ Rao bounds (%)')
+    
+    #plt.tight_layout()
     plt.savefig('../plots/crb_onsky_{}.png'.format(component))
 
 # circular velocity
@@ -2975,13 +2987,14 @@ def delta_vc_vec(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
     plt.tight_layout()
     plt.savefig('../plots/vc_r_summary_apo{:d}.pdf'.format(ascale))
 
-def delta_vc_correlations(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='all', j=0, align=True, d=200, Nb=1000, fast=False, scale=False):
+def delta_vc_correlations(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='all', j=0, align=True, d=200, Nb=1000, r=False, fast=False, scale=False):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
-    if align:
-        alabel = '_align'
-    else:
-        alabel = ''
+    elabel = ''
+    ylabel = 'min ($\Delta$ $V_c$ / $V_c$)'
+    if r:
+        ylabel = 'r(min($\Delta$ $V_c$ / $V_c$)) (kpc)'
+        elabel = 'r'
     
     names = get_done()
     labels = full_names()
@@ -2993,22 +3006,30 @@ def delta_vc_correlations(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='
     for name in names:
         d = np.load('../data/crb/vcirc_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
         rel_dvc = np.min(d['dvc'] / d['vc'])
+        if r:
+            idmin = np.argmin(d['dvc'] / d['vc'])
+            rel_dvc = d['r'][idmin]
         
         mock = pickle.load(open('../data/mock_{}.params'.format(name), 'rb'))
         dlambda = np.max(mock['xi_range']) - np.min(mock['xi_range'])
         
         plt.sca(ax[0][0])
+        if r:
+            plt.plot(d['rapo'], d['rapo'], 'r.', zorder=0, lw=1.5)
         plt.plot(d['rapo'], rel_dvc, 'o', ms=10, color=colors[name], label=labels[name])
         
         plt.xlabel('$r_{apo}$ (kpc)')
-        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+        plt.ylabel(ylabel)
         
         plt.sca(ax[0][1])
-        plt.plot(d['Np'], rel_dvc, 'o', ms=10, color=colors[name])
+        #plt.plot(d['rcur']/d['rapo'], rel_dvc, 'o', ms=10, color=colors[name])
+        if r:
+            plt.plot(d['rapo'], d['rapo'], 'r.', zorder=0, lw=1.5)
+        plt.plot(d['rcur'], rel_dvc, 'o', ms=10, color=colors[name])
+        #plt.plot(d['r0'], rel_dvc, 'ro')
         
-        #plt.xlabel('$r_{peri}$ (kpc)')
-        plt.xlabel('Completed periods')
-        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+        plt.xlabel('$r_{current}$')
+        plt.ylabel(ylabel)
         
         plt.sca(ax[0][2])
         ecc = np.sqrt(1 - (d['rperi']/d['rapo'])**2)
@@ -3016,32 +3037,32 @@ def delta_vc_correlations(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='
         plt.plot(ecc, rel_dvc, 'o', ms=10, color=colors[name])
         
         plt.xlabel('Eccentricity')
-        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+        plt.ylabel(ylabel)
         
         plt.sca(ax[1][0])
         plt.plot(np.median(np.abs(d['l'][:,2])/np.linalg.norm(d['l'], axis=1)), rel_dvc, 'o', ms=10, color=colors[name])
         
         plt.xlabel('|L_z|/|L|')
-        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+        plt.ylabel(ylabel)
         
         plt.sca(ax[1][1])
-        plt.plot(d['rcur']/d['rapo'], rel_dvc, 'o', ms=10, color=colors[name])
-        #plt.plot(d['r0'], rel_dvc, 'ro')
+        plt.plot(d['Np'], rel_dvc, 'o', ms=10, color=colors[name])
         
-        plt.xlabel('$r_{current}$ / $r_{apo}$')
-        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
-        
+        #plt.xlabel('$r_{peri}$ (kpc)')
+        plt.xlabel('Completed periods')
+        plt.ylabel(ylabel)
+
         plt.sca(ax[1][2])
         plt.plot(dlambda, rel_dvc, 'o', ms=10, color=colors[name])
         
         plt.xlabel('$\Delta$ $\\xi$ (deg)')
-        plt.ylabel('min ($\Delta$ $V_c$ / $V_c$)')
+        plt.ylabel(ylabel)
     
     plt.sca(ax[0][0])
     plt.legend(fontsize='small', handlelength=0.1)
     
     plt.tight_layout()
-    plt.savefig('../plots/delta_vc_correlations.pdf')
+    plt.savefig('../plots/delta_vc{}_correlations.pdf'.format(elabel))
 
 # flattening
 def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='all', j=0, align=True, fast=False, scale=False):
