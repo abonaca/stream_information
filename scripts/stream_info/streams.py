@@ -84,7 +84,7 @@ def show_streams():
 
 def wrap_angles(name):
     """Save wrap angle in a stream params file"""
-    angles = {'gd1': 360, 'tri': 180, 'atlas': 180, 'ps1a': 180, 'ps1b': 180, 'ps1c': 360, 'ps1e': 360, 'ophiuchus': 360}
+    angles = {'gd1': 360, 'tri': 180, 'atlas': 180, 'ps1a': 180, 'ps1b': 180, 'ps1c': 360, 'ps1e': 360, 'ophiuchus': 360, 'kwando': 180}
     
     f = open('../data/mock_{}.params'.format(name), 'rb')
     mock = pickle.load(f)
@@ -98,20 +98,17 @@ def wrap_angles(name):
 def progenitor_prior(name):
     """Save (inverse) uncertainties on progenitor positions in a stream params file"""
     
-    priors = {'gd1': np.zeros(6),
-              'tri': np.zeros(6),
-              'atlas': np.zeros(6),
-              'pal5': np.array([0.1, 0.1, 1, 1, 0.2, 0.2])**-2,
-              'ps1a': np.zeros(6),
-              'ps1b': np.zeros(6),
-              'ps1c': np.zeros(6),
-              'ps1e': np.zeros(6),
-              'ophiuchus': np.zeros(6),
+    priors_dict = {'pal5': np.array([0.1, 0.1, 1, 1, 0.2, 0.2])**-2
               }
+    
+    if name in priors_dict.keys():
+        priors = priors_dict[name]
+    else:
+        priors = np.zeros(6)
     
     f = open('../data/mock_{}.params'.format(name), 'rb')
     mock = pickle.load(f)
-    mock['prog_prior'] = priors[name]
+    mock['prog_prior'] = priors
     f.close()
     
     f = open('../data/mock_{}.params'.format(name), 'wb')
@@ -705,6 +702,7 @@ def find_progenitor(name='gd1', test=False, verbose=False, cont=False, nstep=100
     if test:
         print(lnprob_prog(pinit, potential, pparams, mf, dt, nstar, obsmode, mod_err, observer, vobs, footprint, observed, ranges))
         pbest = pinit
+        print(pbest)
     
     else:
         dname = '../data/chains/progenitor_{}'.format(name)
@@ -790,7 +788,8 @@ def find_progenitor(name='gd1', test=False, verbose=False, cont=False, nstep=100
 def get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, mod_err, observer, vobs, footprint, ranges):
     """Pick the best direction for initializing progenitor velocity vector"""
 
-    Ndim = np.shape(observed.obs)[0]
+    colnan = np.array([np.any(np.isfinite(observed.obs[x])) for x in range(6)])
+    Ndim = np.sum(colnan)
     
     if Ndim<4:
         N = 50
@@ -1049,12 +1048,11 @@ def get_mostdense_point(X, Y):
 def get_progenitor(stream, dp=np.nan, fc=0.8, **kwargs):
     """Return a guess for the phase space coordinates of the progenitor"""
     
-    #for k in kwargs:
-        #print(k, kwargs[k])
-    
     pparams = kwargs['pparams']
     observer = kwargs['observer']
-    Ndim = np.shape(stream.obs)[0]
+    
+    colnan = np.array([np.any(np.isfinite(stream.obs[x])) for x in range(6)])
+    Ndim = np.sum(colnan)
     
     # guess position
     # get point with maximal density
