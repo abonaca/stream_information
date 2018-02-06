@@ -624,12 +624,15 @@ def stream_coords(name='atlas'):
     p_ = dp_['p']
     var = dp_['var']
     poly = np.poly1d(p_)
+    if np.any(ts['ra']>360):
+        wrapped = True
     
     if var=='ra':
         x = np.linspace(np.min(ts['ra']), np.max(ts['ra']), 1000)
     else:
         x = np.linspace(np.min(ts['dec']), np.max(ts['dec']), 1000)
     y = np.polyval(poly, x)
+        
     if var=='ra':
         q = sph2cart(np.radians(x), np.radians(y))
     else:
@@ -664,6 +667,9 @@ def stream_coords(name='atlas'):
     plt.close()
     plt.figure()
     
+    if wrapped:
+        ind = ts['ra']>180
+        ts['ra'][ind] = ts['ra'][ind] - 360
     plt.plot(tout['ra'], tout['dec'], 'k.')
     plt.plot(ts['ra'], ts['dec'], 'ro')
 
