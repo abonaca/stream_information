@@ -490,9 +490,6 @@ class Stream():
         t.write(fname, format='ascii.commented_header')
 
 
-
-    
-
 def reformat_stream_obs(name):
     """Reformat legacy table of stream observational data to the standardized library version"""
     
@@ -950,7 +947,7 @@ def bestfit(name='Sty'):
     plt.gca().invert_xaxis()
 
     plt.tight_layout()
-    
+
 
 def lnprob_prog(x, potential, pparams, mf, dt, nstar, obsmode, mod_err, observer, vobs, footprint, observed, ranges):
     """"""

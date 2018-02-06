@@ -367,6 +367,9 @@ def poly_tracks(Ncoord=20):
             ra = np.linspace(minmax[name][0], minmax[name][1], Ncoord)
             dec = p(ra)
         
+        #if np.any(ra>360):
+            #ra -= 360
+        
         tout = Table(np.array([ra, dec]).T, names=('ra', 'dec'))
         tout.write('../data/streams/{}_coords.fits'.format(name), overwrite=True)
         
