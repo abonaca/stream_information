@@ -697,10 +697,12 @@ def find_progenitor(name='gd1', test=False, verbose=False, cont=False, nstep=100
     plt.tight_layout()
     
     # initialize progenitor properties
-    x0_obs, v0_obs = get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, wangle, mod_err, observer, vobs, footprint, ranges)
-    plist = [i.value for i in x0_obs] + [i.value for i in v0_obs] + [4, 3]
-    pinit = np.array(plist)
-    nfree = np.size(pinit)
+    if test | ((not test) & (not cont)):
+        x0_obs, v0_obs = get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, wangle, mod_err, observer, vobs, footprint, ranges)
+        plist = [i.value for i in x0_obs] + [i.value for i in v0_obs] + [4, 3]
+        pinit = np.array(plist)
+    #nfree = np.size(pinit)
+    nfree = 8
     
     if test:
         print(lnprob_prog(pinit, potential, pparams, mf, dt, nstar, obsmode, wangle, mod_err, observer, vobs, footprint, observed, ranges))
@@ -795,7 +797,7 @@ def get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, w
     Ndim = np.sum(colnan)
     
     if Ndim<4:
-        N = 50
+        N = 200
         u_ = np.random.random(N)
         v_ = np.random.random(N)
         theta = np.arccos(2*u_ - 1)
@@ -810,6 +812,7 @@ def get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, w
         v0 = [None]*ndp
     
         for i in range(ndp):
+            fc = np.random.random(1)*0.8 + 0.2 
             x0_obs, v0_obs = get_progenitor(observed, dp=dp_list[i], observer=mw_observer, pparams=pparams)
             plist = [j.value for j in x0_obs] + [j.value for j in v0_obs] + [4, 3]
             pinit = np.array(plist)
