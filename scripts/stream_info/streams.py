@@ -667,6 +667,7 @@ def make_script(name, t=1*u.h, nth=4, mem=1000, queue='conroy', manager='slurm',
     if verbose:
         print(fmt_script)
 
+
 def find_progenitor(name='gd1', test=False, verbose=False, cont=False, nstep=100, seeds=[905, 63], nth=4, mpi=False, potential='gal', pparams=pparams_fid[:], mf=1e-2*u.Msun, dt=1*u.Myr, nstar=200, observer=mw_observer, vobs=vsun, obsmode='equatorial', mod_err=[0.5*u.deg, 0.5*u.deg, 0.5*u.kpc, 2*u.km/u.s, 0.1*u.mas/u.yr, 0.1*u.mas/u.yr], footprint=None, nwalkers=100, psig=np.ones(8)*1e-2, ranges=np.array([[-180, 360], [-90, 90], [0,100], [-500, 500], [-50, 50], [-50, 50], [2,6], [1,7]])):
     """"""
     
