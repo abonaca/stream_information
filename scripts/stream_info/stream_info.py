@@ -703,9 +703,10 @@ def endpoints(name):
     
     # rotate endpoints
     R = mock['rotmatrix']
-    xi, eta  = myutils.rotate_angles(ra, dec, R)
+    #xi, eta  = myutils.rotate_angles(ra, dec, R)
+    xi, eta  = myutils.rotate_angles(stream.obs[0], stream.obs[1], R)
     mock['ra_range'] = ra
-    mock['xi_range'] = xi
+    mock['xi_range'] = np.percentile(xi, [10,90])
     f.close()
     
     f = open('../data/mock_{}.params'.format(name), 'wb')
@@ -1927,7 +1928,7 @@ def get_crb(name, Nstep=10, vary=['progenitor', 'bary', 'halo']):
     """"""
     
     store_progparams(name)
-    wrap_angles(name)
+    wrap_angles(name, save=True)
     progenitor_prior(name)
     
     find_greatcircle(name=name)
@@ -2753,7 +2754,7 @@ def summary(n, mode='scalar', vary=['progenitor', 'bary', 'halo', 'dipole', 'qua
 # Summary
 def full_names():
     """"""
-    full = {'gd1': 'GD-1', 'atlas': 'ATLAS', 'tri': 'Triangulum', 'ps1a': 'PS1A', 'ps1b': 'PS1B', 'ps1c': 'PS1C', 'ps1d': 'PS1D', 'ps1e': 'PS1E', 'ophiuchus': 'Ophiuchus'}
+    full = {'gd1': 'GD-1', 'atlas': 'ATLAS', 'tri': 'Triangulum', 'ps1a': 'PS1A', 'ps1b': 'PS1B', 'ps1c': 'PS1C', 'ps1d': 'PS1D', 'ps1e': 'PS1E', 'ophiuchus': 'Ophiuchus', 'hermus': 'Hermus', 'kwando': 'Kwando', 'orinoco': 'Orinoco', 'sangarius': 'Sangarius', 'scamander': 'Scamander'}
     return full
 
 def full_name(name):
@@ -2764,7 +2765,7 @@ def full_name(name):
 
 def get_done():
     """"""
-    done = ['gd1', 'tri', 'atlas', 'ps1a', 'ps1c', 'ps1e', 'ophiuchus']
+    done = ['gd1', 'tri', 'atlas', 'ps1a', 'ps1c', 'ps1e', 'ophiuchus', 'kwando', 'orinoco', 'sangarius', 'hermus', 'ps1d']
     return done
 
 def period(name):
@@ -3040,7 +3041,7 @@ def delta_vc_correlations(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='
         plt.sca(ax[0][2])
         ecc = np.sqrt(1 - (d['rperi']/d['rapo'])**2)
         ecc = d['ecc']
-        plt.plot(ecc, rel_dvc, 'o', ms=10, color=colors[name])
+        plt.plot(ecc, rel_dvc, 'o', ms=10, color=colors[name], label=labels[name])
         
         plt.xlabel('Eccentricity')
         plt.ylabel(ylabel)
@@ -3064,14 +3065,14 @@ def delta_vc_correlations(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='
         plt.xlabel('$\Delta$ $\\xi$ (deg)')
         plt.ylabel(ylabel)
     
-    plt.sca(ax[0][0])
+    plt.sca(ax[0][2])
     plt.legend(fontsize='small', handlelength=0.1)
     
     plt.tight_layout()
     plt.savefig('../plots/delta_vc{}_correlations.pdf'.format(elabel))
 
 # flattening
-def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='all', j=0, align=True, fast=False, scale=False):
+def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', j=0, align=True, fast=False, scale=False):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
     
@@ -3079,6 +3080,12 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducia
     iq = {'x': 2, 'z': 3}
     
     labelq = {'x': '$_x$', 'z': '$_z$'}
+    
+    component = 'halo'
+    pparams0 = pparams_fid
+    pid_comp, dp_fid2, vlabel2 = get_varied_pars(component)
+    Np = len(pid_comp)
+    pid_crb = myutils.wherein(np.array(pid), np.array(pid_comp))
     
     names = get_done()
     labels = full_names()
@@ -3090,8 +3097,6 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducia
     for name in names:
     #for n in [-1,]:
         # read in full inverse CRB for stream modeling
-        #cxi = np.load('../data/crb/bspline_cxi{:s}_{:s}_{:d}_{:s}_{:d}.npy'.format(alabel, errmode, n, vlabel, Ndim))
-        #cxi = np.load('../data/crb/bspline_cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npy'.format(errmode, Ndim, name, align, vlabel))
         fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
         cxi = fm['cxi']
         if fast:
@@ -3099,35 +3104,41 @@ def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducia
         else:
             cx = stable_inverse(cxi)
         
-        # choose the appropriate components:
-        Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
-        if 'progenitor' not in vary:
-            Nprog = 0
-        nstart = {'bary': Nprog, 'halo': Nprog + Nbary, 'dipole': Nprog + Nbary + Nhalo, 'quad': Nprog + Nbary + Nhalo + Ndipole, 'all': Nprog, 'point': 0}
-        nend = {'bary': Nprog + Nbary, 'halo': Nprog + Nbary + Nhalo, 'dipole': Nprog + Nbary + Nhalo + Ndipole, 'quad': Nprog + Nbary + Nhalo + Ndipole + Nquad, 'all': np.shape(cx)[0], 'point': 1}
+        crb_all = np.sqrt(np.diag(cx))
+        crb = [crb_all[pid_crb[i]] for i in range(Np)]
+        crb_frac = [crb_all[pid_crb[i]]/pparams0[pid_comp[i]].value for i in range(Np)]
         
-        if 'progenitor' not in vary:
-            nstart['dipole'] = Npoint
-            nend['dipole'] = Npoint + Ndipole
+        delta_q = crb[iq[q]]
         
-        if component in ['bary', 'halo', 'dipole', 'quad', 'point']:
-            components = [component]
-        else:
-            components = [x for x in vary if x!='progenitor']
-        cq = cx[nstart[component]:nend[component], nstart[component]:nend[component]]
-        if ('progenitor' not in vary) & ('bary' not in vary):
-            cq = cx
-        Npot = np.shape(cq)[0]
+        ## choose the appropriate components:
+        #Nprog, Nbary, Nhalo, Ndipole, Nquad, Npoint = [6, 5, 4, 3, 5, 1]
+        #if 'progenitor' not in vary:
+            #Nprog = 0
+        #nstart = {'bary': Nprog, 'halo': Nprog + Nbary, 'dipole': Nprog + Nbary + Nhalo, 'quad': Nprog + Nbary + Nhalo + Ndipole, 'all': Nprog, 'point': 0}
+        #nend = {'bary': Nprog + Nbary, 'halo': Nprog + Nbary + Nhalo, 'dipole': Nprog + Nbary + Nhalo + Ndipole, 'quad': Nprog + Nbary + Nhalo + Ndipole + Nquad, 'all': np.shape(cx)[0], 'point': 1}
         
-        if scale:
-            dp_opt = read_optimal_step(n, vary)
-            dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
-            dp_unit = unity_scale(dp)
-            scale_vec = np.array([x.value for x in dp_unit[nstart[component]:nend[component]]])
-            scale_mat = np.outer(scale_vec, scale_vec)
-            cqi /= scale_mat
+        #if 'progenitor' not in vary:
+            #nstart['dipole'] = Npoint
+            #nend['dipole'] = Npoint + Ndipole
         
-        delta_q = np.sqrt(cq[iq[q], iq[q]])
+        #if component in ['bary', 'halo', 'dipole', 'quad', 'point']:
+            #components = [component]
+        #else:
+            #components = [x for x in vary if x!='progenitor']
+        #cq = cx[nstart[component]:nend[component], nstart[component]:nend[component]]
+        #if ('progenitor' not in vary) & ('bary' not in vary):
+            #cq = cx
+        #Npot = np.shape(cq)[0]
+        
+        #if scale:
+            #dp_opt = read_optimal_step(n, vary)
+            #dp = [x*y.unit for x,y in zip(dp_opt, dp_fid)]
+            #dp_unit = unity_scale(dp)
+            #scale_vec = np.array([x.value for x in dp_unit[nstart[component]:nend[component]]])
+            #scale_mat = np.outer(scale_vec, scale_vec)
+            #cqi /= scale_mat
+        
+        #delta_q = np.sqrt(cq[iq[q], iq[q]])
 
         # relate to orbit
         orbit = stream_orbit(name=name)
@@ -3431,6 +3442,7 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
     for k in range(Nvar):
         plt.sca(ax[k])
         plt.gca().set_yscale('log')
+        plt.gca().set_xscale('log')
         if relative:
             plt.gca().yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
         
