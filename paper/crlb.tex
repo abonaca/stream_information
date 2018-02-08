@@ -227,11 +227,11 @@ We adopt the optimal step size (red points and vertical lines) as the smallest s
 \end{center}
 \end{figure}
 
-The above prescription for calculating numerical derivatives relies (1) on the ability to evaluate any stream observable at a given position along the stream $\xi$, and (2) on the size of the parameter step $\Delta x$, and we now describe our strategies for addressing these points.
-Our models mimic the inherently discrete nature of streams, being a collection of stars, 
+% The above prescription for calculating numerical derivatives relies (1) on the ability to evaluate any stream observable at a given position along the stream $\xi$, and (2) on the size of the parameter step $\Delta x$, and we now describe our strategies for addressing these points.
+% Our models mimic the inherently discrete nature of streams, being a collection of stars, 
 
-- autodiff not done bc using legacy integrator
-- also mention in discussion as the main technical improvement left for future work
+% - autodiff not done bc using legacy integrator
+% - also mention in discussion as the main technical improvement left for future work
 
 \subsection{Sets of observational data}
 \label{sec:datasets}
@@ -292,8 +292,20 @@ More realistic data can be analyzed in the same way to produce specific predicti
 \section{Results}
 
 \subsection{Individual stream}
-- covariances
-- triangle plot (different data availability)
+% - covariances
+% - triangle plot (different data availability)
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=\textwidth]{crb_correlations.pdf}
+\caption{A visualization of correlations between Cram\'er--Rao bounds (ellipses) on all 15 of the model parameters for an ATLAS-like stream.
+The lightest colored ellipses show constraints achievable when only on-sky positions and distances are known, medium shaded ellipses are constraints produced with an addition of radial velocities, while the darkest ellipses are constraints with the full 6-D phase space information on stream members.
+The addition of kinematic data drastically improves constraints on most of the parameters, indicating that kinematics are essential for meaningful recovery of the Galactic potential.
+However, streams seem to contain little information on the baryonic matter components of the Galaxy -- these constraints do not improve with more data and remain prior-dominated.
+}
+\label{fig:crb_correlations}
+\end{center}
+\end{figure}
 
 % \begin{figure}
 % \begin{center}
@@ -312,32 +324,81 @@ More realistic data can be analyzed in the same way to produce specific predicti
 % \end{figure}
 
 \subsection{Comparison between streams}
-- compare CRB ellipses for halo parameters between several streams
+% - compare CRB ellipses for halo parameters between several streams
+
+\begin{figure}
+\begin{center}
+\includegraphics[height=0.45\textheight]{crb_onsky_bary.pdf}
+\hspace{1cm}
+\includegraphics[height=0.45\textheight]{crb_onsky_halo.pdf}
+\caption{Comparison of precision in different model parameters attainable by 6-D observations of different streams.
+Each panel shows on-sky positions of the analyzed streams, color-coded by the relative precision of a model parameter indicated in the upper right corner, with parameters on the bulge and the disk on the left and the halo parameters on the right.
+Most of the baryonic parameters are set by the prior ($10\%$), which is only improved upon for the disk mass (middle left).
+The constraints on halo parameters were obtained without including prior information, and are more diverse, even for streams that appear close in the sky.
+Different streams are sensitive to different parameters, although no stream in this sample manages to constrain the scale radius better than $20\%$.
+}
+\label{fig:sky_precision}
+\end{center}
+\end{figure}
 
 \subsection{Joint constraints}
-- CRB on halo parameters using different combinations of streams
+% - CRB on halo parameters using different combinations of streams
 
+\begin{figure}
+\begin{center}
+\includegraphics[width=\textwidth]{nstream_improvement.pdf}
+\caption{Constraints on halo parameters improve when multiple streams are combined.
+Each panel shows Cram\'er--Rao bounds on a halo parameter, as a function of the number of streams used to derive the bounds.
+Gray points show constraints from a single combination of streams, while white points are the median across all the possible combinations for a given number of streams.
+Combining any ten streams would provide percent-level precision in all parameters, except the scale radius, which is constrained at the $\sim10\%$-level.
+We also label the three streams with best individual constraints on halo parameters, the best pair and the best triple.
+For the scale velocity, the best pair and triple are a combination of the streams that have best individual constraints.
+However, for the halo shape parameters, combinations of the best individual streams do not provide the tightest pair or triple constraints, indicating that streams compound the information content in non-trivial ways.
+}
+\label{fig:nstream_summary}
+\end{center}
+\end{figure}
 
 \section{Discussion}
 
 \subsection{Physical interpretation of constraints}
-- propagating properties
+% - propagating properties
 
+\begin{figure}
+\begin{center}
+\includegraphics[width=\textwidth]{orbit_correlations.pdf}
+\caption{Dependence of the precision in recovery of different model parameters (rows, from top: disk mass, halo scale velocity, halo scale radius, halo $x$ and $z$-axis flattening) as a function of different stream properties (columns, from left: stream length, apocentric radius, median $x$ and $z$-components of the angular momentum).
+The most robust trend is with stream length, as long streams in general produce more precise constraints.
+The disk mass is better constrained by streams whose angular momentum vector is in the disk plane.}
+\label{fig:orbit_correlations}
+\end{center}
+\end{figure}
 
-- enclosed mass
-- flattening
+\begin{figure}
+\begin{center}
+\includegraphics[width=\textwidth]{vc_crb.pdf}
+\caption{Fractional constraints on the circular velocity by 6-D phase space data on stellar streams (with lighter colors representing streams with larger apocenters).
+Precision in recovered circular velocity as a function of distance from the Galactic center (\emph{left}).
+Streams vary in their ability to constrain circular velocity (thicker lines are used for more competitive constraints), but all have a single Galactocentric distance where the constraint is maximized.
+Long streams provide tighter constraints (\emph{center}), while the location of the best constraint correlates with the orbital apocenter (\emph{right}).
+}
+\label{fig:vc}
+\end{center}
+\end{figure}
+
+% - enclosed mass
+% - flattening
 
 \subsection{More flexible potential models}
 
 
-- end with the need for a model that is both flexible spatially and realistic (ie, has a good basis, but also evolves in time)
-- can we make the case with ophiuchus?
-- posit whether galaxy simulations would provide good models, or just a basis in which we evolve individual subhalos
+% - end with the need for a model that is both flexible spatially and realistic (ie, has a good basis, but also evolves in time)
+% - can we make the case with ophiuchus?
+% - posit whether galaxy simulations would provide good models, or just a basis in which we evolve individual subhalos
 
 \subsection{Forecasting and observation planning}
 
-- different observing modes
-% \subsection{Different observing modes}
+% - different observing modes
 
 
 \emph{Acknowledgements:} This work was improved upon following the thoughtful suggestions of Dan Foreman-Mackey, Kathryn Johnston, Nikhil Padmanabhan and Hans-Walter Rix, and it is a pleasure to thank them.
