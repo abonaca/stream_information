@@ -1527,6 +1527,9 @@ def define_obsmodes():
     obsmodes['fiducial'] = {'sig_obs': np.array([0.1, 2, 5, 0.1, 0.1]), 'Ndim': [3,4,6]}
     obsmodes['binospec'] = {'sig_obs': np.array([0.1, 2, 10, 0.1, 0.1]), 'Ndim': [3,4,6]}
     obsmodes['hectochelle'] = {'sig_obs': np.array([0.1, 2, 1, 0.1, 0.1]), 'Ndim': [3,4,6]}
+    obsmodes['desi'] = {'sig_obs': np.array([0.1, 2, 10, np.nan, np.nan]), 'Ndim': [4,]}
+    obsmodes['gaia'] = {'sig_obs': np.array([0.1, 0.2, 10, 0.2, 0.2]), 'Ndim': [6,]}
+    obsmodes['exgal'] = {'sig_obs': np.array([0.5, np.nan, 20, np.nan, np.nan]), 'Ndim': [3,]}
     
     pickle.dump(obsmodes, open('../data/observing_modes.info','wb'))
 
@@ -3435,10 +3438,12 @@ def multi_pdf(Nmulti=3, Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
     
     pp.close()
 
-def collate(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='halo', align=True):
+def collate(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='halo', align=True, Nmax=None):
     """"""
     done = get_done()
     N = len(done)
+    if Nmax==None:
+        Nmax = N
     t = np.arange(N, dtype=np.int64).tolist()
     
     pid, dp_fid, vlabel = get_varied_pars(vary)
@@ -3474,7 +3479,7 @@ def collate(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', com
     params = ['$\Delta$ {}{}'.format(x, y) for x,y in zip(plabels, punits)]
     Nvar = len(pid_comp)
 
-    for i in range(1, N+1):
+    for i in range(1, Nmax+1):
         Nmulti = i
         all_comb = list(itertools.combinations(t, Nmulti))
         comb = sorted(list(set(all_comb)))
@@ -3653,7 +3658,7 @@ def corner_ellipses(cx, dax=2, color='k', alpha=1, lw=2, fig=None, ax=None, auto
 # compare observing modes
 ###
 
-def comp_errmodes(n, errmodes=['binospec', 'fiducial', 'hectochelle'], Ndim=4, vary=['progenitor', 'bary', 'halo'], plot='halo', align=True, fast=False, scale=False):
+def comp_errmodes_old(n, errmodes=['binospec', 'fiducial', 'hectochelle'], Ndim=4, vary=['progenitor', 'bary', 'halo'], plot='halo', align=True, fast=False, scale=False):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
     dp_opt = read_optimal_step(n, vary)
@@ -3744,6 +3749,66 @@ def comp_errmodes(n, errmodes=['binospec', 'fiducial', 'hectochelle'], Ndim=4, v
     
     plt.tight_layout()
     plt.savefig('../plots/crb_triangle_alldim{:s}_comparison_{:d}_{:s}_{:s}.pdf'.format(alabel, n, vlabel, plot))
+
+def comp_obsmodes(vary=['progenitor', 'bary', 'halo'], align=True, component='halo'):
+    """Compare CRBs from different observing modes"""
+    
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    
+    pid_comp, dp_fid2, vlabel2 = get_varied_pars(component)
+    Nvar = len(pid_comp)
+    plabels, units = get_parlabel(pid_comp)
+    punits = [' (%)' for x in units]
+    params = ['$\Delta$ {}{}'.format(x, y) for x,y in zip(plabels, punits)]
+    
+    names = get_done()
+    
+    errmodes = ['desi', 'gaia', 'fiducial']
+    Ndims = [4, 6, 6]
+    labels = {'desi': 'DESI', 'gaia': 'Gaia', 'fiducial': 'Fiducial'}
+    
+    #errmodes = ['fiducial', 'gaia', 'desi']
+    #Ndims = [6,6,4]
+    
+    da = 4
+    
+    plt.close()
+    fig, ax = plt.subplots(Nvar, 1, figsize=(da*2, da*Nvar), sharex=True)
+    
+    for i in range(3):
+        errmode = errmodes[i]
+        Ndim = Ndims[i]
+        coll = np.load('../data/crb/cx_collate_multi1_{:s}{:1d}_a{:1d}_{:s}_{:s}.npz'.format(errmode, Ndim, align, vlabel, component))
+        
+        lw = (0.25*i+0.5)*2
+        color = mpl.cm.bone((2-i)/3)
+        
+        for j in range(Nvar):
+            plt.sca(ax[j])
+            plt.plot(coll['p_rel'][:,j]*100, '-', lw=lw, color=color, label=labels[errmode])
+    
+    for j in range(Nvar):
+        plt.sca(ax[j])
+        plt.ylabel(params[j])
+        plt.gca().set_yscale('log')
+        plt.gca().yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
+        plt.gca().xaxis.set_major_locator(plt.NullLocator())
+    
+    plt.sca(ax[0])
+    plt.legend(loc=2, fontsize='small', handlelength=0.8, frameon=False)
+    
+    # stream names
+    plt.sca(ax[Nvar-1])
+    y0, y1 = plt.gca().get_ylim()
+    fp = 0.8
+    yp = y0 + fp*(y1-y0)
+    
+    for e, name in enumerate(names):
+        txt = plt.text(e, yp, name, ha='center', va='top', rotation=90, fontsize='small', color='0.2')
+        txt.set_bbox(dict(facecolor='w', alpha=0.7, ec='none'))
+    
+    plt.tight_layout()
+    plt.savefig('../plots/obsmode_comparison.pdf')
 
 
 # progenitor's orbit
