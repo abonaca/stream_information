@@ -3770,10 +3770,10 @@ def comp_obsmodes(vary=['progenitor', 'bary', 'halo'], align=True, component='ha
     #errmodes = ['fiducial', 'gaia', 'desi']
     #Ndims = [6,6,4]
     
-    da = 4
+    da = 3
     
     plt.close()
-    fig, ax = plt.subplots(Nvar, 1, figsize=(da*2, da*Nvar), sharex=True)
+    fig, ax = plt.subplots(Nvar, 1, figsize=(da*3, da*Nvar), sharex=True)
     
     for i in range(3):
         errmode = errmodes[i]

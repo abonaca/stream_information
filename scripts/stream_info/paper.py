@@ -452,6 +452,9 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
     plt.savefig('../paper/nstream_improvement.pdf')
 
 
+# applications
+
+
 # interpretation
 def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=True):
     """Show how CRBs on different potential parameters depend on orbital properties of the progenitor"""
@@ -531,7 +534,7 @@ def vc():
     plt.sca(ax[2])
     a = np.linspace(0,90,100)
     plt.plot(a, a, 'k-')
-    plt.scatter(t['rapo'], t['rmin'], c=fapo, cmap='bone', vmin=0, vmax=1)
+    plt.scatter(t['rcur'], t['rmin'], c=fapo, cmap='bone', vmin=0, vmax=1)
     
     plt.xlabel('$R_{apo}$ (kpc)')
     plt.ylabel('$R_{min}$ (kpc)')
