@@ -482,7 +482,7 @@ def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', 
     ylabels = ['log $M_d$', '$V_h$', '$R_h$', '$q_x$', '$q_z$']
     dylabels = ['$\Delta$ {}'.format(s) for s in ylabels]
     
-    mask = t['name']!='ophiuchuss'
+    mask = t['name']!='ophiuchus'
     
     plt.close()
     fig, ax = plt.subplots(nrow, ncol, figsize=(ncol*da, nrow*da), sharex='col', sharey='row')
@@ -543,6 +543,54 @@ def vc():
     plt.tight_layout()
     plt.savefig('../paper/vc_crb.pdf')
 
+def ar(current=False):
+    """"""
+    t = Table.read('../data/crb/ar_orbital_summary.fits')
+    N = len(t)
+    fapo = t['rapo']/np.max(t['rapo'])
+    fapo = t['rapo']/100
+    flen = t['length']/np.max(t['length']) + 0.1
+    
+    plt.close()
+    fig, ax = plt.subplots(1, 3, figsize=(15,5))
+    
+    for i in range(N):
+        color = mpl.cm.bone(fapo[i])
+        lw = flen[i] * 5
+        
+        plt.sca(ax[0])
+        plt.plot(t['r'][i], t['ar'][i], '-', color=color, lw=lw)
+        
+    plt.xlabel('R (kpc)')
+    plt.ylabel('$\Delta$ $a_r$ / $a_r$')
+    plt.ylim(0, 2.5)
+    
+    plt.sca(ax[1])
+    plt.scatter(t['length'], t['armin'], c=fapo, cmap='bone', vmin=0, vmax=1)
+    
+    plt.xlabel('Length (deg)')
+    plt.ylabel('min $\Delta$ $a_r$')
+    plt.ylim(0, 1)
+    
+    plt.sca(ax[2])
+    a = np.linspace(0,90,100)
+    plt.plot(a, a, 'k-')
+    plt.plot(a, 2*a, 'k--')
+    plt.plot(a, 3*a, 'k:')
+    if current:
+        plt.scatter(t['rcur'], t['rmin'], c=fapo, cmap='bone', vmin=0, vmax=1)
+        plt.xlabel('$R_{cur}$ (kpc)')
+    else:
+        plt.scatter(t['rapo'], t['rmin'], c=fapo, cmap='bone', vmin=0, vmax=1)
+        plt.xlabel('$R_{apo}$ (kpc)')
+    plt.ylabel('$R_{min}$ (kpc)')
+    
+    plt.xlim(0,90)
+    plt.ylim(0,90)
+    
+    
+    plt.tight_layout()
+    plt.savefig('../plots/ar_crb_current{:d}.pdf'.format(current))
 
 
 

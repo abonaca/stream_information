@@ -2253,6 +2253,19 @@ def acc_cart(x, components=['bary', 'halo', 'dipole']):
     
     return acart
 
+def acc_rad(x, components=['bary', 'halo', 'dipole']):
+    """Return radial acceleration"""
+    
+    r = np.linalg.norm(x) * x.unit
+    theta = np.arccos(x[2].value/r.value)
+    phi = np.arctan2(x[1].value, x[0].value)
+    trans = np.array([np.sin(theta)*np.cos(phi), np.sin(theta)*np.sin(phi), np.cos(theta)])
+    
+    a_cart = acc_cart(x, components=components)
+    a_rad = np.dot(a_cart, trans)
+    
+    return a_rad
+
 def ader_cart(x, components=['bary', 'halo', 'dipole']):
     """"""
     dacart = np.empty((3,0))
@@ -2283,6 +2296,18 @@ def apder_cart(x, components=['bary', 'halo', 'dipole']):
     
     return dacart
 
+def apder_rad(x, components=['bary', 'halo', 'dipole']):
+    """Return dar/dx_pot (radial acceleration/potential parameters) evaluated at vector x"""
+    
+    r = np.linalg.norm(x) * x.unit
+    theta = np.arccos(x[2].value/r.value)
+    phi = np.arctan2(x[1].value, x[0].value)
+    trans = np.array([np.sin(theta)*np.cos(phi), np.sin(theta)*np.sin(phi), np.cos(theta)])
+    
+    dadq_cart = apder_cart(x, components=components)
+    dadq_rad = np.einsum('ij,i->j', dadq_cart, trans)
+    
+    return dadq_rad
 
 def crb_acart(n, Ndim=6, vary=['progenitor', 'bary', 'halo', 'dipole', 'quad'], component='all', align=True, d=20, Nb=50, fast=False, scale=False, relative=True, progenitor=False, errmode='fiducial'):
     """"""
@@ -2769,6 +2794,7 @@ def full_name(name):
 def get_done():
     """"""
     done = ['gd1', 'tri', 'atlas', 'ps1a', 'ps1c', 'ps1e', 'ophiuchus', 'kwando', 'orinoco', 'sangarius', 'hermus', 'ps1d']
+    done = ['gd1', 'tri', 'atlas', 'ps1a', 'ps1c', 'ps1e', 'kwando', 'orinoco', 'sangarius', 'hermus', 'ps1d']
     return done
 
 def store_mocks():
@@ -3090,7 +3116,6 @@ def collate_orbit(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial
     tname = np.chararray(N, itemsize=Nmax)
     vcmin = np.empty(N)
     r_vcmin = np.empty(N)
-    #vc, r
     
     Labs = np.empty((N,3))
     lx = np.empty(N)
@@ -3144,6 +3169,146 @@ def collate_orbit(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial
     t = Table([tname, vcmin, r_vcmin, dvc, vc, r, Labs, Lmod, lx, ly, lz, period, Nperiod, length, ecc, rperi, rapo, rcur], names=('name', 'vcmin', 'rmin', 'dvc', 'vc', 'r', 'Labs', 'Lmod', 'lx', 'ly', 'lz', 'period', 'Nperiod', 'length', 'ecc', 'rperi', 'rapo', 'rcur'))
     t.pprint()
     t.write('../data/crb/vc_orbital_summary.fits', overwrite=True)
+
+# radial acceleration
+def ar_r(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=True):
+    """Calculate precision in radial acceleration as a function of galactocentric radius"""
+    
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    components = [c for c in vary if c!='progenitor']
+    
+    names = get_done()
+    N = len(names)
+    Nmax = len(max(names, key=len))
+    
+    tname = np.chararray(N, itemsize=Nmax)
+    armin = np.empty(N)
+    r_armin = np.empty(N)
+    
+    Labs = np.empty((N,3))
+    lx = np.empty(N)
+    ly = np.empty(N)
+    lz = np.empty(N)
+    Lmod = np.empty(N)
+    
+    period_ = np.empty(N)
+    Nperiod = np.empty(N)
+    ecc = np.empty(N)
+    rperi = np.empty(N)
+    rapo = np.empty(N)
+    rcur = np.empty(N)
+    length = np.empty(N)
+    
+    plt.close()
+    fig, ax = plt.subplots(1,3, figsize=(15,5))
+    
+    for e, name in enumerate(names[:]):
+        # read in full inverse CRB for stream modeling
+        fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
+        cxi = fm['cxi']
+        cx = stable_inverse(cxi)
+        
+        cq = cx[6:,6:]
+        Npot = np.shape(cq)[0]
+        
+        mock = pickle.load(open('../data/mock_{}.params'.format(name), 'rb'))
+        x0 = mock['x0']
+        xeq = coord.SkyCoord(ra=x0[0], dec=x0[1], distance=x0[2])
+        xg = xeq.transform_to(coord.Galactocentric)
+
+        rg = np.linalg.norm(np.array([xg.x.value, xg.y.value, xg.z.value]))
+        theta = np.arccos(xg.z.value/rg)
+        phi = np.arctan2(xg.y.value, xg.x.value)
+        
+        Npix = 300
+        r = np.linspace(0.1, 200, Npix)
+        xin = np.array([r*np.sin(theta)*np.cos(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(theta)]).T
+        
+        arad_pix = np.empty((Npix, 1))
+        af = np.empty(Npix)
+        derf = np.empty((Npix, Npot))
+        
+        for i in range(Npix):
+            xi = xin[i]*u.kpc
+            a = acc_rad(xi, components=components)
+            af[i] = a
+            
+            dadq = apder_rad(xi, components=components)
+            derf[i] = dadq
+        
+        ca = np.matmul(derf, np.matmul(cq, derf.T))
+        
+        # relate to orbit
+        orbit = stream_orbit(name=name)
+        ro = np.linalg.norm(orbit['x'].to(u.kpc), axis=0)
+        rmin = np.min(ro)
+        rmax = np.max(ro)
+        rcur_ = ro[0]
+        r0 = ro[-1]
+        
+        e_ = (rmax - rmin)/(rmax + rmin)
+        l = np.cross(orbit['x'].to(u.kpc), orbit['v'].to(u.km/u.s), axisa=0, axisb=0)
+        
+        p, Np = period(name)
+        
+        Nx = Npot
+        Nw = Npix
+        vals, vecs = la.eigh(ca, eigvals=(Nw - Nx - 2, Nw - 1))
+        vcomb = np.sqrt(np.sum(vecs**2*vals, axis=1))
+        
+        # plotting
+        plt.sca(ax[0])
+        plt.plot(r, vcomb/np.abs(af), '-')
+        plt.ylim(0,2)
+        
+        plt.sca(ax[1])
+        plt.plot(r/rcur_, vcomb/np.abs(af), '-')
+        plt.xlim(0,5)
+        plt.ylim(0,2)
+    
+        plt.sca(ax[2])
+        plt.plot(r/rmax, vcomb/np.abs(af), '-')
+        plt.xlim(0,5)
+        plt.ylim(0,2)
+        
+        # store
+        idmin = np.argmin(vcomb / np.abs(af))
+
+        dlambda = np.max(mock['xi_range']) - np.min(mock['xi_range'])
+        
+        tname[e] = name
+        armin[e] = (vcomb / np.abs(af))[idmin]
+        r_armin[e] = r[idmin]
+        
+        if e==0:
+            Nr = np.size(r)
+            dar = np.empty((N, Nr))
+            ar = np.empty((N, Nr))
+            rall = np.empty((N, Nr))
+        
+        dar[e] = vcomb
+        ar[e] = vcomb / np.abs(af)
+        rall[e] = r
+        
+        Labs[e] = np.median(np.abs(l), axis=0)
+        Lmod[e] = np.median(np.linalg.norm(l, axis=1))
+        lx[e] = np.abs(np.median(l[:,0]/np.linalg.norm(l, axis=1)))
+        ly[e] = np.abs(np.median(l[:,1]/np.linalg.norm(l, axis=1)))
+        lz[e] = np.abs(np.median(l[:,2]/np.linalg.norm(l, axis=1)))
+        
+        period_[e] = p
+        Nperiod[e] = Np
+        ecc[e] = e_
+        rperi[e] = rmin
+        rapo[e] = rmax
+        rcur[e] = rcur_
+        length[e] = dlambda
+    
+    t = Table([tname, armin, r_armin, dar, ar, rall, Labs, Lmod, lx, ly, lz, period_, Nperiod, length, ecc, rperi, rapo, rcur], names=('name', 'armin', 'rmin', 'dar', 'ar', 'r', 'Labs', 'Lmod', 'lx', 'ly', 'lz', 'period', 'Nperiod', 'length', 'ecc', 'rperi', 'rapo', 'rcur'))
+    t.pprint()
+    t.write('../data/crb/ar_orbital_summary.fits', overwrite=True)
+    
+    plt.tight_layout()
 
 # flattening
 def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', j=0, align=True, fast=False, scale=False):
