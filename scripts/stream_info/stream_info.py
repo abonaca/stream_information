@@ -1533,6 +1533,28 @@ def define_obsmodes():
     
     pickle.dump(obsmodes, open('../data/observing_modes.info','wb'))
 
+def obsmode_name(mode):
+    """Return full name of the observing mode"""
+    if type(mode) is not list:
+        mode = [mode]
+    
+    full_names = {'fiducial': 'Fiducial',
+                  'binospec': 'Binospec',
+                  'hectochelle': 'Hectochelle',
+                  'desi': 'DESI',
+                  'gaia': 'Gaia',
+                  'exgal': 'Extragalactic'}
+    keys = full_names.keys()
+    
+    names = []
+    for m in mode:
+        if m in keys:
+            name = full_names[m]
+        else:
+            name = m
+        names += [name]
+    
+    return names
 
 # crbs using bspline
 
@@ -3928,29 +3950,33 @@ def comp_obsmodes(vary=['progenitor', 'bary', 'halo'], align=True, component='ha
     
     names = get_done()
     
-    errmodes = ['desi', 'gaia', 'fiducial']
-    Ndims = [4, 6, 6]
-    labels = {'desi': 'DESI', 'gaia': 'Gaia', 'fiducial': 'Fiducial'}
+    errmodes = ['desi', 'gaia', 'fiducial', 'fiducial', 'fiducial']
+    Ndims = [4, 6, 3, 4, 6]
+    Nmode = len(errmodes)
     
     #errmodes = ['fiducial', 'gaia', 'desi']
     #Ndims = [6,6,4]
+
+    labels = {'desi': 'DESI', 'gaia': 'Gaia', 'fiducial': 'Fiducial'}
+    cfrac = {'desi': 0.8, 'gaia': 0.6, 'fiducial': 0.2}
     
     da = 3
+    a = 0.7
     
     plt.close()
     fig, ax = plt.subplots(Nvar, 1, figsize=(da*3, da*Nvar), sharex=True)
     
-    for i in range(3):
+    for i in range(Nmode):
         errmode = errmodes[i]
         Ndim = Ndims[i]
         coll = np.load('../data/crb/cx_collate_multi1_{:s}{:1d}_a{:1d}_{:s}_{:s}.npz'.format(errmode, Ndim, align, vlabel, component))
         
-        lw = (0.25*i+0.5)*2
-        color = mpl.cm.bone((2-i)/3)
+        lw = Ndims[i] * 0.7
+        color = mpl.cm.bone(cfrac[errmodes[i]])
         
         for j in range(Nvar):
             plt.sca(ax[j])
-            plt.plot(coll['p_rel'][:,j]*100, '-', lw=lw, color=color, label=labels[errmode])
+            plt.plot(coll['p_rel'][:,j]*100, '-', alpha=a, lw=lw, color=color, label='{} ({}D)'.format(labels[errmode], Ndims[i]))
     
     for j in range(Nvar):
         plt.sca(ax[j])
@@ -3960,7 +3986,7 @@ def comp_obsmodes(vary=['progenitor', 'bary', 'halo'], align=True, component='ha
         plt.gca().xaxis.set_major_locator(plt.NullLocator())
     
     plt.sca(ax[0])
-    plt.legend(loc=2, fontsize='small', handlelength=0.8, frameon=False)
+    plt.legend(loc=2, fontsize='small', handlelength=0.8, frameon=True)
     
     # stream names
     plt.sca(ax[Nvar-1])

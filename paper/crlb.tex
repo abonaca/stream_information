@@ -228,8 +228,8 @@ We adopt the optimal step size (red points and vertical lines) as the smallest s
 \end{center}
 \end{figure}
 
-% The above prescription for calculating numerical derivatives relies (1) on the ability to evaluate any stream observable at a given position along the stream $\xi$, and (2) on the size of the parameter step $\Delta x$, and we now describe our strategies for addressing these points.
-% Our models mimic the inherently discrete nature of streams, being a collection of stars, 
+The above prescription for calculating numerical derivatives relies (1) on the ability to evaluate any stream observable at a given position along the stream $\xi$, and (2) on the size of the parameter step $\Delta x$, and we now describe our strategies for addressing these points.
+Our models mimic the inherently discrete nature of streams, being a collection of stars, 
 
 % - autodiff not done bc using legacy integrator
 % - also mention in discussion as the main technical improvement left for future work
@@ -242,12 +242,9 @@ We adopt the optimal step size (red points and vertical lines) as the smallest s
 \begin{tabular}{l c c c c c c}
 \hline
 \hline
-Data set & $\sigma_\alpha$ & $\sigma_\delta$ & $\sigma_d$ & $\sigma_{V_r}$ & $\sigma_{\mu_\alpha}$ & $\sigma_{\mu_\alpha}$ \\
+Data set & $\sigma_\eta$ (deg) & $\sigma_d$ (kpc) & $\sigma_{V_r}$ (km\,s$^{-1}$) & $\sigma_{\mu_\alpha}$ (mas\,yr$^{-1}$) & $\sigma_{\mu_\alpha}$ (mas\,yr$^{-1}$) \\
 \hline
-Fiducial & & & & & & \\
-DESI & & & & & N/A & N/A \\
-Gaia & & & & & & \\
-Extragalactic & & & N/A & & N/A & N/A \\
+\input{obsmodes}
 \hline
 \hline
 \end{tabular}
@@ -362,13 +359,6 @@ However, for the halo shape parameters, combinations of the best individual stre
 
 \section{Applications}
 
-\subsection{More flexible potential models}
-
-
-% - end with the need for a model that is both flexible spatially and realistic (ie, has a good basis, but also evolves in time)
-% - can we make the case with ophiuchus?
-% - posit whether galaxy simulations would provide good models, or just a basis in which we evolve individual subhalos
-
 \subsection{Forecasting and observation planning}
 \begin{figure}
 \begin{center}
@@ -378,8 +368,6 @@ However, for the halo shape parameters, combinations of the best individual stre
 \end{center}
 \end{figure}
 % - different observing modes
-
-\section{Discussion}
 
 \subsection{Physical interpretation of constraints}
 % - propagating properties
@@ -396,7 +384,7 @@ The disk mass is better constrained by streams whose angular momentum vector is 
 
 \begin{figure}
 \begin{center}
-\includegraphics[width=\textwidth]{vc_crb.pdf}
+\includegraphics[width=\textwidth]{ar_crb.pdf}
 \caption{Fractional constraints on the circular velocity by 6-D phase space data on stellar streams (with lighter colors representing streams with larger apocenters).
 Precision in recovered circular velocity as a function of distance from the Galactic center (\emph{left}).
 Streams vary in their ability to constrain circular velocity (thicker lines are used for more competitive constraints), but all have a single Galactocentric distance where the constraint is maximized.
@@ -408,6 +396,22 @@ Long streams provide tighter constraints (\emph{center}), while the location of 
 
 % - enclosed mass
 % - flattening
+
+\subsection{More flexible potential models}
+% - acceleration field: residuals
+% - add dipole, quadrupole 
+% 
+% - end with the need for a model that is both flexible spatially and realistic (ie, has a good basis, but also evolves in time)
+% - can we make the case with ophiuchus, or perhaps some of the streams close to the LMC?
+% - posit whether galaxy simulations would provide good models, or just a basis in which we evolve individual subhalos
+
+\section{Discussion}
+% - context of stream constraints so far
+% - improvement in gd1+pal5 as expected?
+% - similarly, pal5+ngc5466 from lux prediction as ours?
+
+
+\section{Summary}
 
 
 \emph{Acknowledgements:} This work was improved upon following the thoughtful suggestions of Dan Foreman-Mackey, Kathryn Johnston, Nikhil Padmanabhan and Hans-Walter Rix, and it is a pleasure to thank them.
