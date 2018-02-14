@@ -470,19 +470,19 @@ def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', 
     c_bary = np.load('../data/crb/cx_collate_multi1_{:s}{:1d}_a{:1d}_{:s}_{:s}.npz'.format(errmode, Ndim, align, vlabel, 'bary'))
     p_bary = c_bary['p_rel']
 
-    p = np.hstack([p_bary[:,2][:,np.newaxis], p_halo])
-    t = Table.read('../data/crb/vc_orbital_summary.fits')
+    p = np.hstack([p_bary[:,2][:,np.newaxis], p_halo, p_halo[:,0][:,np.newaxis]/p_halo[:,1][:,np.newaxis]])
+    t = Table.read('../data/crb/ar_orbital_summary.fits')
     
-    nrow = 5
-    ncol = 4
+    nrow = 6
+    ncol = 5
     da = 2.5
-    cname = ['length', 'rapo', 'lx', 'lz']
+    cname = ['length', 'rcur', 'rapo', 'lx', 'lz']
     
-    xlabels = ['Length (deg)', 'R$_{apo}$ (kpc)', '|L$_x$|/|L|', '|L$_z$|/|L|']
-    ylabels = ['log $M_d$', '$V_h$', '$R_h$', '$q_x$', '$q_z$']
+    xlabels = ['Length (deg)', 'R$_{cur}$ (kpc)', 'R$_{apo}$ (kpc)', '|L$_x$|/|L|', '|L$_z$|/|L|']
+    ylabels = ['log $M_d$', '$V_h$', '$R_h$', '$q_x$', '$q_z$', '$V_h$ / $R_h$']
     dylabels = ['$\Delta$ {}'.format(s) for s in ylabels]
     
-    mask = t['name']!='ophiuchus'
+    mask = t['name']!='ssangarius'
     
     plt.close()
     fig, ax = plt.subplots(nrow, ncol, figsize=(ncol*da, nrow*da), sharex='col', sharey='row')
@@ -492,12 +492,25 @@ def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', 
             plt.sca(ax[i][j])
             plt.plot(t[cname[j]][mask], p[:,i][mask], 'o', ms=5, color='0.2')
             
-            plt.gca().set_yscale('log')
+            corr = scipy.stats.pearsonr(t[cname[j]][mask], p[:,i][mask])
+            #print(corr)
+            txt = plt.text(0.1, 0.1, '{:.3g}'.format(corr[0]), fontsize='x-small', transform=plt.gca().transAxes)
+            txt.set_bbox(dict(facecolor='w', alpha=0.7, ec='none'))
             
             if j==0:
                 plt.ylabel(dylabels[i])
             if i==nrow-1:
                 plt.xlabel(xlabels[j])
+            
+            
+        
+        plt.gca().set_yscale('log')
+        if i==2:
+            plt.ylim(1e-1,1e1)
+        else:
+            plt.ylim(1e-2,1e0)
+        #plt.gca().yaxis.set_major_locator(mpl.ticker.MaxNLocator(2))
+        
     
     plt.tight_layout()
     plt.savefig('../paper/orbit_correlations.pdf')
@@ -544,18 +557,19 @@ def vc():
     plt.savefig('../paper/vc_crb.pdf')
 
 def ar(current=False):
-    """"""
+    """Explore constraints on radial acceleration, along the progenitor line"""
     t = Table.read('../data/crb/ar_orbital_summary.fits')
     N = len(t)
     fapo = t['rapo']/np.max(t['rapo'])
     fapo = t['rapo']/100
-    flen = t['length']/np.max(t['length']) + 0.1
+    flen = t['length']/(np.max(t['length']) + 10)
+    fcolor = fapo
     
     plt.close()
     fig, ax = plt.subplots(1, 3, figsize=(15,5))
     
     for i in range(N):
-        color = mpl.cm.bone(fapo[i])
+        color = mpl.cm.bone(fcolor[i])
         lw = flen[i] * 5
         
         plt.sca(ax[0])
@@ -566,11 +580,11 @@ def ar(current=False):
     plt.ylim(0, 2.5)
     
     plt.sca(ax[1])
-    plt.scatter(t['length'], t['armin'], c=fapo, cmap='bone', vmin=0, vmax=1)
+    plt.scatter(t['length'], t['armin'], c=fcolor, cmap='bone', vmin=0, vmax=1)
     
     plt.xlabel('Length (deg)')
     plt.ylabel('min $\Delta$ $a_r$')
-    plt.ylim(0, 1)
+    #plt.ylim(0, 1)
     
     plt.sca(ax[2])
     a = np.linspace(0,90,100)
@@ -578,10 +592,10 @@ def ar(current=False):
     plt.plot(a, 2*a, 'k--')
     plt.plot(a, 3*a, 'k:')
     if current:
-        plt.scatter(t['rcur'], t['rmin'], c=fapo, cmap='bone', vmin=0, vmax=1)
+        plt.scatter(t['rcur'], t['rmin'], c=fcolor, cmap='bone', vmin=0, vmax=1)
         plt.xlabel('$R_{cur}$ (kpc)')
     else:
-        plt.scatter(t['rapo'], t['rmin'], c=fapo, cmap='bone', vmin=0, vmax=1)
+        plt.scatter(t['rapo'], t['rmin'], c=fcolor, cmap='bone', vmin=0, vmax=1)
         plt.xlabel('$R_{apo}$ (kpc)')
     plt.ylabel('$R_{min}$ (kpc)')
     
@@ -591,6 +605,28 @@ def ar(current=False):
     
     plt.tight_layout()
     plt.savefig('../plots/ar_crb_current{:d}.pdf'.format(current))
+    if not current:
+        plt.savefig('../paper/ar_crb.pdf')
 
 
-
+# tables
+def table_obsmodes(verbose=True):
+    """Save part of the latex table with information on observing modes"""
+    
+    obsmodes = pickle.load(open('../data/observing_modes.info', 'rb'))
+    modes = ['fiducial', 'desi', 'gaia', 'exgal']
+    names = obsmode_name(modes)
+    
+    fout = open('../paper/obsmodes.tex', 'w')
+    
+    for e, mode in enumerate(modes):
+        sigmas = obsmodes[mode]['sig_obs'].tolist()
+        line = '{} & {:.1f} & {:.1f} & {:.0f} & {:.1f} & {:.1f} \\\\'.format(names[e], *sigmas)
+        line = line.replace('nan', 'N/A')
+        
+        if verbose: print(line)
+        
+        fout.write('{}\n'.format(line))
+    
+    fout.close()
+    
