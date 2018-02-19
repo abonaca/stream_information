@@ -341,6 +341,85 @@ def sky(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', errmode='
     #plt.tight_layout()
     plt.savefig('../paper/crb_onsky_{}.pdf'.format(component)) #, dpi=200)
 
+def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=True):
+    """On-sky streams colorcoded by CRLB, for all potential parameters in separate panels"""
+    
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    names = get_done()
+    
+    tout = Table(names=('name', 'crb'))
+    
+    pparams0 = pparams_fid
+    
+    for e, component in enumerate(['bary', 'halo']):
+        pid_comp, dp_fid2, vlabel2 = get_varied_pars(component)
+        Np = len(pid_comp)
+        pid_crb = myutils.wherein(np.array(pid), np.array(pid_comp))
+        
+        pparams_comp = [pparams0[x] for x in pid_comp]
+        pparams_arr = np.array([x.value for x in pparams_comp])
+
+        coll = np.load('../data/crb/cx_collate_multi1_{:s}{:1d}_a{:1d}_{:s}_{:s}.npz'.format(errmode, Ndim, align, vlabel, component))
+        p_comp = coll['p']
+        p_comp = p_comp / pparams_arr
+        
+        #print(np.shape(p_comp))
+        if e==0:
+            p_all = np.copy(p_comp)
+            pid_all = pid_comp[:]
+        else:
+            p_all = np.hstack([p_all, p_comp])
+            pid_all = pid_all + pid_comp
+        
+        #print(p_all)
+        #print(np.shape(p_all))
+    
+    Ns, Np = np.shape(p_all)
+    
+    plt.close()
+    fig, ax = plt.subplots(3,3,figsize=(15,7), subplot_kw=dict(projection='mollweide'))
+    
+    for e, name in enumerate(names):
+        crb_frac = p_all[e]
+        #print(name, crb_frac)
+        
+        stream = np.load('../data/streams/mock_observed_{}.npy'.format(name))
+        
+        for i in range(Np):
+            plt.sca(ax[np.int64(i/3)][i%3])
+            color_index = np.array(crb_frac[:])
+            color_index[color_index>0.2] = 0.2
+            color_index /= 0.2
+            color = mpl.cm.viridis(color_index[i])
+            
+            isort = np.argsort(stream[0])
+            plt.plot(np.radians(stream[0][isort]), np.radians(stream[1][isort]), '-', color=color, lw=4) #, rasterized=True)
+    
+    for i in range(Np):
+        plt.sca(ax[np.int64(i/3)][i%3])
+        #plt.xlabel('RA')
+        #plt.ylabel('Dec')
+        plt.text(0.9, 0.9, '$\Delta$ {}'.format(get_parlabel(pid_all[i])[0]), fontsize='medium', transform=plt.gca().transAxes, va='bottom', ha='left')
+        plt.grid()
+        plt.setp(plt.gca().get_xticklabels(), visible=False)
+        plt.setp(plt.gca().get_yticklabels(), visible=False)
+        
+    #plt.xlabel('RA')
+    
+    # add custom colorbar
+    sm = plt.cm.ScalarMappable(cmap=mpl.cm.viridis, norm=plt.Normalize(vmin=0, vmax=20))
+    # fake up the array of the scalar mappable. Urgh...
+    sm._A = []
+    
+    if component=='bary':
+        cb_pad = 0.1
+    else:
+        cb_pad = 0.06
+    cb = fig.colorbar(sm, ax=ax.ravel().tolist(), pad=cb_pad, aspect=40, ticks=np.arange(0,21,5))
+    cb.set_label('Cramer $-$ Rao bounds (%)')
+    
+    plt.savefig('../paper/crb_onsky.pdf') #, dpi=200)
+
 def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='halo', align=True, relative=False):
     """Show how much parameters improve by including additional streams"""
     
