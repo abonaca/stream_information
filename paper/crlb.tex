@@ -229,10 +229,34 @@ We adopt the optimal step size (red points and vertical lines) as the smallest s
 \end{figure}
 
 The above prescription for calculating numerical derivatives relies (1) on the ability to evaluate any stream observable at a given position along the stream $\xi$, and (2) on the size of the parameter step $\Delta x$, and we now describe our strategies for addressing these points.
-Our models mimic the inherently discrete nature of streams, being a collection of stars, 
+Both physical and model streams are a collection of stars, and thus all of the observables are discrete in nature (points in Figure~\ref{fig:derivative_steps}), which complicates comparison of different stream models.
+However, to the first order, streams are one dimensional structures, and lines in the top panel of Figure~\ref{fig:derivative_steps} show that a B-spline fits well the distribution of stream positions.
+We proceed by representing a stream model with a B-spline, which makes for a trivial evaluation of a stream observable at any position $\xi$.
+This approach only takes into account information provided by the mean stream track, but not density variations along the track, and as such does not estimate the full information content in streams.
+Nevertheless, the observed density variations along the streams are a convolution of true variations and observational incompleteness, which typically remains unconstrained.
+Since the measurements of stream densities are uncertain, and we expect most of the information on the gravitational potential to be encoded in the stream track, in this work we focus on analyzing only the information content in the average positions of stream members, so approximating a stream model with a line is appropriate.
 
-% - autodiff not done bc using legacy integrator
-% - also mention in discussion as the main technical improvement left for future work
+Finally, to robustly evaluate numerical derivatives entering the calculation of Cram\' er--Rao bounds, we explore how the derivatives depend on $\Delta x$, the parameter step size from Equation~\ref{eq:derivative}.
+For every model parameter, we vary the step size by 10 orders of magnitude, store values of derivatives for different observables at several positions along the stream, and search for the step size where the derivatives are most stable.
+Our metric for derivative stability at a step size $\Delta x_j$ is the overall deviation of derivatives evaluated at the adjacent step sizes $\Delta x_{j-1}$ and $\Delta x_{j+1}$, denoted $\Delta \dot{y}$ and defined as:
+\begin{equation}
+\Delta \dot{y} = \sum_i \left(\left.\frac{dy_i}{dx}\right\vert_{\Delta x_j} - \left.\frac{dy_i}{dx}\right\vert_{\Delta x_{j-1}}\right)^2 + \sum_i \left(\left.\frac{dy_i}{dx}\right\vert_{\Delta x_j} - \left.\frac{dy_i}{dx}\right\vert_{\Delta x_{j+1}}\right)^2
+\label{eq:stability}
+\end{equation}
+where $y_i$ are observables (positions, distances and kinematics along the stream).
+In Figure~\ref{fig:derivative_conv} we show numerical derivatives (short panels) and derivative deviations (square panels) as a function of parameter step size for the ATLAS-like stream in our sample.
+Each row is dedicated to a group of parameters, with progenitor position on the top, parameters of the baryonic components in the middle, and parameters describing the dark matter halo in the bottom row.
+At extremely large or small steps, the derivatives are unstable, which is evident as the derivatives themselves change (short panels), and also from their large deviations (square panels).
+For all parameters, however, at intermediate step sizes the derivatives are constant and their deviations are small.
+We adopt the smallest step size with a deviation within a factor of 2 from the minimum value (red point and vertical line) for calculating numerical derivatives.
+Large deviations for large step sizes are due to derivatives being in the non-linear regime, while large deviations at small steps are reflecting the numerical noise.
+The adopted step size is in between these two regimes, and is calculated for each stream individually.
+For most parameters, the adopted size is rather small (e.g., on the order of $\rm m\,s^{-1}$ for velocities), but it still produces physically different stream models, underlying the importance of quantitative selection of step size in numerical differentiation.
+
+While we presented a robust method to calculate numerical derivatives, a better solution would be to obtain derivatives directly when creating a stream model.
+This is usually done using auto-differentiation, which has not been implemented in our legacy orbit integrator.
+Evaluating exact derivatives of stream models with respect to input model parameters remains the most important technical improvement left for future work.
+
 
 \subsection{Sets of observational data}
 \label{sec:datasets}
@@ -253,15 +277,14 @@ Data set & $\sigma_\eta$ (deg) & $\sigma_d$ (kpc) & $\sigma_{V_r}$ (km\,s$^{-1}$
 \end{center}
 \end{table}
 
-We measure the information content in the Milky Way streams as currently observed, and also quantify improvements expected from the upcoming observational campaigns.
-In total, we consider three classes of observational data:
+In measuring the information content in the Milky Way streams, we consider the following scenarios of data availability:
 \begin{enumerate}
-\item fiducial data set with data obtainable at the present,
-\item including present data on positions of stream stars with radial velocities from DESI and DESI-like surveys,
-\item data on stream members from the final data release from the Gaia mission, and
-\item integrated-light data on extragalactic streams.
+\item fiducial data set obtainable with targeted kinematic follow-up,
+\item present data on positions of stream stars with radial velocities from DESI and DESI-like surveys,
+\item data on stream members from the final data release of the Gaia mission, and
+\item integrated-light data, as available for extragalactic streams.
 \end{enumerate}
-Observational uncertainties in each of these cases are summarized in Table~\ref{t:datasets}, which we describe in more detail below.
+Observational uncertainties in each of these cases are summarized in Table~\ref{t:datasets}, and described in more detail below.
 
 In the fiducial data set, we assume that the positions of stream members come from photometric surveys, radial velocities from targeted spectroscopic follow-up, and proper motions from long-baseline, spacecraft observations.
 - on-sky positions uncertain by the width of the stream, typically x deg (cit)
@@ -326,9 +349,7 @@ However, streams seem to contain little information on the baryonic matter compo
 
 \begin{figure}
 \begin{center}
-\includegraphics[height=0.45\textheight]{crb_onsky_bary.pdf}
-\hspace{1cm}
-\includegraphics[height=0.45\textheight]{crb_onsky_halo.pdf}
+\includegraphics[width=\textwidth]{crb_onsky.pdf}
 \caption{Comparison of precision in different model parameters attainable by 6-D observations of different streams.
 Each panel shows on-sky positions of the analyzed streams, color-coded by the relative precision of a model parameter indicated in the upper right corner, with parameters on the bulge and the disk on the left and the halo parameters on the right.
 Most of the baryonic parameters are set by the prior ($10\%$), which is only improved upon for the disk mass (middle left).
@@ -363,7 +384,11 @@ However, for the halo shape parameters, combinations of the best individual stre
 \begin{figure}
 \begin{center}
 \includegraphics[width=0.7\textwidth]{../plots/obsmode_comparison.pdf}
-\caption{}
+\caption{Cram\'er--Rao bounds are valuable for planning observations, and in this figure we explore how the precision in recovered potential parameters (y axis) changes for different observing setups (different lines), for all the streams in our sample.
+Each panel shows constraints on a single halo parameter (from top to bottom: halo scale velocity, scale radius, x-axis and z-axis flattening) from different streams, placed along the x-axis, and labeled in the bottom panel.
+In general, constraints get better when the 3D positions are complemented with radial velocities (4D) and proper motions (6D), however, the magnitude of the improvement varies among the streams, as does the relative importance of having 4D versus 6D data.
+We also note that observing modes with the same dimension of data, but different observational uncertainties (lines of different colors, but same width), produce similar constraints on halo parameters, hinting that the measurement uncertainty is of secondary importance. 
+}
 \label{fig:obsmodes}
 \end{center}
 \end{figure}
