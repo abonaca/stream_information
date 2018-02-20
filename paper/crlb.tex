@@ -277,6 +277,16 @@ Data set & $\sigma_\eta$ (deg) & $\sigma_d$ (kpc) & $\sigma_{V_r}$ (km\,s$^{-1}$
 \end{center}
 \end{table}
 
+The amount of information we can learn about the gravitational potential from a stream data set depends both on the intrinsic sensitivity of a stream on different aspects of the gravitational potential, and also on the properties of the data set itself.
+The intrinsic sensitivity, encoded in the derivatives of stream observables with respect to potential parameters, has been discussed above.
+In this section, we set up different stream data sets, defined by the type, amount and precision of observations at hand.
+
+For simplicity, we assume that observations are uniformly distributed every 0.5\,deg along each stream, with a minimum of 15 measurement points per stream.
+We also assume that all the different types of data (e.g., radial velocity, proper motions) are measured at these same positions along the stream and that the uncertainties are the same for a given type of observation.
+All of these assumptions make for a highly idealized scenario: there are density inhomogeneities along the streams, so the likely members are hardly equidistant; different types of data are typically obtained for different stars; and observational uncertainties are a function of stellar brightness, color, and often distance.
+However, in this work we merely aim to demonstrate a framework for calculating the information content of a stream data set.
+More realistic data can be analyzed in the same way to produce tailored predictions.
+
 In measuring the information content in the Milky Way streams, we consider the following scenarios of data availability:
 \begin{enumerate}
 \item fiducial data set obtainable with targeted kinematic follow-up,
@@ -287,8 +297,12 @@ In measuring the information content in the Milky Way streams, we consider the f
 Observational uncertainties in each of these cases are summarized in Table~\ref{t:datasets}, and described in more detail below.
 
 In the fiducial data set, we assume that the positions of stream members come from photometric surveys, radial velocities from targeted spectroscopic follow-up, and proper motions from long-baseline, spacecraft observations.
-- on-sky positions uncertain by the width of the stream, typically x deg (cit)
-- distances from msto position, uncertain to x \% (cit)
+The on-sky positions of stars are measured very precisely (for example, better than 0.5\,'' in SDSS, cit), so the uncertainty in stream position equals the stream width.
+Globular clusters produce thin streams, and the ones discovered so far vary between x deg (stream, ref) to y deg (stream, ref).
+We adopt 0.1 deg for our fiducial positional uncertainty.
+Unlike the positions projected on the sky, the distances to most of the streams are highly uncertain, as there are typically no standard candles identified along the stream.
+The main distance indicator is merely the position of the main sequence turn-off, which, assuming the stellar population age and metallicity are known, provides a distance uncertainty of $\sim20\,\%$.
+For simplicity, we adopt a single value of $2\,\rm kpc$ as our fiducial uncertainty in distance, which is realistic for nearby streams, but perhaps overly optimistic for the more distant streams.
 - a number of medium-resolution spectrographs have demonstrated radial velocities measured to 1\,km/s level (cit), which we adopt
 - HST measurements of proper motions for individual members of the Sgr stream were typically uncertain by 0.1\,mas/yr
 - these uncertainties, especially for the kinematic data, are currently best attainable
@@ -304,11 +318,6 @@ Our final case studies data in the post-Gaia era, where the distances come from 
 - streams far away, so we adopt RVS performance for faintest stars of x\,km/s
 - similarly, proper motion precision is x\,mas/yr for faint, blue stars, such as those at the main sequence turn-off of stellar streams.
 
-For simplicity, we assume that there are 50 observations uniformly distributed along the length of each stream, and also that the uncertainties are the same for all of the observations.
-As there are density inhomogeneities along the streams, the likely members are hardly equidistant.
-Furthermore, realistic observational uncertainties are a function of stellar brightness, color, and often distance.
-However, the idealized scenario adopted here serves as a demonstration for the framework of calculating the information content of a stream data set.
-More realistic data can be analyzed in the same way to produce specific predictions.
 
 \section{Results}
 
