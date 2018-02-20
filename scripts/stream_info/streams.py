@@ -797,7 +797,7 @@ def get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, w
     Ndim = np.sum(colnan)
     
     if Ndim<4:
-        N = 200
+        N = 400
         u_ = np.random.random(N)
         v_ = np.random.random(N)
         theta = np.arccos(2*u_ - 1)
@@ -812,7 +812,7 @@ def get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, w
         v0 = [None]*ndp
     
         for i in range(ndp):
-            fc = np.random.random(1)*0.8 + 0.2 
+            fc = np.random.random(1)*0.9 + 0.1 
             x0_obs, v0_obs = get_progenitor(observed, dp=dp_list[i], observer=mw_observer, pparams=pparams)
             plist = [j.value for j in x0_obs] + [j.value for j in v0_obs] + [4, 3]
             pinit = np.array(plist)
