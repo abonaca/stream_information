@@ -296,7 +296,7 @@ In measuring the information content in the Milky Way streams, we consider the f
 \end{enumerate}
 Observational uncertainties in each of these cases are summarized in Table~\ref{t:datasets}, and described in more detail below.
 
-In the fiducial data set, we assume that the positions of stream members come from photometric surveys, radial velocities from targeted spectroscopic follow-up, and proper motions from long-baseline, spacecraft observations.
+For the fiducial data set, we assume that the positions of stream members come from photometric surveys, radial velocities from targeted spectroscopic follow-up, and proper motions from long-baseline, spacecraft observations.
 The on-sky positions of stars are measured very precisely (for example, better than 0.5\,'' in SDSS, cit), so the uncertainty in stream position equals the stream width.
 Globular clusters produce thin streams, and the ones discovered so far vary between x deg (stream, ref) to y deg (stream, ref).
 We adopt 0.1 deg for our fiducial positional uncertainty.
@@ -320,10 +320,11 @@ Our final case studies data in the post-Gaia era, where the distances come from 
 
 
 \section{Results}
+Following the steps outlined in section~\S\,\ref{sec:method}, we inferred the information content in 11 Milky Way-like streams.
+In this section, we first present constraints on the underlying gravitational potential from a single stream (\S\,\ref{sec:res_ind}), then compare constraints from different streams (\S\,\ref{sec:res_comp}), and finally explore joint constraints from multiple streams (\S\,\ref{sec:res_joint}).
 
 \subsection{Individual stream}
-% - covariances
-% - triangle plot (different data availability)
+\label{sec:res_ind}
 
 \begin{figure}
 \begin{center}
@@ -337,23 +338,48 @@ However, streams seem to contain little information on the baryonic matter compo
 \end{center}
 \end{figure}
 
-% \begin{figure}
-% \begin{center}
-% \includegraphics[width=\textwidth]{crlb_2d.pdf}
-% \caption{Two-dimensional Cram\' er--Rao lower bounds that cold stellar streams put on parameters of the Milky Way dark matter halo.
-% Parameters considered are the halo scale velocity $V_h$, scale radius $R_h$, $x/y$ and $z/y$ axis ratios $q_1$ and $q_z$, respectively.
-% Parameter combination is the same across the rows.
-% Bounds based on individual streams (GD-1, Pal~5, Triangulum and ATLAS) are shown in the first four columns, and their combination is presented in the last column.
-% The ellipse color denotes the dimensionality of the observational data used to calculate the bound; the darkest ellipses are based on positional information only, medium-colored ellipses include positions and radial velocity, and the lightest ellipses are derived using the full 6-D phase space of streams.
-% Not all streams are equally constraining for all of the parameters, but for a given stream, parameter constraints improve when more phase-space dimensions are included.
-% Combining different streams results in the most precise recovery of the halo parameters.
-% Even if only limited observational data is available for multiple streams, the obtained bounds are comparable to, or better than, the best bounds coming from any individual stream.
-% }
-% \label{fig:2dbounds}
-% \end{center}
-% \end{figure}
+- information in a 15 by 15 Fisher matrix
+- diagonal -- CRLB
+- however, there are covariances between different model parameters, and the Fisher matrix is not a diagonal
+
+- we visualize these correlations with a corner plot in Figure~\ref{fig:crb_correlations}
+- ellipses show CRLB for all combinations of parameters given the fiducial data set along an ATLAS-like stream
+Properties of an ellipse for a pair of parameters $i,j$ are determined from a slice of the Fisher matrix $C_x$ such that its rotation angle ($\theta$), width ($w$) and height ($h$) are given by:
+\begin{align*}
+\theta &= {\rm arc tan}\left(\frac{V_{1,0}}{V_{0,0}}\right) \\
+w &= 2\,\sqrt{v_0} \\
+h &= 2\,\sqrt{v_1}
+\end{align*}
+where $V_k$ are the eigenvectors and $v_k$ the corresponding eigenvalues of the Fisher-matrix slice $M_{ij} = \left[\left[C_{x,ii}, C_{x,ij}\right], \left[C_{x,ji}, C_{x,jj}\right]\right]$.
+When model parameters are poorly constrained, $C_x^{-1}$ has a large condition number, and it is then non-invertible by standard libraries.
+To get the Fisher matrix $C_x$, we instead invert matrix $C_x^{-1}$ using a robust, iterative approach described in Appendix~\ref{sec:inversion}.
+
+- colors map to data availability, with lightest ellipses showing constraints from 3D positions only, medium ellipses include radial velocities, and darkest ellipses are for the full 6D fiducial data set.
+- additional data: in general means tighter constraints
+- sometimes drastic, for example, rv presence collapses uncertainty in progenitor rv, and similarly for proper motion components
+- sometimes degeneracies broken too, sometimes just alleviated so constraints tighter, but correlated in the same direction
+- sometimes no change -- prior dominated (baryonic parameters), perhaps not surprising given that pericenter at x -- beyond the disk scale length
+
+- with only in positions, the constraints are very uncertain, but not infinitely so
+- counterintuitive that there is any information, because masses and timescales in the system can be arbitrarily rescaled to reproduce the same positions, so it seems that kinematic data is prerequisite for any dynamical inferences
+However, our problem is not completely scale free, as we introduced a mass scale by not using the mass of the progenitor as a model parameter, but rather fixed it (which is identical to assuming infinitely precise knowledge of the progenitor mass).
+- this likely translates to the weak constraints obtained in the absence of kinematic data.
+- mass scale (halo scale velocity) immediately becomes precise with the addition of radial velocities
+
+- different kinds of behavior: uncorrelated, tightly correlated, prior-dominated -- explore in detail
+- progenitor: ra dec anticorrelation -- stream alignment
+- baryonic components usually decoupled, but disk mass anti-correlated with halo scale velocity, which is a proxy for halo mass
+- this behavior is expected if the stream is sensitive to total amount of matter within a volume, but agnostic to its distribution
+- also correlated halo scale radius (at fixed scale velocity, setting density), disk mass
+- again makes sense: less dense halo, less mass in the central region from halo -> more has to be in the disk
+- correlations with progenitor kinematics underscore the importance of including the progenitor parameters in this analysis (would be overestimating the precision otherwise)
+- some might be just in better positions (phase-wise) to provide constraints
+
+% - calculate pearson r for fiducial 6D, comment on the least and most correlated
+
 
 \subsection{Comparison between streams}
+\label{sec:res_comp}
 % - compare CRB ellipses for halo parameters between several streams
 
 \begin{figure}
@@ -370,6 +396,7 @@ Different streams are sensitive to different parameters, although no stream in t
 \end{figure}
 
 \subsection{Joint constraints}
+\label{sec:res_joint}
 % - CRB on halo parameters using different combinations of streams
 
 \begin{figure}
