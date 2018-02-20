@@ -11,6 +11,18 @@ from astropy.table import Table
 import astropy.coordinates as coord
 import gala.coordinates as gc
 
+from .stream_info import *
+import streakline
+import ffwd
+import emcee
+
+from scipy import stats
+from scipy import interpolate
+import time
+import pickle
+import shutil
+import inspect
+
 MASK = -9999
 
 mw_observer = {'z_sun': 27.*u.pc, 'galcen_distance': 8.3*u.kpc, 'roll': 0*u.deg, 'galcen_coord': coord.SkyCoord(ra=266.4051*u.deg, dec=-28.936175*u.deg, frame='icrs')}
@@ -22,15 +34,6 @@ vgc = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 vgc0 = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 
 pparams_fid = [0.5e10*u.Msun, 0.7*u.kpc, 6.8e10*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
-
-import streakline
-import emcee
-import ffwd
-from scipy import stats
-import time
-import pickle
-import shutil
-import inspect
 
 cold = ['ACS', 'ATLAS', 'Ach', 'Alp', 'Coc', 'GD1', 'Her', 'Kwa', 'Let', 'Mol', 'Mur', 'NGC5466', 'Oph', 'Ori', 'Orp', 'PS1A', 'PS1B', 'PS1C', 'PS1D', 'PS1E', 'Pal5', 'Pho', 'San', 'Sca', 'Sty', 'TriPis', 'WG1', 'WG2', 'WG3', 'WG4']
 
@@ -789,7 +792,7 @@ def find_progenitor(name='gd1', test=False, verbose=False, cont=False, nstep=100
         plt.sca(ax[i])
         plt.plot(model.obs[0], model.obs[i+1], 'ro')
 
-def get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, wangle, mod_err, observer, vobs, footprint, ranges):
+def get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, wangle, mod_err, observer, vobs, footprint, ranges, seed=98):
     """Pick the best direction for initializing progenitor velocity vector"""
 
     colnan = np.array([np.any(np.isfinite(observed.obs[x])) for x in range(6)])
@@ -797,6 +800,7 @@ def get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, w
     
     if Ndim<4:
         N = 50
+        np.random.seed(seed)
         u_ = np.random.random(N)
         v_ = np.random.random(N)
         theta = np.arccos(2*u_ - 1)
@@ -811,6 +815,8 @@ def get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, w
         v0 = [None]*ndp
     
         for i in range(ndp):
+            fc = (-1)**np.random.randint(0,1) * (np.random.rand(1)*0.8 + 0.2)
+            #x0_obs, v0_obs = get_progenitor(observed, fc=fc, observer=mw_observer, pparams=pparams)
             x0_obs, v0_obs = get_progenitor(observed, dp=dp_list[i], observer=mw_observer, pparams=pparams)
             plist = [j.value for j in x0_obs] + [j.value for j in v0_obs] + [4, 3]
             pinit = np.array(plist)
@@ -1077,9 +1083,26 @@ def get_progenitor(stream, dp=np.nan, fc=0.8, **kwargs):
     mr = pparams[5]**2 * pparams[6] / G * (np.log(1 + r/pparams[6]) - r/(r + pparams[6]))
     vtot = np.sqrt(G*mr/r)
     
+    # find alignment along the stream
     if np.any(~np.isfinite(dp)):
-        dp = np.array([x0[0], x0[1], -(x0[0]**2 + x0[1]**2)/x0[2]])
+        #dp = np.array([x0[0], x0[1], -(x0[0]**2 + x0[1]**2)/x0[2]])
+        # interpolate positions
+        xeq_ = coord.SkyCoord(stream.obs[0]*stream.obsunit[0], stream.obs[1]*stream.obsunit[1], stream.obs[2]*stream.obsunit[2], **observer)
+        xgal_ = xeq_.transform_to(coord.Galactocentric)
+        xin = np.array([xgal_.x.value, xgal_.y.value, xgal_.z.value])
+        tck, up = interpolate.splprep(xin, s=10)
+        interpos = interpolate.splev(up, tck)
+        
+        # get tangents
+        der = interpolate.splev(up, tck, der=1)
+        norm = np.linalg.norm(der, axis=0)
+        der = der / norm[np.newaxis,:]
 
+        # tangent at densest position
+        delta = np.linalg.norm(interpos - x0[:,np.newaxis], axis=0)
+        imin = np.argmin(delta)
+        dp = der[:,imin]
+        
     progdv = dp/np.linalg.norm(dp) * vtot * fc
     veq = gc.vgal_to_hel(xeq, progdv)
     
@@ -1094,6 +1117,38 @@ def get_progenitor(stream, dp=np.nan, fc=0.8, **kwargs):
 
     return (px, pv)
 
+def vel_vector(name):
+    """Get velocity vector along the stream, at midpoint"""
+    
+    stream = stream_model(name)
+    
+    tck, u = interpolate.splprep(stream.obs[:3,:], s=10)
+    new = interpolate.splev(u, tck)
+    der = interpolate.splev(u, tck, der=1)
+    
+    norm = np.linalg.norm(der, axis=0)
+    der = der / norm[np.newaxis,:]
+    
+    plt.close()
+    fig, ax = plt.subplots(1,2,figsize=(10,5))
+    
+    plt.sca(ax[0])
+    plt.plot(stream.obs[0], stream.obs[1], 'ro')
+    plt.plot(new[0], new[1], 'ko', ms=2)
+    
+    for i in [0,100,200,500]:
+        f = 1
+        plt.gca().arrow(new[0][i], new[1][i], f*der[0][i], f*der[1][i], color='b', zorder=10)
+    
+    plt.sca(ax[1])
+    plt.plot(stream.obs[0], stream.obs[2], 'ro')
+    plt.plot(new[0], new[2], 'ko', ms=2)
+    
+    for i in [0,100,200,500]:
+        f = 1
+        plt.gca().arrow(new[0][i], new[2][i], f*der[0][i], f*der[2][i], color='b', zorder=10)
+    
+    plt.tight_layout()
 
 
 def point_point_fast(x_obs, x_mod, err_obs, err_mod):
