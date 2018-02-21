@@ -3799,11 +3799,15 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
     plt.tight_layout()
     plt.savefig('../plots/nstream_improvement_{:s}{:1d}_a{:1d}_{:s}_{:s}_{:1d}.pdf'.format(errmode, Ndim, align, vlabel, component, relative))
 
-def corner_ellipses(cx, dax=2, color='k', alpha=1, lw=2, fig=None, ax=None, autoscale=True):
+def corner_ellipses(cx, dax=2, color='k', alpha=1, lw=2, fig=None, ax=None, autoscale=True, correlate=False):
     """Corner plot with ellipses given by an input matrix"""
     
     # assert square matrix
     Nvar = np.shape(cx)[0]
+    if correlate:
+        Npair = np.int64(Nvar*(Nvar - 1)/2)
+        pcc = np.empty((3,Npair))
+        k = 0
     
     if (np.any(fig)==None) | (np.any(ax)==None):
         plt.close()
@@ -3814,6 +3818,12 @@ def corner_ellipses(cx, dax=2, color='k', alpha=1, lw=2, fig=None, ax=None, auto
             plt.sca(ax[j-1][i])
 
             cx_2d = np.array([[cx[i][i], cx[i][j]], [cx[j][i], cx[j][j]]])
+            
+            if correlate:
+                pcc[0,k] = i
+                pcc[1,k] = j
+                pcc[2,k] = cx[i][j]/np.sqrt(cx[i][i]*cx[j][j])
+                k += 1
             
             w, v = np.linalg.eig(cx_2d)
             if np.all(np.isreal(v)):
@@ -3833,12 +3843,12 @@ def corner_ellipses(cx, dax=2, color='k', alpha=1, lw=2, fig=None, ax=None, auto
             plt.sca(ax[i][j])
             plt.axis('off')
     
-    #plt.sca(ax[int(Nvar/2-1)][int(Nvar/2-1)])
-    #plt.legend(loc=2, bbox_to_anchor=(1,1))
-    
     plt.tight_layout()
     
-    return (fig, ax)
+    if correlate:
+        return(fig, ax, pcc)
+    else:
+        return (fig, ax)
 
 
 ###

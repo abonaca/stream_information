@@ -266,16 +266,30 @@ def crb_2d(name='atlas', vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
         cx = stable_inverse(cxi)
         
         color = mpl.cm.bone(frac[e])
-        fig, ax = corner_ellipses(cx, fig=fig, ax=ax, dax=2, color=color, alpha=0.7, lw=3)
+        if Ndim==6:
+            fig, ax, pcc = corner_ellipses(cx, fig=fig, ax=ax, dax=2, color=color, alpha=0.7, lw=3, correlate=True)
+        else:
+            fig, ax = corner_ellipses(cx, fig=fig, ax=ax, dax=2, color=color, alpha=0.7, lw=3)
         
-        # labels
-        for k in range(Nvar-1):
-            plt.sca(ax[-1][k])
-            plt.xlabel(params[k])
+    # labels
+    for k in range(Nvar-1):
+        plt.sca(ax[-1][k])
+        plt.xlabel(params[k])
+        
+        plt.sca(ax[k][0])
+        plt.ylabel(params[k+1])
+    
+    # correlations
+    k = 0
+    Npair = np.int64(Nvar*(Nvar-1)/2)
+    for i in range(0,Nvar-1):
+        for j in range(i+1,Nvar):
+            plt.sca(ax[j-1][i])
+            txt = plt.text(0.9, 0.9, '{:.2f}'.format(pcc[2,k]), fontsize='x-small', transform=plt.gca().transAxes, va='top', ha='right')
+            txt.set_bbox(dict(facecolor='w', alpha=0.7, ec='none'))
             
-            plt.sca(ax[k][0])
-            plt.ylabel(params[k+1])
-        
+            k += 1
+    
     plt.tight_layout()
     plt.savefig('../paper/crb_correlations.pdf')
 
