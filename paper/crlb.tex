@@ -266,7 +266,7 @@ Evaluating exact derivatives of stream models with respect to input model parame
 \begin{tabular}{l c c c c c c}
 \hline
 \hline
-Data set & $\sigma_\eta$ (deg) & $\sigma_d$ (kpc) & $\sigma_{V_r}$ (km\,s$^{-1}$) & $\sigma_{\mu_\alpha}$ (mas\,yr$^{-1}$) & $\sigma_{\mu_\alpha}$ (mas\,yr$^{-1}$) \\
+Data set & $\sigma_\eta$ (deg) & $\sigma_d$ (kpc) & $\sigma_{V_r}$ (km\,s$^{-1}$) & $\sigma_{\mu_\alpha\star}$ (mas\,yr$^{-1}$) & $\sigma_{\mu_\delta}$ (mas\,yr$^{-1}$) \\
 \hline
 \input{obsmodes}
 \hline
@@ -292,7 +292,7 @@ In measuring the information content in the Milky Way streams, we consider the f
 \item fiducial data set obtainable with targeted kinematic follow-up,
 \item present data on positions of stream stars with radial velocities from DESI and DESI-like surveys,
 \item data on stream members from the final data release of the Gaia mission, and
-\item integrated-light data, as available for extragalactic streams.
+% \item integrated-light data, as available for extragalactic streams.
 \end{enumerate}
 Observational uncertainties in each of these cases are summarized in Table~\ref{t:datasets}, and described in more detail below.
 
@@ -302,21 +302,28 @@ Globular clusters produce thin streams, and the ones discovered so far vary betw
 We adopt 0.1 deg for our fiducial positional uncertainty.
 Unlike the positions projected on the sky, the distances to most of the streams are highly uncertain, as there are typically no standard candles identified along the stream.
 The main distance indicator is merely the position of the main sequence turn-off, which, assuming the stellar population age and metallicity are known, provides a distance uncertainty of $\sim20\,\%$.
-For simplicity, we adopt a single value of $2\,\rm kpc$ as our fiducial uncertainty in distance, which is realistic for nearby streams, but perhaps overly optimistic for the more distant streams.
-- a number of medium-resolution spectrographs have demonstrated radial velocities measured to 1\,km/s level (cit), which we adopt
-- HST measurements of proper motions for individual members of the Sgr stream were typically uncertain by 0.1\,mas/yr
-- these uncertainties, especially for the kinematic data, are currently best attainable
-- most of the streams, however, only have positional data, and a few have kinematic information from radial velocities
-- so within the fiducial case, we consider separate situations of having access to 3D, 4D and 6D data
+For simplicity, we adopt a single value of $2\,\rm kpc$ as our fiducial uncertainty in distance, which is conservative for nearby streams, but perhaps overly optimistic for the more distant ones.
+On the kinematics side, our fiducial uncertainty for radial velocities is 5\,km\,s$^{-1}$, as a number of medium-resolution spectrographs have demonstrated such performance (cit).
+And finally, space-based astrometry with a long baseline allows proper motions to be measured with an uncertainty of only 0.1\,mas\,yr$^{-1}$, which we also use as our fiducial uncertainty (cite Sohn Sgr paper).
+These uncertainties, especially for the kinematics, are currently best attainable.
+Most of the streams, however, only have positional data, and only a few have kinematic information from radial velocities.
+So within the fiducial case, we consider separate situations of having access to 3D (positions only), 4D (positions and radial velocities) and 6D data (full phase space).
 
-- second case, we consider data on positions from photometric surveys, same as in the fiducial case, but with velocities from lower resolution, but large scale spectroscopic surveys
-- a number of such surveys (cit) are about to launch, with the expected uncertainty of 10\,km/s in radial velocity of a g=20 star
-- albeit an order of magnitude worse precision, we consider this case for its potential to provide kinematics for all of the known streams, and potentially many fainter stream discoveries. 
+In the second case, we emulate a data set whose positions originate from photometric surveys, same as in the fiducial case, but which includes radial velocities from lower-resolution spectroscopic surveys.
+We study this scenario in anticipation of a number of highly multiplexed, $R\approx5,000$ surveys being launched in the next few years (e.g., DESI, cit).
+These surveys were designed to target objects as faint as $g=20$, and are expected to deliver radial velocities for the Milky Way sources with an uncertainty of 10\,km\,s$^{-1}$.
+Albeit this value, which we adopt for this case, is an order of magnitude worse than the radial velocity precision in our fiducial case, these surveys will operate very quickly, and have the potential to provide kinematics for all of the known streams -- a feat hard to accomplish with targeted follow-up.
+With this scenario, we will specifically explore whether it is more informative to have precise radial velocities for a few streams or less precise data for many streams.
 
-Our final case studies data in the post-Gaia era, where the distances come from Gaia parallaxes, radial velocities from RVS, and proper motions from the 5 year Gaia astrometry.
-- stream positions still limited by their intrinsic width, but the distance is improved an order of magnitude wrt the fiducial case (cit typical Gaia parallax uncertainty)
-- streams far away, so we adopt RVS performance for faintest stars of x\,km/s
-- similarly, proper motion precision is x\,mas/yr for faint, blue stars, such as those at the main sequence turn-off of stellar streams.
+Our final case studies data in the post-Gaia era, where distances come from Gaia parallaxes, radial velocities from Gaia's Radial Velocity Spectrometer (RVS), and proper motions from the 5-year Gaia astrometry.
+The uncertainty in stream position will still be limited by its intrinsic width, but the distance estimates should be improved by an order of magnitude with respect to the fiducial case.
+Typical Gaia parallax uncertainty for bright red giants is 0.01\,mas\,yr$^{-1}$ at the end of mission (cit), which translates to a distance uncertainty of 1\,kpc at 10\,kpc.
+Distance precision is expected to increase by a factor of 5 after matching the astrophysical parameters of these stars (cit), so we use 0.2\,kpc as our distance uncertainty.
+For a similar population of stars, RVS will deliver radial velocities precise to 10\,km\,s$^{-1}$.
+Lastly, proper motion precision is $\approx0.2$\,mas\,yr$^{-1}$ for faint, blue stars, such as those at the main sequence turn-off of stellar streams.
+We adopt this value for our proper motion uncertainty, as we expect faint blue stars to make up the majority of identified stream members.
+Data in this scenario are assumed to span the full phase space, and are distinguished from the fiducial 6D case only by the expected measurement uncertainties.
+Distances are slightly more precise, while the kinematics are a factor of 2 worse than in the fiducial case, so when comparing the two, we will be able to gauge relative importance of different types of data for dynamical modeling of streams.
 
 
 \section{Results}
