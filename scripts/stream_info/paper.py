@@ -563,16 +563,23 @@ def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', 
     c_bary = np.load('../data/crb/cx_collate_multi1_{:s}{:1d}_a{:1d}_{:s}_{:s}.npz'.format(errmode, Ndim, align, vlabel, 'bary'))
     p_bary = c_bary['p_rel']
 
-    p = np.hstack([p_bary[:,2][:,np.newaxis], p_halo, p_halo[:,0][:,np.newaxis]/p_halo[:,1][:,np.newaxis]])
+    #p = np.hstack([p_bary[:,2][:,np.newaxis], p_halo, p_halo[:,0][:,np.newaxis]/p_halo[:,1][:,np.newaxis]])
+    p = np.hstack([p_bary[:,2][:,np.newaxis], p_halo]) #, np.sqrt(4*p_halo[:,0][:,np.newaxis]**2 + p_halo[:,1][:,np.newaxis]**2) ])
     t = Table.read('../data/crb/ar_orbital_summary.fits')
     
-    nrow = 6
-    ncol = 5
+    nrow = 5
+    ncol = 6
     da = 2.5
     cname = ['length', 'rcur', 'rapo', 'lx', 'lz']
+    xvar = [t[i_] for i_ in cname]
+    #xvar[1] = (pparams_fid[6].value - t['rperi']) / (pparams_fid[6].value - t['rapo'])
+    xvar[1] = t['rperi']/t['rapo']
+    #xvar[3] = t['lx'] / np.sqrt(t['ly']**2 + t['lz']**2)
+    xvar = xvar + [t['ecc']]
     
-    xlabels = ['Length (deg)', 'R$_{cur}$ (kpc)', 'R$_{apo}$ (kpc)', '|L$_x$|/|L|', '|L$_z$|/|L|']
-    ylabels = ['log $M_d$', '$V_h$', '$R_h$', '$q_x$', '$q_z$', '$V_h$ / $R_h$']
+    xlabels = ['Length (deg)', 'R$_{cur}$/R$_{apo}$', 'R$_{apo}$ (kpc)', '|L$_x$|/|L|', '|L$_z$|/|L|', 'e']
+    #ylabels = ['log $M_d$', '$V_h$', '$R_h$', '$q_x$', '$q_z$', '$V_h$ / $R_h$']
+    ylabels = ['log $M_d$', '$V_h$', '$R_h$', '$q_x$', '$q_z$'] #, '$M_h$']
     dylabels = ['$\Delta$ {}'.format(s) for s in ylabels]
     
     mask = t['name']!='ssangarius'
@@ -583,10 +590,10 @@ def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', 
     for i in range(nrow):
         for j in range(ncol):
             plt.sca(ax[i][j])
-            plt.plot(t[cname[j]][mask], p[:,i][mask], 'o', ms=5, color='0.2')
+            #plt.plot(xvar[j][mask], p[:,i][mask], 'o', ms=5, color='0.2')
+            plt.scatter(xvar[j][mask], p[:,i][mask], c=xvar[0][mask], vmax=30)
             
-            corr = scipy.stats.pearsonr(t[cname[j]][mask], p[:,i][mask])
-            #print(corr)
+            corr = scipy.stats.pearsonr(xvar[j][mask], p[:,i][mask])
             txt = plt.text(0.1, 0.1, '{:.3g}'.format(corr[0]), fontsize='x-small', transform=plt.gca().transAxes)
             txt.set_bbox(dict(facecolor='w', alpha=0.7, ec='none'))
             
@@ -601,7 +608,7 @@ def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', 
         if i==2:
             plt.ylim(1e-1,1e1)
         else:
-            plt.ylim(1e-2,1e0)
+            plt.ylim(8e-3,8e-1)
         #plt.gca().yaxis.set_major_locator(mpl.ticker.MaxNLocator(2))
         
     
@@ -649,9 +656,10 @@ def vc():
     plt.tight_layout()
     plt.savefig('../paper/vc_crb.pdf')
 
-def ar(current=False):
+def ar(current=False, vary=['progenitor', 'bary', 'halo']):
     """Explore constraints on radial acceleration, along the progenitor line"""
-    t = Table.read('../data/crb/ar_orbital_summary.fits')
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    t = Table.read('../data/crb/ar_orbital_summary_{}.fits'.format(vlabel))
     N = len(t)
     fapo = t['rapo']/np.max(t['rapo'])
     fapo = t['rapo']/100
@@ -659,7 +667,7 @@ def ar(current=False):
     fcolor = fapo
     
     plt.close()
-    fig, ax = plt.subplots(1, 3, figsize=(15,5))
+    fig, ax = plt.subplots(1, 4, figsize=(20,5))
     
     for i in range(N):
         color = mpl.cm.bone(fcolor[i])
@@ -684,24 +692,42 @@ def ar(current=False):
     plt.plot(a, a, 'k-')
     plt.plot(a, 2*a, 'k--')
     plt.plot(a, 3*a, 'k:')
-    if current:
-        plt.scatter(t['rcur'], t['rmin'], c=fcolor, cmap='bone', vmin=0, vmax=1)
-        plt.xlabel('$R_{cur}$ (kpc)')
-    else:
-        plt.scatter(t['rapo'], t['rmin'], c=fcolor, cmap='bone', vmin=0, vmax=1)
-        plt.xlabel('$R_{apo}$ (kpc)')
+    plt.scatter(t['rcur'], t['rmin'], c=fcolor, cmap='bone', vmin=0, vmax=1)
+    plt.xlabel('$R_{cur}$ (kpc)')
     plt.ylabel('$R_{min}$ (kpc)')
     
     plt.xlim(0,90)
     plt.ylim(0,90)
     
+    plt.sca(ax[3])
+    a = np.linspace(0,90,100)
+    plt.plot(a, a, 'k-')
+    plt.plot(a, 2*a, 'k--')
+    plt.plot(a, 3*a, 'k:')
+    plt.scatter(t['rapo'], t['rmin'], c=fcolor, cmap='bone', vmin=0, vmax=1)
+    plt.xlabel('$R_{apo}$ (kpc)')
+    plt.ylabel('$R_{min}$ (kpc)')
+    
+    plt.xlim(0,90)
+    plt.ylim(0,90)
     
     plt.tight_layout()
-    plt.savefig('../plots/ar_crb_current{:d}.pdf'.format(current))
-    if not current:
-        plt.savefig('../paper/ar_crb.pdf')
+    plt.savefig('../plots/ar_crb_{}.pdf'.format(vlabel))
 
-
+def min_ar():
+    """"""
+    t = Table.read('../data/crb/ar_orbital_summary.fits')
+    print(t.colnames)
+    imin = 10
+    
+    plt.close()
+    plt.figure()
+    
+    for s in range(11):
+        idmin = np.r_[True, t['dar'][s][1:] < t['dar'][s][:-1]] & np.r_[t['dar'][s][:-1] < t['dar'][s][1:], True]
+        print(t['name'][s], t['r'][s][idmin], t['rmin'][s])
+        plt.plot(t['r'][s], t['dar'][s], '-')
+        
 # tables
 def table_obsmodes(verbose=True):
     """Save part of the latex table with information on observing modes"""
@@ -722,4 +748,11 @@ def table_obsmodes(verbose=True):
         fout.write('{}\n'.format(line))
     
     fout.close()
+
+def orbit_properties(name):
+    """Print properties of a stream"""
+    t = Table.read('../data/crb/ar_orbital_summary.fits')
+    t = t[t['name']==name]
     
+    for k in t.colnames:
+        print(k, np.array(t[k])[0])
