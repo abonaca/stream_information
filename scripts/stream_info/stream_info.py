@@ -42,7 +42,7 @@ vgc = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 vgc0 = {'vcirc': 0*u.km/u.s, 'vlsr': [11.1, 12.2, 7.3]*u.km/u.s}
 
 MASK = -9999
-pparams_fid = [np.log10(0.5e10)*u.Msun, 0.7*u.kpc, np.log10(6.8e10)*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
+pparams_fid = [np.log10(0.5e10)*u.Msun, 0.7*u.kpc, np.log10(6.8e10)*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2*u.kpc**-1, 0.*u.Gyr**-2*u.kpc**-1, 0.*u.Gyr**-2*u.kpc**-1, 0.*u.Gyr**-2*u.kpc**-1, 0.*u.Gyr**-2*u.kpc**-1, 0.*u.Gyr**-2*u.kpc**-1, 0.*u.Gyr**-2*u.kpc**-1, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
 #pparams_fid = [0.5e-5*u.Msun, 0.7*u.kpc, 6.8e-5*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc, 1.57*u.rad, 1*u.Unit(1), 1*u.Unit(1), 1*u.Unit(1), 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.pc/u.Myr**2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0.*u.Gyr**-2, 0*u.deg, 0*u.deg, 0*u.kpc, 0*u.km/u.s, 0*u.mas/u.yr, 0*u.mas/u.yr]
 
 
@@ -120,6 +120,8 @@ class Stream():
             self.setup_aux['paux'] = 8
         elif self.setup['potential']=='quad':
             self.setup_aux['paux'] = 9
+        elif self.setup['potential']=='octu':
+            self.setup_aux['paux'] = 10
             
     def format_input(self):
         """Format input parameters for streakline.stream"""
@@ -428,12 +430,12 @@ def stream_model(name='gd1', pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=np.ey
     # vary progenitor parameters
     mock = pickle.load(open('../data/mock_{}.params'.format(name), 'rb'))
     for i in range(3):
-        mock['x0'][i] += pparams0[19+i]
-        mock['v0'][i] += pparams0[22+i]
+        mock['x0'][i] += pparams0[26+i]
+        mock['v0'][i] += pparams0[29+i]
     
     # vary potential parameters
-    potential = 'quad'
-    pparams = pparams0[:19]
+    potential = 'octu'
+    pparams = pparams0[:26]
     #print(pparams[0])
     pparams[0] = (10**pparams0[0].value)*pparams0[0].unit
     pparams[2] = (10**pparams0[2].value)*pparams0[2].unit
@@ -916,15 +918,18 @@ def get_varied_bytype(vary):
         dp = [20*u.km/u.s, 2*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
         dp = [35*u.km/u.s, 2.9*u.kpc, 0.05*u.Unit(1), 0.05*u.Unit(1)]
     elif vary=='progenitor':
-        pid = [19,20,21,22,23,24]
+        pid = [26,27,28,29,30,31]
         dp = [1*u.deg, 1*u.deg, 0.5*u.kpc, 20*u.km/u.s, 0.3*u.mas/u.yr, 0.3*u.mas/u.yr]
     elif vary=='dipole':
         pid = [11,12,13]
         #dp = [1e-11*u.Unit(1), 1e-11*u.Unit(1), 1e-11*u.Unit(1)]
-        dp = [0.3*u.pc/u.Myr**2, 0.3*u.pc/u.Myr**2, 0.3*u.pc/u.Myr**2]
+        dp = [0.05*u.pc/u.Myr**2, 0.05*u.pc/u.Myr**2, 0.05*u.pc/u.Myr**2]
     elif vary=='quad':
         pid = [14,15,16,17,18]
         dp = [0.5*u.Gyr**-2 for x in range(5)]
+    elif vary=='octu':
+        pid = [19,20,21,22,23,24,25]
+        dp = [0.001*u.Gyr**-2*u.kpc**-1 for x in range(7)]
     else:
         pid = []
         dp = []
@@ -936,8 +941,8 @@ def get_parlabel(pid):
     Parameter:
     pid - list of parameter ids"""
     
-    master = ['log $M_b$', '$a_b$', 'log $M_d$', '$a_d$', '$b_d$', '$V_h$', '$R_h$', '$\phi$', '$q_x$', '$q_y$', '$q_z$', '$a_{1,-1}$', '$a_{1,0}$', '$a_{1,1}$', '$a_{2,-2}$', '$a_{2,-1}$', '$a_{2,0}$', '$a_{2,1}$', '$a_{2,2}$', '$RA_p$', '$Dec_p$', '$d_p$', '$V_{r_p}$', '$\mu_{\\alpha_p}$', '$\mu_{\delta_p}$', ]
-    master_units = ['dex', 'kpc', 'dex', 'kpc', 'kpc', 'km/s', 'kpc', 'rad', '', '', '', 'pc/Myr$^2$', 'pc/Myr$^2$', 'pc/Myr$^2$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'deg', 'deg', 'kpc', 'km/s', 'mas/yr', 'mas/yr', ]
+    master = ['log $M_b$', '$a_b$', 'log $M_d$', '$a_d$', '$b_d$', '$V_h$', '$R_h$', '$\phi$', '$q_x$', '$q_y$', '$q_z$', '$a_{1,-1}$', '$a_{1,0}$', '$a_{1,1}$', '$a_{2,-2}$', '$a_{2,-1}$', '$a_{2,0}$', '$a_{2,1}$', '$a_{2,2}$', '$a_{3,-3}$', '$a_{3,-2}$', '$a_{3,-1}$', '$a_{3,0}$', '$a_{3,1}$', '$a_{3,2}$', '$a_{3,3}$', '$RA_p$', '$Dec_p$', '$d_p$', '$V_{r_p}$', '$\mu_{\\alpha_p}$', '$\mu_{\delta_p}$', ]
+    master_units = ['dex', 'kpc', 'dex', 'kpc', 'kpc', 'km/s', 'kpc', 'rad', '', '', '', 'pc/Myr$^2$', 'pc/Myr$^2$', 'pc/Myr$^2$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$', 'Gyr$^{-2}$ kpc$^{-1}$', 'Gyr$^{-2}$ kpc$^{-1}$', 'Gyr$^{-2}$ kpc$^{-1}$', 'Gyr$^{-2}$ kpc$^{-1}$', 'Gyr$^{-2}$ kpc$^{-1}$', 'Gyr$^{-2}$ kpc$^{-1}$', 'Gyr$^{-2}$ kpc$^{-1}$', 'deg', 'deg', 'kpc', 'km/s', 'mas/yr', 'mas/yr', ]
     
     if type(pid) is list:
         labels = []
@@ -1674,8 +1679,9 @@ def priors(name, vary):
     chalo = np.zeros(4)
     cdipole = np.zeros(3)
     cquad = np.zeros(5)
+    coctu = np.zeros(7)
     
-    priors = {'progenitor': cprog, 'bary': cbary, 'halo': chalo, 'dipole': cdipole, 'quad': cquad}
+    priors = {'progenitor': cprog, 'bary': cbary, 'halo': chalo, 'dipole': cdipole, 'quad': cquad, 'octu': coctu}
     cprior = np.empty(0)
     for v in vary:
         cprior = np.concatenate([cprior, priors[v]])
@@ -1949,19 +1955,20 @@ def compare_optimal_steps():
         print(read_optimal_step(name, vary))
 
 
-def get_crb(name, Nstep=10, vary=['progenitor', 'bary', 'halo']):
+def get_crb(name, Nstep=10, vary=['progenitor', 'bary', 'halo'], first=True):
     """"""
     
-    store_progparams(name)
-    wrap_angles(name, save=True)
-    progenitor_prior(name)
-    
-    find_greatcircle(name=name)
-    endpoints(name)
-    
-    for v in vary:
-        step_convergence(name=name, Nstep=Nstep, vary=v)
-        choose_step(name=name, Nstep=Nstep, vary=v)
+    if first:
+        store_progparams(name)
+        wrap_angles(name, save=True)
+        progenitor_prior(name)
+        
+        find_greatcircle(name=name)
+        endpoints(name)
+        
+        for v in vary:
+            step_convergence(name=name, Nstep=Nstep, vary=v)
+            choose_step(name=name, Nstep=Nstep, vary=v)
     
     calculate_crb(name=name, vary=vary, verbose=True)
     crb_triangle_alldim(name=name, vary=vary)
@@ -2019,6 +2026,26 @@ def acc_quad(x, p=[pparams_fid[j] for j in range(14,19)]):
     a[0] = x[0]*(f*p[4] - f/np.sqrt(3)*p[2]) + x[1]*f*p[0] + x[2]*f*p[3]
     a[1] = x[0]*f*p[0] - x[1]*(f*p[4] + f/np.sqrt(3)*p[2]) + x[2]*f*p[1]
     a[2] = x[0]*f*p[3] + x[1]*f*p[1] + x[2]*2*f/np.sqrt(3)*p[2]
+    
+    return a.to(u.pc*u.Myr**-2)
+
+def acc_octu(x, p=[pparams_fid[j] for j in range(19,26)]):
+    """Acceleration due to outside octupole perturbation"""
+    
+    a = np.zeros(3)*u.pc*u.Myr**-2
+    f = np.array([0.25*np.sqrt(35/(2*np.pi)), 0.5*np.sqrt(105/np.pi), 0.25*np.sqrt(21/(2*np.pi)), 0.25*np.sqrt(7/np.pi), 0.25*np.sqrt(21/(2*np.pi)), 0.25*np.sqrt(105/np.pi), 0.25*np.sqrt(35/(2*np.pi))])
+    
+    xu = x.unit
+    pu = p[0].unit
+    pvec = np.array([i.value for i in p]) * pu
+    dmat = np.ones((3,7)) * f * pvec * xu**2
+    x = np.array([i.value for i in x])
+
+    dmat[0] *= np.array([6*x[0]*x[1], x[1]*x[2], -2*x[0]*x[1], -6*x[0]*x[2], 4*x[2]**2-x[1]**2-3*x[0]**2, 2*x[0]*x[2], 3*x[0]**2-3*x[1]**2])
+    dmat[1] *= np.array([3*x[0]**2-3*x[1]**2, x[0]*x[2], 4*x[2]**2-x[0]**2-3*x[1]**2, -6*x[1]*x[2], -2*x[0]*x[1], -2*x[1]*x[2], -6*x[0]*x[1]])
+    dmat[2] *= np.array([0, x[0]*x[1], 8*x[1]*x[2], 6*x[2]**2-3*x[0]**2-3*x[1]**2, 8*x[0]*x[2], x[0]**2-x[1]**2, 0])
+    
+    a = np.einsum('ij->i', dmat) * dmat.unit
     
     return a.to(u.pc*u.Myr**-2)
 
@@ -2165,9 +2192,23 @@ def pder_quad(x, p=[pparams_fid[j] for j in range(14,19)]):
     
     dmat = np.ones((3,5)) * f
     
-    dmat[0] = np.array([x[1], 0, -s*x[0], x[2], x[0]])
-    dmat[1] = np.array([x[0], x[2], -s*x[1], 0, -x[1]])
-    dmat[2] = np.array([0, x[1], 2*s*x[2], x[0], 0])
+    dmat[0] *= np.array([x[1], 0, -s*x[0], x[2], x[0]])
+    dmat[1] *= np.array([x[0], x[2], -s*x[1], 0, -x[1]])
+    dmat[2] *= np.array([0, x[1], 2*s*x[2], x[0], 0])
+    
+    return dmat
+
+def pder_octu(x, p=[pparams_fid[j] for j in range(19,26)]):
+    """Caculate derivatives of (Cartesian) components of the acceleration vector a wrt octupole potential parameters"""
+    
+    f = np.array([0.25*np.sqrt(35/(2*np.pi)), 0.5*np.sqrt(105/np.pi), 0.25*np.sqrt(21/(2*np.pi)), 0.25*np.sqrt(7/np.pi), 0.25*np.sqrt(21/(2*np.pi)), 0.25*np.sqrt(105/np.pi), 0.25*np.sqrt(35/(2*np.pi))])
+    x = [1e-3*i.value for i in x]
+    
+    dmat = np.ones((3,7)) * f
+    
+    dmat[0] *= np.array([6*x[0]*x[1], x[1]*x[2], -2*x[0]*x[1], -6*x[0]*x[2], 4*x[2]**2-x[1]**2-3*x[0]**2, 2*x[0]*x[2], 3*x[0]**2-3*x[1]**2])
+    dmat[1] *= np.array([3*x[0]**2-3*x[1]**2, x[0]*x[2], 4*x[2]**2-x[0]**2-3*x[1]**2, -6*x[1]*x[2], -2*x[0]*x[1], -2*x[1]*x[2], -6*x[0]*x[1]])
+    dmat[2] *= np.array([0, x[0]*x[1], 8*x[1]*x[2], 6*x[2]**2-3*x[0]**2-3*x[1]**2, 8*x[0]*x[2], x[0]**2-x[1]**2, 0])
     
     return dmat
 
@@ -2263,7 +2304,7 @@ def crb_ax(n, Ndim=6, vary=['halo', 'bary', 'progenitor'], align=True, fast=Fals
 def acc_cart(x, components=['bary', 'halo', 'dipole']):
     """"""
     acart = np.zeros(3) * u.pc*u.Myr**-2
-    dict_acc = {'bary': [acc_bulge, acc_disk], 'halo': [acc_nfw], 'dipole': [acc_dipole], 'quad': [acc_quad], 'point': [acc_kepler]}
+    dict_acc = {'bary': [acc_bulge, acc_disk], 'halo': [acc_nfw], 'dipole': [acc_dipole], 'quad': [acc_quad], 'octu': [acc_octu], 'point': [acc_kepler]}
     accelerations = []
     
     for c in components:
@@ -2306,7 +2347,7 @@ def ader_cart(x, components=['bary', 'halo', 'dipole']):
 def apder_cart(x, components=['bary', 'halo', 'dipole']):
     """"""
     dacart = np.empty((3,0))
-    dict_der = {'bary': [pder_bulge, pder_disk], 'halo': [pder_nfw], 'dipole': [pder_dipole], 'quad': [pder_quad], 'point': [pder_kepler]}
+    dict_der = {'bary': [pder_bulge, pder_disk], 'halo': [pder_nfw], 'dipole': [pder_dipole], 'quad': [pder_quad], 'octu': [pder_octu], 'point': [pder_kepler]}
     derivatives = []
     
     for c in components:
@@ -2842,11 +2883,7 @@ def period(name):
 def extract_crbs(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', errmode='fiducial', j=0, align=True, fast=False, scale=False):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
-    if align:
-        alabel = '_align'
-    else:
-        alabel = ''
-    
+
     names = get_done()
     
     tout = Table(names=('name', 'crb'))
@@ -2906,6 +2943,117 @@ def extract_crbs(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', 
     
     #plt.tight_layout()
     plt.savefig('../plots/crb_onsky_{}.png'.format(component))
+
+def vhrh_correlation(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', errmode='fiducial', align=True):
+    """"""
+    names = get_done()
+    t = Table.read('../data/crb/ar_orbital_summary.fits')
+    N = len(names)
+    p = np.empty(N)
+    
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    pid_comp, dp_fid2, vlabel2 = get_varied_pars(component)
+    i = pid_comp[0]
+    j = pid_comp[1]
+    
+    for e, name in enumerate(names):
+        fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
+        cxi = fm['cxi']
+        cx = stable_inverse(cxi)
+        
+        p[e] = cx[i][j]/np.sqrt(cx[i][i]*cx[j][j])
+    
+    plt.close()
+    plt.figure()
+    
+    plt.plot(t['rapo'], p, 'ko')
+
+def allstream_2d(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=True, relative=False):
+    """Compare 2D constraints between all streams"""
+    
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    names = get_done()
+    N = len(names)
+    
+    # plot setup
+    ncol = np.int64(np.ceil(np.sqrt(N)))
+    nrow = np.int64(np.ceil(N/ncol))
+    w_ = 8
+    h_ = 1.1 * w_*nrow/ncol
+    
+    alpha = 1
+    lw = 2
+    frac = [0.8, 0.5, 0.2]
+    
+    # parameter pairs
+    paramids = [8, 11, 12, 13, 14]
+    all_comb = list(itertools.combinations(paramids, 2))
+    comb = sorted(list(set(all_comb)))
+    Ncomb = len(comb)
+    #print(comb)
+
+    pp = PdfPages('../plots/allstreams_2d_{}_a{:1d}_{}_r{:1d}.pdf'.format(errmode, align, vlabel, relative))
+    for c in range(Ncomb):
+        l, k = comb[c]
+        plt.close()
+        fig, ax = plt.subplots(nrow, ncol, figsize=(w_, h_), sharex=True, sharey=True)
+
+        for i in range(N):
+            plt.sca(ax[np.int64(i/ncol)][i%ncol])
+            
+            for e, Ndim in enumerate([3,4,6]):
+                color = mpl.cm.bone(frac[e])
+                
+                fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, names[i], align, vlabel))
+                cxi = fm['cxi']
+                cx = stable_inverse(cxi)
+                cx_2d = np.array([[cx[k][k], cx[k][l]], [cx[l][k], cx[l][l]]])
+                if relative:
+                    pk = pparams_fid[pid[k]].value
+                    pl = pparams_fid[pid[l]].value
+                    fid_2d = np.array([[pk**2, pk*pl], [pk*pl, pl**2]])
+                    cx_2d = cx_2d / fid_2d * 100**2
+                
+                w, v = np.linalg.eig(cx_2d)
+                if np.all(np.isreal(v)):
+                    theta = np.degrees(np.arctan2(v[1][0], v[0][0]))
+                    width = np.sqrt(w[0])*2
+                    height = np.sqrt(w[1])*2
+                    
+                    e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=color, alpha=alpha, lw=lw)
+                    plt.gca().add_patch(e)
+            
+            txt = plt.text(0.9, 0.9, full_name(names[i]), fontsize='small', transform=plt.gca().transAxes, ha='right', va='top')
+            txt.set_bbox(dict(facecolor='w', alpha=0.7, ec='none'))
+            if relative:
+                plt.xlim(-20, 20)
+                plt.ylim(-20,20)
+            else:
+                plt.gca().autoscale_view()
+        
+        plabels, units = get_parlabel([pid[k],pid[l]])
+        if relative:
+            punits = [' (%)' for x in units]
+        else:
+            punits = [' ({})'.format(x) if len(x) else '' for x in units]
+        params = ['$\Delta$ {}{}'.format(x, y) for x,y in zip(plabels, punits)]
+        
+        for i in range(ncol):
+            plt.sca(ax[nrow-1][i])
+            plt.xlabel(params[0])
+        
+        for i in range(nrow):
+            plt.sca(ax[i][0])
+            plt.ylabel(params[1])
+        
+        for i in range(N, ncol*nrow):
+            plt.sca(ax[np.int64(i/ncol)][i%ncol])
+            plt.axis('off')
+
+        plt.tight_layout(h_pad=0, w_pad=0)
+        pp.savefig(fig)
+    pp.close()
+        
 
 # circular velocity
 def pder_vc(x, p=[pparams_fid[j] for j in [0,1,2,3,4,5,6,8,10]], components=['bary', 'halo']):
@@ -3193,9 +3341,10 @@ def collate_orbit(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial
     t.write('../data/crb/vc_orbital_summary.fits', overwrite=True)
 
 # radial acceleration
-def ar_r(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=True):
+def ar_r(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=True, Nsight=1, seed=39):
     """Calculate precision in radial acceleration as a function of galactocentric radius"""
     
+    np.random.seed(seed)
     pid, dp_fid, vlabel = get_varied_pars(vary)
     components = [c for c in vary if c!='progenitor']
     
@@ -3204,8 +3353,8 @@ def ar_r(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=
     Nmax = len(max(names, key=len))
     
     tname = np.chararray(N, itemsize=Nmax)
-    armin = np.empty(N)
-    r_armin = np.empty(N)
+    armin = np.empty((N, Nsight))
+    r_armin = np.empty((N, Nsight))
     
     Labs = np.empty((N,3))
     lx = np.empty(N)
@@ -3221,6 +3370,12 @@ def ar_r(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=
     rcur = np.empty(N)
     length = np.empty(N)
     
+    Npix = 300
+    r = np.linspace(0.1, 200, Npix)
+    dar = np.empty((N, Nsight, Npix))
+    ar = np.empty((N, Nsight, Npix))
+    rall = np.empty((N, Nsight, Npix))
+
     plt.close()
     fig, ax = plt.subplots(1,3, figsize=(15,5))
     
@@ -3232,33 +3387,6 @@ def ar_r(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=
         
         cq = cx[6:,6:]
         Npot = np.shape(cq)[0]
-        
-        mock = pickle.load(open('../data/mock_{}.params'.format(name), 'rb'))
-        x0 = mock['x0']
-        xeq = coord.SkyCoord(ra=x0[0], dec=x0[1], distance=x0[2])
-        xg = xeq.transform_to(coord.Galactocentric)
-
-        rg = np.linalg.norm(np.array([xg.x.value, xg.y.value, xg.z.value]))
-        theta = np.arccos(xg.z.value/rg)
-        phi = np.arctan2(xg.y.value, xg.x.value)
-        
-        Npix = 300
-        r = np.linspace(0.1, 200, Npix)
-        xin = np.array([r*np.sin(theta)*np.cos(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(theta)]).T
-        
-        arad_pix = np.empty((Npix, 1))
-        af = np.empty(Npix)
-        derf = np.empty((Npix, Npot))
-        
-        for i in range(Npix):
-            xi = xin[i]*u.kpc
-            a = acc_rad(xi, components=components)
-            af[i] = a
-            
-            dadq = apder_rad(xi, components=components)
-            derf[i] = dadq
-        
-        ca = np.matmul(derf, np.matmul(cq, derf.T))
         
         # relate to orbit
         orbit = stream_orbit(name=name)
@@ -3272,46 +3400,73 @@ def ar_r(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=
         l = np.cross(orbit['x'].to(u.kpc), orbit['v'].to(u.km/u.s), axisa=0, axisb=0)
         
         p, Np = period(name)
+        mock = pickle.load(open('../data/mock_{}.params'.format(name), 'rb'))
         
-        Nx = Npot
-        Nw = Npix
-        vals, vecs = la.eigh(ca, eigvals=(Nw - Nx - 2, Nw - 1))
-        vcomb = np.sqrt(np.sum(vecs**2*vals, axis=1))
-        
-        # plotting
-        plt.sca(ax[0])
-        plt.plot(r, vcomb/np.abs(af), '-')
-        plt.ylim(0,2)
-        
-        plt.sca(ax[1])
-        plt.plot(r/rcur_, vcomb/np.abs(af), '-')
-        plt.xlim(0,5)
-        plt.ylim(0,2)
-    
-        plt.sca(ax[2])
-        plt.plot(r/rmax, vcomb/np.abs(af), '-')
-        plt.xlim(0,5)
-        plt.ylim(0,2)
-        
-        # store
-        idmin = np.argmin(vcomb / np.abs(af))
+        for s in range(Nsight):
+            if Nsight==1:
+            # single sightline
+                x0 = mock['x0']
+                xeq = coord.SkyCoord(ra=x0[0], dec=x0[1], distance=x0[2])
+                xg = xeq.transform_to(coord.Galactocentric)
 
+                rg = np.linalg.norm(np.array([xg.x.value, xg.y.value, xg.z.value]))
+                theta = np.arccos(xg.z.value/rg)
+                phi = np.arctan2(xg.y.value, xg.x.value)
+            else:
+                u_ = np.random.random(1)
+                v_ = np.random.random(1)
+                theta = np.arccos(2*u_ - 1)
+                phi = 2 * np.pi * v_
+            
+            xin = np.array([r*np.sin(theta)*np.cos(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(theta)]).T
+            
+            arad_pix = np.empty((Npix, 1))
+            af = np.empty(Npix)
+            derf = np.empty((Npix, Npot))
+            
+            for i in range(Npix):
+                xi = xin[i]*u.kpc
+                a = acc_rad(xi, components=components)
+                af[i] = a
+                
+                dadq = apder_rad(xi, components=components)
+                derf[i] = dadq
+            
+            ca = np.matmul(derf, np.matmul(cq, derf.T))
+            
+            Nx = Npot
+            Nw = Npix
+            vals, vecs = la.eigh(ca, eigvals=(Nw - Nx - 2, Nw - 1))
+            vcomb = np.sqrt(np.sum(vecs**2*vals, axis=1))
+            
+            ## plotting
+            #plt.sca(ax[0])
+            #plt.plot(r, vcomb/np.abs(af), '-')
+            #plt.ylim(0,2)
+            
+            #plt.sca(ax[1])
+            #plt.plot(r/rcur_, vcomb/np.abs(af), '-')
+            #plt.xlim(0,5)
+            #plt.ylim(0,2)
+        
+            #plt.sca(ax[2])
+            #plt.plot(r/rmax, vcomb/np.abs(af), '-')
+            #plt.xlim(0,5)
+            #plt.ylim(0,2)
+            
+            # store
+            idmin = np.argmin(vcomb / np.abs(af))
+
+            armin[e][s] = (vcomb / np.abs(af))[idmin]
+            r_armin[e][s] = r[idmin]
+            
+            dar[e][s] = vcomb
+            ar[e][s] = vcomb / np.abs(af)
+            rall[e][s] = r
+        
         dlambda = np.max(mock['xi_range']) - np.min(mock['xi_range'])
-        
         tname[e] = name
-        armin[e] = (vcomb / np.abs(af))[idmin]
-        r_armin[e] = r[idmin]
-        
-        if e==0:
-            Nr = np.size(r)
-            dar = np.empty((N, Nr))
-            ar = np.empty((N, Nr))
-            rall = np.empty((N, Nr))
-        
-        dar[e] = vcomb
-        ar[e] = vcomb / np.abs(af)
-        rall[e] = r
-        
+
         Labs[e] = np.median(np.abs(l), axis=0)
         Lmod[e] = np.median(np.linalg.norm(l, axis=1))
         lx[e] = np.abs(np.median(l[:,0]/np.linalg.norm(l, axis=1)))
@@ -3328,9 +3483,73 @@ def ar_r(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=
     
     t = Table([tname, armin, r_armin, dar, ar, rall, Labs, Lmod, lx, ly, lz, period_, Nperiod, length, ecc, rperi, rapo, rcur], names=('name', 'armin', 'rmin', 'dar', 'ar', 'r', 'Labs', 'Lmod', 'lx', 'ly', 'lz', 'period', 'Nperiod', 'length', 'ecc', 'rperi', 'rapo', 'rcur'))
     t.pprint()
-    t.write('../data/crb/ar_orbital_summary.fits', overwrite=True)
+    t.write('../data/crb/ar_orbital_summary_{}_sight{:d}.fits'.format(vlabel, Nsight), overwrite=True)
     
     plt.tight_layout()
+
+def plot_ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=1):
+    """Explore constraints on radial acceleration, along the progenitor line"""
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    t = Table.read('../data/crb/ar_orbital_summary_{}_sight{:d}.fits'.format(vlabel, Nsight))
+    N = len(t)
+    fapo = t['rapo']/np.max(t['rapo'])
+    fapo = t['rapo']/100
+    flen = t['length']/(np.max(t['length']) + 10)
+    fcolor = fapo
+    
+    plt.close()
+    fig, ax = plt.subplots(1, 4, figsize=(20,5))
+    
+    for i in range(N):
+        color = mpl.cm.bone(fcolor[i])
+        lw = flen[i] * 5
+        
+        plt.sca(ax[0])
+        plt.plot(t['r'][i][0], t['ar'][i][1], '-', color=color, lw=lw)
+        
+    plt.xlabel('R (kpc)')
+    plt.ylabel('$\Delta$ $a_r$ / $a_r$')
+    plt.ylim(0, 3.5)
+    
+    print(np.shape(t['length']), np.shape(t['armin']))
+    armin = np.median(t['armin'], axis=1)
+    rmin = np.median(t['rmin'], axis=1)
+    rmin_err = 0.5 * (np.percentile(t['rmin'], 84, axis=1) - np.percentile(t['rmin'], 16, axis=1))
+    plt.sca(ax[1])
+    plt.scatter(t['length'], armin, c=fcolor, cmap='bone', vmin=0, vmax=1)
+    
+    plt.xlabel('Length (deg)')
+    plt.ylabel('min $\Delta$ $a_r$')
+    plt.ylim(0, 3.5)
+    
+    plt.sca(ax[2])
+    a = np.linspace(0,90,100)
+    plt.plot(a, a, 'k-')
+    plt.plot(a, 2*a, 'k--')
+    plt.plot(a, 3*a, 'k:')
+    plt.scatter(t['rcur'], rmin, c=fcolor, cmap='bone', vmin=0, vmax=1)
+    plt.errorbar(t['rcur'], rmin, yerr=rmin_err, color='k', fmt='none', zorder=0)
+    plt.xlabel('$R_{cur}$ (kpc)')
+    plt.ylabel('$R_{min}$ (kpc)')
+    
+    plt.xlim(0,90)
+    plt.ylim(0,90)
+    
+    plt.sca(ax[3])
+    a = np.linspace(0,90,100)
+    plt.plot(a, a, 'k-')
+    plt.plot(a, 2*a, 'k--')
+    plt.plot(a, 3*a, 'k:')
+    plt.scatter(t['rapo'], rmin, c=fcolor, cmap='bone', vmin=0, vmax=1)
+    plt.errorbar(t['rapo'], rmin, yerr=rmin_err, color='k', fmt='none', zorder=0)
+    plt.xlabel('$R_{apo}$ (kpc)')
+    plt.ylabel('$R_{min}$ (kpc)')
+    
+    plt.xlim(0,90)
+    plt.ylim(0,90)
+    
+    plt.tight_layout()
+    plt.savefig('../plots/ar_crb_{}_sight{:d}.pdf'.format(vlabel, Nsight))
 
 # flattening
 def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', j=0, align=True, fast=False, scale=False):
