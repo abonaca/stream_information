@@ -355,7 +355,7 @@ def sky(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', errmode='
     #plt.tight_layout()
     plt.savefig('../paper/crb_onsky_{}.pdf'.format(component)) #, dpi=200)
 
-def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=True):
+def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=True, galactic=False):
     """On-sky streams colorcoded by CRLB, for all potential parameters in separate panels"""
     
     pid, dp_fid, vlabel = get_varied_pars(vary)
@@ -398,6 +398,22 @@ def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', ali
         #print(name, crb_frac)
         
         stream = np.load('../data/streams/mock_observed_{}.npy'.format(name))
+        ceq = coord.SkyCoord(ra=stream[0]*u.deg, dec=stream[1]*u.deg, frame='icrs')
+        cgal = ceq.galactic
+        if galactic:
+            if (np.min(cgal.l.deg)<180) & (np.max(cgal.l.deg)>180):
+                wangle = 360*u.deg
+            else:
+                wangle = 180*u.deg
+            cx = cgal.l.to(u.deg).wrap_at(wangle)
+            cy = cgal.b.deg
+        else:
+            if (np.min(stream[0])<180) & (np.max(stream[0])>180):
+                wangle = 360*u.deg
+            else:
+                wangle = 180*u.deg
+            cx = ceq.ra.to(u.deg).wrap_at(wangle).value
+            cy = ceq.dec.deg
         
         for i in range(Np):
             plt.sca(ax[np.int64(i/3)][i%3])
@@ -406,17 +422,19 @@ def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', ali
             color_index /= 0.2
             color = mpl.cm.viridis(color_index[i])
             
-            isort = np.argsort(stream[0])
-            plt.plot(np.radians(stream[0][isort]), np.radians(stream[1][isort]), '-', color=color, lw=4) #, rasterized=True)
+            isort = np.argsort(cx)
+            plt.plot(np.radians(cx[isort]), np.radians(cy[isort]), '-', color=color, lw=4) #, rasterized=True)
     
     for i in range(Np):
         plt.sca(ax[np.int64(i/3)][i%3])
         #plt.xlabel('RA')
         #plt.ylabel('Dec')
         plt.text(0.9, 0.9, '$\Delta$ {}'.format(get_parlabel(pid_all[i])[0]), fontsize='medium', transform=plt.gca().transAxes, va='bottom', ha='left')
-        plt.grid()
+        plt.gca().xaxis.set_major_locator(mpl.ticker.MultipleLocator(base=np.pi/3.))
+        plt.gca().yaxis.set_major_locator(mpl.ticker.MultipleLocator(base=np.pi/6.))
         plt.setp(plt.gca().get_xticklabels(), visible=False)
         plt.setp(plt.gca().get_yticklabels(), visible=False)
+        plt.grid(color='0.7', ls=':')
         
     #plt.xlabel('RA')
     
@@ -432,7 +450,63 @@ def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', ali
     cb = fig.colorbar(sm, ax=ax.ravel().tolist(), pad=cb_pad, aspect=40, ticks=np.arange(0,21,5))
     cb.set_label('Cramer $-$ Rao bounds (%)')
     
-    plt.savefig('../paper/crb_onsky.pdf') #, dpi=200)
+    plt.savefig('../paper/crb_onsky_gal{:d}.pdf'.format(galactic)) #, dpi=200)
+
+def sky_legend(galactic=False):
+    """Label streams on the sky"""
+    
+    names = get_done()
+    np.random.seed(538)
+    
+    plt.close()
+    fig, ax = plt.subplots(1,1,figsize=(8,5), subplot_kw=dict(projection='mollweide'))
+    plt.sca(ax)
+    
+    for e, name in enumerate(names):
+        stream = np.load('../data/streams/mock_observed_{}.npy'.format(name))
+        ceq = coord.SkyCoord(ra=stream[0]*u.deg, dec=stream[1]*u.deg, frame='icrs')
+        cgal = ceq.galactic
+        if galactic:
+            if (np.min(cgal.l.deg)<180) & (np.max(cgal.l.deg)>180):
+                wangle = 360*u.deg
+            else:
+                wangle = 180*u.deg
+            cx = cgal.l.to(u.deg).wrap_at(wangle).value
+            cy = cgal.b.deg
+        else:
+            if (np.min(stream[0])<180) & (np.max(stream[0])>180):
+                wangle = 360*u.deg
+            else:
+                wangle = 180*u.deg
+            cx = ceq.ra.to(u.deg).wrap_at(wangle).value
+            cy = ceq.dec.deg
+        
+        isort = np.argsort(cx)
+        color = (np.random.rand(1)*0.8)[0]
+        scolor = '{}'.format(color)
+        plt.plot(np.radians(cx[isort]), np.radians(cy[isort]), '-', color=scolor, lw=4)
+        
+        label = full_name(name)
+        
+        lx = np.radians(cx[0])
+        ly = np.radians(cy[0])
+        plt.text(lx, ly, label, fontsize='medium', color=scolor)
+    
+    if galactic:
+        plt.xlabel('l (deg)')
+        plt.ylabel('b (deg)')
+    else:
+        plt.xlabel('R.A. (deg)')
+        plt.ylabel('Dec (deg)')
+    
+    plt.gca().xaxis.set_major_locator(mpl.ticker.MultipleLocator(base=np.pi/3.))
+    plt.gca().yaxis.set_major_locator(mpl.ticker.MultipleLocator(base=np.pi/6.))
+    #plt.setp(plt.gca().get_xticklabels(), visible=False)
+    #plt.setp(plt.gca().get_yticklabels(), visible=False)
+    plt.grid(color='0.7', ls=':')
+    
+    plt.tight_layout()
+    plt.savefig('../paper/sky_legend_gal{:d}.pdf'.format(galactic))
 
 def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='halo', align=True, relative=False):
     """Show how much parameters improve by including additional streams"""
