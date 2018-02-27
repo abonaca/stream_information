@@ -303,11 +303,11 @@ def crb_2d_all(comb=[[11,14]], vary=['progenitor', 'bary', 'halo'], errmode='fid
     # plot setup
     ncol = np.int64(np.ceil(np.sqrt(N)))
     nrow = np.int64(np.ceil(N/ncol))
-    w_ = 8
+    w_ = 10
     h_ = 1.1 * w_*nrow/ncol
     
     alpha = 1
-    lw = 2
+    lw = 3
     frac = [0.8, 0.5, 0.2]
     
     # parameter pairs
