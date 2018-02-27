@@ -293,6 +293,96 @@ def crb_2d(name='atlas', vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
     plt.tight_layout()
     plt.savefig('../paper/crb_correlations.pdf')
 
+def crb_2d_all(comb=[[11,14]], vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=True, relative=True):
+    """Compare 2D constraints between all streams for a pair of parameters"""
+    
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    names = get_done()
+    N = len(names)
+    
+    # plot setup
+    ncol = np.int64(np.ceil(np.sqrt(N)))
+    nrow = np.int64(np.ceil(N/ncol))
+    w_ = 8
+    h_ = 1.1 * w_*nrow/ncol
+    
+    alpha = 1
+    lw = 2
+    frac = [0.8, 0.5, 0.2]
+    
+    # parameter pairs
+    #paramids = [8, 11, 12, 13, 14]
+    #all_comb = list(itertools.combinations(paramids, 2))
+    #comb = sorted(list(set(all_comb)))
+    #comb = [[11, 14]]
+    Ncomb = len(comb)
+    #print(comb)
+
+    for c in range(Ncomb):
+        l, k = comb[c]
+        plt.close()
+        fig, ax = plt.subplots(nrow, ncol, figsize=(w_, h_), sharex=True, sharey=True)
+
+        for i in range(N):
+            plt.sca(ax[np.int64(i/ncol)][i%ncol])
+            
+            for e, Ndim in enumerate([3,4,6]):
+                color = mpl.cm.bone(frac[e])
+                
+                fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, names[i], align, vlabel))
+                cxi = fm['cxi']
+                cx = stable_inverse(cxi)
+                cx_2d = np.array([[cx[k][k], cx[k][l]], [cx[l][k], cx[l][l]]])
+                if relative:
+                    pk = pparams_fid[pid[k]].value
+                    pl = pparams_fid[pid[l]].value
+                    fid_2d = np.array([[pk**2, pk*pl], [pk*pl, pl**2]])
+                    cx_2d = cx_2d / fid_2d * 100**2
+                
+                w, v = np.linalg.eig(cx_2d)
+                if np.all(np.isreal(v)):
+                    theta = np.degrees(np.arctan2(v[1][0], v[0][0]))
+                    width = np.sqrt(w[0])*2
+                    height = np.sqrt(w[1])*2
+                    
+                    e = mpl.patches.Ellipse((0,0), width=width, height=height, angle=theta, fc='none', ec=color, alpha=alpha, lw=lw)
+                    plt.gca().add_patch(e)
+            
+            txt = plt.text(0.9, 0.9, full_name(names[i]), fontsize='small', transform=plt.gca().transAxes, ha='right', va='top')
+            txt.set_bbox(dict(facecolor='w', alpha=0.7, ec='none'))
+            if relative:
+                plt.xlim(-20, 20)
+                plt.ylim(-20,20)
+            else:
+                plt.gca().autoscale_view()
+        
+        plabels, units = get_parlabel([pid[k],pid[l]])
+        if relative:
+            punits = [' (%)' for x in units]
+        else:
+            punits = [' ({})'.format(x) if len(x) else '' for x in units]
+        params = ['$\Delta$ {}{}'.format(x, y) for x,y in zip(plabels, punits)]
+        
+        for i in range(ncol):
+            plt.sca(ax[nrow-1][i])
+            plt.xlabel(params[0])
+        
+        for i in range(nrow):
+            plt.sca(ax[i][0])
+            plt.ylabel(params[1])
+        
+        for i in range(N, ncol*nrow):
+            plt.sca(ax[np.int64(i/ncol)][i%ncol])
+            plt.axis('off')
+        
+        #plt.sca(ax[1][3])
+        #plt.setp(plt.gca().get_xticklabels(), visible=True)
+        #plt.xlabel(params[0])
+
+        plt.tight_layout(h_pad=0, w_pad=0)
+    
+    plt.savefig('../paper/crb2d_allstream.pdf')
+
 def sky(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', errmode='fiducial', align=True):
     """"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
@@ -377,16 +467,12 @@ def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', ali
         p_comp = coll['p']
         p_comp = p_comp / pparams_arr
         
-        #print(np.shape(p_comp))
         if e==0:
             p_all = np.copy(p_comp)
             pid_all = pid_comp[:]
         else:
             p_all = np.hstack([p_all, p_comp])
             pid_all = pid_all + pid_comp
-        
-        #print(p_all)
-        #print(np.shape(p_all))
     
     Ns, Np = np.shape(p_all)
     
@@ -395,7 +481,6 @@ def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', ali
     
     for e, name in enumerate(names):
         crb_frac = p_all[e]
-        #print(name, crb_frac)
         
         stream = np.load('../data/streams/mock_observed_{}.npy'.format(name))
         ceq = coord.SkyCoord(ra=stream[0]*u.deg, dec=stream[1]*u.deg, frame='icrs')
@@ -427,16 +512,12 @@ def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', ali
     
     for i in range(Np):
         plt.sca(ax[np.int64(i/3)][i%3])
-        #plt.xlabel('RA')
-        #plt.ylabel('Dec')
         plt.text(0.9, 0.9, '$\Delta$ {}'.format(get_parlabel(pid_all[i])[0]), fontsize='medium', transform=plt.gca().transAxes, va='bottom', ha='left')
         plt.gca().xaxis.set_major_locator(mpl.ticker.MultipleLocator(base=np.pi/3.))
         plt.gca().yaxis.set_major_locator(mpl.ticker.MultipleLocator(base=np.pi/6.))
         plt.setp(plt.gca().get_xticklabels(), visible=False)
         plt.setp(plt.gca().get_yticklabels(), visible=False)
         plt.grid(color='0.7', ls=':')
-        
-    #plt.xlabel('RA')
     
     # add custom colorbar
     sm = plt.cm.ScalarMappable(cmap=mpl.cm.viridis, norm=plt.Normalize(vmin=0, vmax=20))
@@ -501,8 +582,6 @@ def sky_legend(galactic=False):
     
     plt.gca().xaxis.set_major_locator(mpl.ticker.MultipleLocator(base=np.pi/3.))
     plt.gca().yaxis.set_major_locator(mpl.ticker.MultipleLocator(base=np.pi/6.))
-    #plt.setp(plt.gca().get_xticklabels(), visible=False)
-    #plt.setp(plt.gca().get_yticklabels(), visible=False)
     plt.grid(color='0.7', ls=':')
     
     plt.tight_layout()
@@ -644,14 +723,19 @@ def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', 
     nrow = 5
     ncol = 6
     da = 2.5
-    cname = ['length', 'rcur', 'rapo', 'lx', 'lz']
+    cname = ['length', 'rcur', 'rapo', 'ly', 'lz']
     xvar = [t[i_] for i_ in cname]
     #xvar[1] = (pparams_fid[6].value - t['rperi']) / (pparams_fid[6].value - t['rapo'])
     xvar[1] = t['rperi']/t['rapo']
     #xvar[3] = t['lx'] / np.sqrt(t['ly']**2 + t['lz']**2)
+    xvar[3] = np.sqrt(t['lx']**2 + t['ly']**2)
+    xvar[3] = np.sqrt(t['Labs'][:,0]**2 + t['Labs'][:,1]**2)/t['Lmod']
+    #print(t.colnames)
+    #print(np.shape(t['Labs'][0]))
+#def br():
     xvar = xvar + [t['ecc']]
     
-    xlabels = ['Length (deg)', 'R$_{cur}$/R$_{apo}$', 'R$_{apo}$ (kpc)', '|L$_x$|/|L|', '|L$_z$|/|L|', 'e']
+    xlabels = ['Length (deg)', 'R$_{cur}$/R$_{apo}$', 'R$_{apo}$ (kpc)', '|L$_y$|/|L|', '|L$_z$|/|L|', 'e']
     #ylabels = ['log $M_d$', '$V_h$', '$R_h$', '$q_x$', '$q_z$', '$V_h$ / $R_h$']
     ylabels = ['log $M_d$', '$V_h$', '$R_h$', '$q_x$', '$q_z$'] #, '$M_h$']
     dylabels = ['$\Delta$ {}'.format(s) for s in ylabels]
