@@ -3511,7 +3511,6 @@ def plot_ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=1):
     plt.ylabel('$\Delta$ $a_r$ / $a_r$')
     plt.ylim(0, 3.5)
     
-    print(np.shape(t['length']), np.shape(t['armin']))
     armin = np.median(t['armin'], axis=1)
     rmin = np.median(t['rmin'], axis=1)
     rmin_err = 0.5 * (np.percentile(t['rmin'], 84, axis=1) - np.percentile(t['rmin'], 16, axis=1))
@@ -3525,12 +3524,15 @@ def plot_ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=1):
     plt.sca(ax[2])
     a = np.linspace(0,90,100)
     plt.plot(a, a, 'k-')
-    plt.plot(a, 2*a, 'k--')
-    plt.plot(a, 3*a, 'k:')
+    #plt.plot(a, 2*a, 'k--')
+    #plt.plot(a, 3*a, 'k:')
     plt.scatter(t['rcur'], rmin, c=fcolor, cmap='bone', vmin=0, vmax=1)
     plt.errorbar(t['rcur'], rmin, yerr=rmin_err, color='k', fmt='none', zorder=0)
     plt.xlabel('$R_{cur}$ (kpc)')
     plt.ylabel('$R_{min}$ (kpc)')
+    
+    #for i in range(len(t)):
+        #plt.text(t['rcur'][i], rmin[i]+5, t['name'][i], fontsize='small')
     
     plt.xlim(0,90)
     plt.ylim(0,90)
@@ -3538,8 +3540,8 @@ def plot_ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=1):
     plt.sca(ax[3])
     a = np.linspace(0,90,100)
     plt.plot(a, a, 'k-')
-    plt.plot(a, 2*a, 'k--')
-    plt.plot(a, 3*a, 'k:')
+    #plt.plot(a, 2*a, 'k--')
+    #plt.plot(a, 3*a, 'k:')
     plt.scatter(t['rapo'], rmin, c=fcolor, cmap='bone', vmin=0, vmax=1)
     plt.errorbar(t['rapo'], rmin, yerr=rmin_err, color='k', fmt='none', zorder=0)
     plt.xlabel('$R_{apo}$ (kpc)')
@@ -3550,6 +3552,82 @@ def plot_ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=1):
     
     plt.tight_layout()
     plt.savefig('../plots/ar_crb_{}_sight{:d}.pdf'.format(vlabel, Nsight))
+
+def plot_all_ar(Nsight=1):
+    """Explore constraints on radial acceleration, along the progenitor line"""
+    
+    #fapo = t['rapo']/np.max(t['rapo'])
+    #fapo = t['rapo']/100
+    #flen = t['length']/(np.max(t['length']) + 10)
+    #fcolor = fapo
+    
+    alist = [0.2, 0.4, 0.7, 1]
+    mslist = [11, 9, 7, 5]
+    lwlist = [8, 6, 4, 2]
+    fc = [0.8, 0.6, 0.4, 0.2]
+    vlist = [['progenitor', 'bary', 'halo'], ['progenitor', 'bary', 'halo', 'dipole'], ['progenitor', 'bary', 'halo', 'dipole', 'quad'], ['progenitor', 'bary', 'halo', 'dipole', 'quad', 'octu']]
+    labels = ['Fiducial Galaxy', '+ dipole', '++ quadrupole', '+++ octupole']
+    
+    plt.close()
+    fig, ax = plt.subplots(1, 4, figsize=(20,5))
+    
+    for e, vary in enumerate(vlist):
+        pid, dp_fid, vlabel = get_varied_pars(vary)
+        t = Table.read('../data/crb/ar_orbital_summary_{}_sight{:d}.fits'.format(vlabel, Nsight))
+        N = len(t)
+        
+        color = mpl.cm.viridis(fc[e])
+        lw = lwlist[e]
+        ms = mslist[e]
+        alpha = alist[e]
+        
+        plt.sca(ax[0])
+        for i in range(0,5,4):
+            plt.plot(t['r'][i][0], t['ar'][i][1], '-', color=color, lw=lw, alpha=alpha)
+            
+        plt.xlabel('r (kpc)')
+        plt.ylabel('$\Delta$ $a_r$ / $a_r$')
+        plt.ylim(0, 3.5)
+        
+        armin = np.median(t['armin'], axis=1)
+        armin_err = 0.5 * (np.percentile(t['armin'], 84, axis=1) - np.percentile(t['armin'], 16, axis=1))
+        rmin = np.median(t['rmin'], axis=1)
+        rmin_err = 0.5 * (np.percentile(t['rmin'], 84, axis=1) - np.percentile(t['rmin'], 16, axis=1))
+        plt.sca(ax[1])
+        plt.plot(t['length'], armin, 'o', color=color, ms=ms, alpha=alpha, label=labels[e])
+        plt.errorbar(t['length'], armin, yerr=armin_err, color=color, fmt='none', zorder=0, alpha=alpha)
+        
+        if e==3:
+            plt.legend(loc=1, fontsize='small', handlelength=0.5, frameon=False)
+        plt.xlabel('Stream length (deg)')
+        plt.ylabel('min $\Delta$ $a_r$')
+        plt.ylim(0, 3.5)
+        
+        plt.sca(ax[2])
+        a = np.linspace(0,90,100)
+        plt.plot(a, a, 'k-')
+        plt.plot(t['rcur'], rmin, 'o', color=color, ms=ms, alpha=alpha)
+        plt.errorbar(t['rcur'], rmin, yerr=rmin_err, color=color, fmt='none', zorder=0, alpha=alpha)
+        plt.xlabel('$R_{cur}$ (kpc)')
+        plt.ylabel('$R_{min}$ (kpc)')
+
+        plt.xlim(0,90)
+        plt.ylim(0,90)
+        
+        plt.sca(ax[3])
+        a = np.linspace(0,90,100)
+        plt.plot(a, a, 'k-')
+        plt.plot(t['rapo'], rmin, 'o', color=color, ms=ms, alpha=alpha)
+        plt.errorbar(t['rapo'], rmin, yerr=rmin_err, color=color, fmt='none', zorder=0, alpha=alpha)
+        plt.xlabel('$R_{apo}$ (kpc)')
+        plt.ylabel('$R_{min}$ (kpc)')
+        
+        plt.xlim(0,90)
+        plt.ylim(0,90)
+    
+    plt.tight_layout()
+    plt.savefig('../plots/ar_crb_all_sight{:d}.pdf'.format(Nsight))
+    plt.savefig('../paper/ar_crb_all.pdf')
 
 # flattening
 def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', j=0, align=True, fast=False, scale=False):
