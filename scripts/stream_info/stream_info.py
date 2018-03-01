@@ -3512,10 +3512,12 @@ def plot_ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=1):
     plt.ylim(0, 3.5)
     
     armin = np.median(t['armin'], axis=1)
+    armin_err = 0.5 * (np.percentile(t['armin'], 84, axis=1) - np.percentile(t['armin'], 16, axis=1))
     rmin = np.median(t['rmin'], axis=1)
     rmin_err = 0.5 * (np.percentile(t['rmin'], 84, axis=1) - np.percentile(t['rmin'], 16, axis=1))
     plt.sca(ax[1])
     plt.scatter(t['length'], armin, c=fcolor, cmap='bone', vmin=0, vmax=1)
+    plt.errorbar(t['length'], armin, yerr=armin_err, color='k', fmt='none', zorder=0)
     
     plt.xlabel('Length (deg)')
     plt.ylabel('min $\Delta$ $a_r$')
@@ -3552,15 +3554,15 @@ def plot_ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=1):
     
     plt.tight_layout()
     plt.savefig('../plots/ar_crb_{}_sight{:d}.pdf'.format(vlabel, Nsight))
+    plt.savefig('../plots/conroy_group/ar_crb_{}_sight{:d}.png'.format(vlabel, Nsight), dpi=200)
+    
+    # save stream constraints
+    tout = Table([t['name'], t['rapo'], t['rcur'], t['length'], rmin, rmin_err, armin, armin_err], names=('name', 'rapo', 'rcur', 'length', 'rmin', 'rmin_err', 'armin', 'armin_err'))
+    tout.write('../data/ar_constraints_{}_sight{}.fits'.format(vlabel, Nsight), overwrite=True)
 
 def plot_all_ar(Nsight=1):
     """Explore constraints on radial acceleration, along the progenitor line"""
-    
-    #fapo = t['rapo']/np.max(t['rapo'])
-    #fapo = t['rapo']/100
-    #flen = t['length']/(np.max(t['length']) + 10)
-    #fcolor = fapo
-    
+
     alist = [0.2, 0.4, 0.7, 1]
     mslist = [11, 9, 7, 5]
     lwlist = [8, 6, 4, 2]
@@ -4307,6 +4309,7 @@ def comp_obsmodes(vary=['progenitor', 'bary', 'halo'], align=True, component='ha
     
     plt.tight_layout()
     plt.savefig('../plots/obsmode_comparison.pdf')
+    plt.savefig('../plots/conroy_group/obsmode_comparison.png', dpi=200)
 
 
 # progenitor's orbit

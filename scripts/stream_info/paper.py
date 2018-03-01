@@ -4,6 +4,9 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
+import h5py
+import scipy.interpolate
+
 from .stream_info import *
 
 def all_mocks():
@@ -79,6 +82,7 @@ def all_mocks():
     
     plt.tight_layout(h_pad=0, w_pad=0)
     plt.savefig('../paper/mocks.pdf')
+    plt.savefig('../plots/conroy_group/mocks.png', dpi=150)
 
 def derivative_vis(name='atlas'):
     """Plot steps in calculating a stream derivative wrt a potential parameter"""
@@ -157,6 +161,7 @@ def derivative_vis(name='atlas'):
     
     plt.tight_layout()
     plt.savefig('../paper/derivative_vis.pdf')
+    plt.savefig('../plots/conroy_group/derivative_vis.png', dpi=150)
 
 def derivative_stepsize(name='atlas', tolerance=2, Nstep=10, log=True, layer=1):
     """Plot change in numerical derivative Delta y / Delta x as a function of step size Delta x"""
@@ -292,6 +297,7 @@ def crb_2d(name='atlas', vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
     
     plt.tight_layout()
     plt.savefig('../paper/crb_correlations.pdf')
+    plt.savefig('../plots/conroy_group/crb_correlations.png', dpi=300)
 
 def crb_2d_all(comb=[[11,14]], vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=True, relative=True):
     """Compare 2D constraints between all streams for a pair of parameters"""
@@ -311,12 +317,7 @@ def crb_2d_all(comb=[[11,14]], vary=['progenitor', 'bary', 'halo'], errmode='fid
     frac = [0.8, 0.5, 0.2]
     
     # parameter pairs
-    #paramids = [8, 11, 12, 13, 14]
-    #all_comb = list(itertools.combinations(paramids, 2))
-    #comb = sorted(list(set(all_comb)))
-    #comb = [[11, 14]]
     Ncomb = len(comb)
-    #print(comb)
 
     for c in range(Ncomb):
         l, k = comb[c]
@@ -382,6 +383,7 @@ def crb_2d_all(comb=[[11,14]], vary=['progenitor', 'bary', 'halo'], errmode='fid
         plt.tight_layout(h_pad=0, w_pad=0)
     
     plt.savefig('../paper/crb2d_allstream.pdf')
+    plt.savefig('../plots/conroy_group/crb2d_allstream_{}.png'.format(l), dpi=150)
 
 def sky(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', errmode='fiducial', align=True):
     """"""
@@ -532,6 +534,7 @@ def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', ali
     cb.set_label('Cramer $-$ Rao bounds (%)')
     
     plt.savefig('../paper/crb_onsky_gal{:d}.pdf'.format(galactic)) #, dpi=200)
+    plt.savefig('../plots/conroy_group/crb_onsky_gal{:d}.png'.format(galactic), dpi=200)
 
 def sky_legend(galactic=False):
     """Label streams on the sky"""
@@ -673,7 +676,7 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
                 for j_ in range(Nmin):
                     best_names = [done[np.int64(i_)] for i_ in comb[ids_min[j_]][:Nmulti]]
                     print(k, j_, best_names)
-                    label = ', '.join(best_names)
+                    label = ' + '.join(best_names)
                     
                     plt.text(Nmulti, p_all[ids_min[j_],k], '{}'.format(label), fontsize='xx-small')
 
@@ -696,6 +699,7 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
     
     plt.tight_layout()
     plt.savefig('../paper/nstream_improvement.pdf')
+    plt.savefig('../plots/conroy_group/nstream_improvement.png', dpi=200)
 
 
 # applications
@@ -721,26 +725,25 @@ def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', 
     t = Table.read('../data/crb/ar_orbital_summary.fits')
     
     nrow = 5
-    ncol = 6
+    ncol = 5
     da = 2.5
-    cname = ['length', 'rcur', 'rapo', 'ly', 'lz']
+    cname = ['length', 'rapo', 'lx', 'lz']
     xvar = [t[i_] for i_ in cname]
     #xvar[1] = (pparams_fid[6].value - t['rperi']) / (pparams_fid[6].value - t['rapo'])
-    xvar[1] = t['rperi']/t['rapo']
+    #xvar[1] = t['rperi']/t['rapo']
     #xvar[3] = t['lx'] / np.sqrt(t['ly']**2 + t['lz']**2)
-    xvar[3] = np.sqrt(t['lx']**2 + t['ly']**2)
-    xvar[3] = np.sqrt(t['Labs'][:,0]**2 + t['Labs'][:,1]**2)/t['Lmod']
-    #print(t.colnames)
-    #print(np.shape(t['Labs'][0]))
-#def br():
+    #xvar[2] = np.sqrt(t['lx']**2 + t['ly']**2)
+    #xvar[2] = np.sqrt(t['Labs'][:,0]**2 + t['Labs'][:,1]**2)/t['Lmod']
     xvar = xvar + [t['ecc']]
     
-    xlabels = ['Length (deg)', 'R$_{cur}$/R$_{apo}$', 'R$_{apo}$ (kpc)', '|L$_y$|/|L|', '|L$_z$|/|L|', 'e']
+    xlabels = ['Length (deg)', 'R$_{apo}$ (kpc)', '|L$_x$|/|L|', '|L$_z$|/|L|', 'e']
     #ylabels = ['log $M_d$', '$V_h$', '$R_h$', '$q_x$', '$q_z$', '$V_h$ / $R_h$']
     ylabels = ['log $M_d$', '$V_h$', '$R_h$', '$q_x$', '$q_z$'] #, '$M_h$']
     dylabels = ['$\Delta$ {}'.format(s) for s in ylabels]
     
     mask = t['name']!='ssangarius'
+    cback = '#FFD8A7'
+    cback = [1, 237/255, 214/255]
     
     plt.close()
     fig, ax = plt.subplots(nrow, ncol, figsize=(ncol*da, nrow*da), sharex='col', sharey='row')
@@ -749,11 +752,19 @@ def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', 
         for j in range(ncol):
             plt.sca(ax[i][j])
             #plt.plot(xvar[j][mask], p[:,i][mask], 'o', ms=5, color='0.2')
-            plt.scatter(xvar[j][mask], p[:,i][mask], c=xvar[0][mask], vmax=30)
+            plt.scatter(xvar[j][mask], p[:,i][mask], c=xvar[0][mask], vmax=30, cmap='copper')
             
             corr = scipy.stats.pearsonr(xvar[j][mask], p[:,i][mask])
-            txt = plt.text(0.1, 0.1, '{:.3g}'.format(corr[0]), fontsize='x-small', transform=plt.gca().transAxes)
-            txt.set_bbox(dict(facecolor='w', alpha=0.7, ec='none'))
+            fs = np.abs(corr[0])*10+7
+            txt = plt.text(0.9, 0.9, '{:.3g}'.format(corr[0]), size=fs, transform=plt.gca().transAxes, ha='right', va='top')
+            #txt.set_bbox(dict(facecolor='w', alpha=0.7, ec='none'))
+            
+            if np.abs(corr[0])>0.5:
+                balpha = 0
+            else:
+                balpha = 0.6 - np.abs(corr[0])
+            ctuple = tuple(cback + [balpha])
+            plt.gca().set_facecolor(color=ctuple)
             
             if j==0:
                 plt.ylabel(dylabels[i])
@@ -772,6 +783,7 @@ def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', 
     
     plt.tight_layout()
     plt.savefig('../paper/orbit_correlations.pdf')
+    plt.savefig('../plots/conroy_group/orbit_correlations.png', dpi=200)
 
 def vc():
     """"""
@@ -885,7 +897,70 @@ def min_ar():
         idmin = np.r_[True, t['dar'][s][1:] < t['dar'][s][:-1]] & np.r_[t['dar'][s][:-1] < t['dar'][s][1:], True]
         print(t['name'][s], t['r'][s][idmin], t['rmin'][s])
         plt.plot(t['r'][s], t['dar'][s], '-')
+
+# expected ar
+def latte_ar(vary=['progenitor', 'bary', 'halo', 'dipole', 'quad', 'octu'], xmax=100):
+    """"""
+    plt.close()
+    plt.figure(figsize=(9,6))
+    
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    Nsight = 50
+    t = Table.read('../data/ar_constraints_{}_sight{}.fits'.format(vlabel, Nsight))
+    
+    colors = [mpl.cm.magma(i_) for i_ in [0.2, 0.5, 0.8]]
+    
+    for e, halo in enumerate(['i', 'f', 'm']):
+        color = colors[e]
         
+        f = h5py.File('/home/ana/data/latte/m12{:1s}/snapshot_600.0.hdf5'.format(halo), 'r')
+        dm = f['PartType0']
+
+        x = dm['Coordinates'][::20] / 0.7
+        pot = dm['Potential'][::20]
+        
+        # center halo
+        imin = np.argmin(pot)
+        xmin = x[imin]
+        x = x - xmin
+        r = np.linalg.norm(x, axis=1)
+        
+        # get median potential in radial shells
+        r_bins = np.linspace(0, xmax, 50)
+        idx  = np.digitize(r, bins=r_bins)
+        pot_med = np.array([np.nanmedian(pot[idx==i]) for i in range(1, len(r_bins))])
+        r_med = r_bins[1:]
+        
+        # calculate radial acceleration
+        ar = (pot_med[2:] - pot_med[:-2]) / (r_med[2:] - r_med[:-2]) * u.km**2 * u.s**-2 * u.kpc**-1
+        r_ar = r_med[1:-1]
+        #print(e, np.all(np.isfinite(pot_med)), np.shape(x))
+        #print(pot_med)
+        
+        # stream constraints
+        r_stream = t['rcur']
+        fint = scipy.interpolate.interp1d(r_ar, ar, )
+        ar_stream = fint(r_stream)*ar.unit
+        ar_err = ar_stream * t['armin']
+        
+        #plt.plot(x[:,0], x[:,1], 'o', label=halo)
+        
+        plt.plot(r_ar, ar.to(u.pc*u.Myr**-2), '-', lw=2, color=color, label='Latte m12{:1s}'.format(halo))
+        plt.plot(r_stream, ar_stream.to(u.pc*u.Myr**-2), 'o', color=color)
+        plt.errorbar(r_stream, ar_stream.to(u.pc*u.Myr**-2).value, yerr=ar_err.to(u.pc*u.Myr**-2).value, color=color, fmt='none', zorder=0)
+        
+        f.close()
+
+    plt.legend(frameon=False, fontsize='medium', handlelength=1)
+    plt.gca().set_yscale('log')
+    plt.ylim(0.5, 75)
+    plt.xlabel('r (kpc)')
+    plt.ylabel('$a_r$ (pc Myr$^{-2}$)')
+
+    plt.tight_layout()
+    plt.savefig('../plots/conroy_group/latte_ar_{}.png'.format(vlabel), dpi=150)
+
+
 # tables
 def table_obsmodes(verbose=True):
     """Save part of the latex table with information on observing modes"""
