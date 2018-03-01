@@ -447,12 +447,25 @@ Different streams are sensitive to different parameters, although no stream in t
 \end{center}
 \end{figure}
 
-- summary of crbs
-- one panel per parameter, showing stream positions on the sky (galactic coordinates!), color-coded by their CRLB on the parameter indicated in the upper right corner of the panel
-- legend on the bottom, where streams are labeled
-- showing relative constraints, and color-bar capped at 20\% to highlight interesting constraints
-- also, those dominated by prior shown as dashed lines -- most of baryonic parameters
-- exception: disk mass, some streams beat the prior
+Figure~\ref{fig:sky_precision} summarizes \CRLB\ from fiducial 6D observations on all model parameters that streams in our sample have in common.
+Each panel in a grid shows positions of streams on the sky (in galactic $(l,b)$ coordinates), colored by the fractional CRLB on the parameter indicated in the upper right corner of the panel.
+The larger panel in the bottom has the scale and labels for each stream.
+Similar to Figure~\ref{fig:crb2d_comparison}, the color-bar saturates at 20\,\% to highlight parameters for which streams provide interesting constraints.
+Across the different parameters, streams provide diverse constraints: some parameters are constrained to the same degree by all of the streams, while there is variance from a few percent to more than 20\,\% for others.
+
+In addition to stream observations, the bounds on baryonic parameters were informed by a 10\,\% prior, so the \CRLB\ on these parameters are better than 10\,\% for all of the streams.
+To identify parameters whose bounds are determined predominantly by prior information, we calculated Kullback--Leibler divergence (KLD) between the prior and the bound:
+\begin{equation*}
+D_{KL} = \int_{-\infty}^{\infty} p(x) \ln\frac{p(x)}{q(x)} dx
+\end{equation*}
+where $p(x) = \mathcal{N}(0,\sigma_{bound})$ is the normal distribution centered on zero, with the parameter's \CRLB\ as a dispersion, and similarly $q(x) = \mathcal{N}(0,\sigma_{prior})$ is the normal distribution used as a prior on that parameter in the calculation of the \CRLB.
+In general, KLD compares how similar two distributions are, so in our case, a small divergence means that the bound contains little information from streams.
+Quantitatively, we call a parameter constraint prior-driven if its KLD with respect to the prior is smaller than $D_{KL}<0.01$, and plot these bounds with dotted lines in Figure~\ref{fig:sky_precision}.
+None of the streams improved upon the prior information for the length scale of the bulge and disk, only several have improved on the bulge mass measurement (the inner halo streams GD-1, Hermus, Orinoco, and PS1A), while all the streams have constrained the disk mass further.
+Mock streams in our sample are sensitive to the overall mass in the baryonic components, but not to its spatial distribution, which is likely a result of them never reaching closer than 4\,kpc from the Galactic center.
+In the rest of the study, we focus on parameters for which streams provide constraints: the mass of the disk, and the halo parameters.
+
+
 - another global observation: none of the streams constrains halo scale radius better than 20\%
 - mixture for Vh, qx, qz, but no obvious trends with position on the sky
 - on the contrary, some streams that appear in similar regions of the sky have very different sensitivity to halo parameters (e.g., qx for nearly parallel sangarius and ps1d separated by 5\,deg are x and y\%, respectively)
@@ -508,19 +521,15 @@ We also note that observing modes with the same dimension of data, but different
 % - different observing modes
 % - raise issue of member identification, which was not addressed here
 
-\subsection{More flexible potential models}
-\label{sec:bfe}
-% - acceleration field: residuals
-% - add dipole, quadrupole 
-% 
-% - end with the need for a model that is both flexible spatially and realistic (ie, has a good basis, but also evolves in time)
-% - can we make the case with ophiuchus, or perhaps some of the streams close to the LMC?
-% - posit whether galaxy simulations would provide good models, or just a basis in which we evolve individual subhalos
-
-
 \subsection{Physical interpretation of constraints}
 \label{sec:interpretation}
-% - propagating properties
+- potential == theoretical construct, matter field physical
+- density / enclosed mass can be calculated given parameters of the potential by integrating the poisson's equation
+- the bounds are then propagated using eqn:
+
+- however, density / enclosed mass is an integrated property, no/hard? to analytically calculate
+- on the other hand, radial acceleration is straightforward -- just differentiating the potential
+- it also correlates with enclosed mass (and in spherically symmetric case ?), so use ar as our proxy of a physical quantity
 
 \begin{figure}
 \begin{center}
@@ -530,12 +539,47 @@ Precision in recovered circular velocity as a function of distance from the Gala
 Streams vary in their ability to constrain circular velocity (thicker lines are used for more competitive constraints), but all have a single Galactocentric distance where the constraint is maximized.
 Long streams provide tighter constraints (\emph{center}), while the location of the best constraint correlates with the orbital apocenter (\emph{right}).
 }
-\label{fig:vc}
+\label{fig:ar}
 \end{center}
 \end{figure}
 
-% - enclosed mass
-% - flattening
+- top row of Figure~\ref{fig:ar} shows in fiducial case fractional constraints on radial acceleration as a function of distance from the center along a random line of sight
+- different lines for different streams -- different scales and normalizations, but all show a local minimum
+- in the second panel we show that the best constraint is a strong function of the stream length, consistent with findings for original parameters of the potential field
+- errorbars are 16th to 84th percentile across the 50 different sightlines
+- in the two right-most panels we explore where the best measurement of the acceleration is obtained, by plotting the minimum of Delta ar curves as a function of current radial distance of the stream (second panel from the right) and apocentric radius (first panel on the right).
+- the positions of best stream constraints are scattered off the one-to-one line (solid black), but in general seem to correlate with apocenter
+- the correlation with current position is very non-linear
+
+- however, the fiducial model is parametric -- rigid, meaning that getting one thing right gets many other things right as well
+- if the best measurement is truly attained at the apocenter, that would mean that the streams at the present contain the information on their whole orbital history, constraining the total enclosed mass within their apocentra.
+- alternatively, if the best measurement is at the current position, that means that streams are foremost a local measure of the enclosed mass.
+- these are radically different interpretations, so in the final application of our framework to measure information content in streams, we relax our assumptions about the potential and show what properties of more flexible potentials are constrained by stellar streams
+
+\subsection{More flexible potential models}
+\label{sec:bfe}
+- in this section, we expand on the basic model of the Galaxy studied throughout this work
+- in particular, we consider the influence of an external multipole, whose contribution to the potential field is given by eqn:
+- where $a_{lm}=0$ are coefficients of the spherical Bessel functions
+- we are expanding around our fiducial model, so $a_{lm}=0$, however, we leave them as free parameters, and measure how well the streams constrain them
+- we go up to the octupole moment, $l=3$, which adds up 15 additional parameters to our model
+
+- bottom row of Figure~\ref{fig:ar} shows constraints on radial acceleration in the case where the potential gets progressively more complicated: fiducial in light green, with added dipole in dark green, up to quadrupole in blue and up to octupole in purple
+- as expected when adding more parameters to the model, overall the model is less constrained
+- for simplicity, we only show delta ar(r) for a couple of streams, and see that \CRLB\ increase in more flexible potentials
+- this is also confirmed for all of the streams in the second panel from the left, where we show how the constraints depend on the stream length
+- while all streams produce weaker constraints in more flexible models of the Galaxy, the performance decreases exponentially? for short streams
+- however, the constraints also become more localized, because the delta ar(r) curves on the first panel have a deeper minimum -- which means that the streams only know about region of the Galaxy 
+- and that turns out to be the local position; third panel shows that in the octupole case, best ar constraints for all but a few streams are within $1\,\sigma$ of the current position
+
+- powerful finding: streams constrain the mass enclosed within their current position, with a precision determined by their length
+- both of these are observables, so we can easily predict what kind of object would give what kind of constraint
+- while we clearly see trends with orbital properties, such as eccentricity, they are less important 
+
+% - end with the need for a model that is both flexible spatially and realistic (ie, has a good basis, but also evolves in time)
+% - can we make the case with ophiuchus, or perhaps some of the streams close to the LMC?
+% - posit whether galaxy simulations would provide good models, or just a basis in which we evolve individual subhalos
+
 
 \section{Discussion}
 \label{sec:discussion}
@@ -548,7 +592,7 @@ Long streams provide tighter constraints (\emph{center}), while the location of 
 \label{sec:summary}
 
 
-\emph{Acknowledgements:} This work was improved upon following the thoughtful suggestions of Dan Foreman-Mackey, Kathryn Johnston, Nikhil Padmanabhan, Adrian Price-Whelan and Hans-Walter Rix, and it is a pleasure to thank them.
+\emph{Acknowledgements:} This work was improved upon following the thoughtful suggestions of the Conroy group, the Finkbeiner group, Dan Foreman-Mackey, Kathryn Johnston, Nikhil Padmanabhan, Adrian Price-Whelan and Hans-Walter Rix, and it is a pleasure to thank them.
 
 \bibliographystyle{aasjournal}
 \bibliography{crlb}
