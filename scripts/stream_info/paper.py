@@ -82,7 +82,6 @@ def all_mocks():
     
     plt.tight_layout(h_pad=0, w_pad=0)
     plt.savefig('../paper/mocks.pdf')
-    plt.savefig('../plots/conroy_group/mocks.png', dpi=150)
 
 def derivative_vis(name='atlas'):
     """Plot steps in calculating a stream derivative wrt a potential parameter"""
@@ -161,7 +160,6 @@ def derivative_vis(name='atlas'):
     
     plt.tight_layout()
     plt.savefig('../paper/derivative_vis.pdf')
-    plt.savefig('../plots/conroy_group/derivative_vis.png', dpi=150)
 
 def derivative_stepsize(name='atlas', tolerance=2, Nstep=10, log=True, layer=1):
     """Plot change in numerical derivative Delta y / Delta x as a function of step size Delta x"""
@@ -297,7 +295,6 @@ def crb_2d(name='atlas', vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
     
     plt.tight_layout()
     plt.savefig('../paper/crb_correlations.pdf')
-    plt.savefig('../plots/conroy_group/crb_correlations.png', dpi=300)
 
 def crb_2d_all(comb=[[11,14]], vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=True, relative=True):
     """Compare 2D constraints between all streams for a pair of parameters"""
@@ -383,7 +380,6 @@ def crb_2d_all(comb=[[11,14]], vary=['progenitor', 'bary', 'halo'], errmode='fid
         plt.tight_layout(h_pad=0, w_pad=0)
     
     plt.savefig('../paper/crb2d_allstream.pdf')
-    plt.savefig('../plots/conroy_group/crb2d_allstream_{}.png'.format(l), dpi=150)
 
 def sky(Ndim=6, vary=['progenitor', 'bary', 'halo'], component='halo', errmode='fiducial', align=True):
     """"""
@@ -476,6 +472,16 @@ def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', ali
             p_all = np.hstack([p_all, p_comp])
             pid_all = pid_all + pid_comp
     
+    # calculate KL divergence to estimate whether constraints prior dominated
+    prior_mat = priors('gd1', vary)
+    prior_vec = np.diag(prior_mat)[6:]
+    pparams_all = [pparams0[x] for x in pid_all]
+    pparams_arr = np.array([x.value for x in pparams_all])
+    prior_vec = prior_vec**-0.5 / pparams_arr
+    
+    kld = np.log(prior_vec/p_all)
+    kld_min = 1e-2
+    
     Ns, Np = np.shape(p_all)
     
     plt.close()
@@ -483,6 +489,7 @@ def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', ali
     
     for e, name in enumerate(names):
         crb_frac = p_all[e]
+        #ls = [':' if np.isfinite(x) & (x<kld_min) else '-' for x in kld[e]]
         
         stream = np.load('../data/streams/mock_observed_{}.npy'.format(name))
         ceq = coord.SkyCoord(ra=stream[0]*u.deg, dec=stream[1]*u.deg, frame='icrs')
@@ -510,7 +517,11 @@ def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', ali
             color = mpl.cm.viridis(color_index[i])
             
             isort = np.argsort(cx)
-            plt.plot(np.radians(cx[isort]), np.radians(cy[isort]), '-', color=color, lw=4) #, rasterized=True)
+            if np.isfinite(kld[e][i]) & (kld[e][i]<kld_min):
+                plt.plot(np.radians(cx[isort]), np.radians(cy[isort]), ls='--', dashes=(0.2,0.2), color=color, lw=4) #, rasterized=True)
+            else:
+                print(name, i)
+                plt.plot(np.radians(cx[isort]), np.radians(cy[isort]), ls='-', color=color, lw=4)
     
     for i in range(Np):
         plt.sca(ax[np.int64(i/3)][i%3])
@@ -534,7 +545,6 @@ def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', ali
     cb.set_label('Cramer $-$ Rao bounds (%)')
     
     plt.savefig('../paper/crb_onsky_gal{:d}.pdf'.format(galactic)) #, dpi=200)
-    plt.savefig('../plots/conroy_group/crb_onsky_gal{:d}.png'.format(galactic), dpi=200)
 
 def sky_legend(galactic=False):
     """Label streams on the sky"""
@@ -699,7 +709,6 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
     
     plt.tight_layout()
     plt.savefig('../paper/nstream_improvement.pdf')
-    plt.savefig('../plots/conroy_group/nstream_improvement.png', dpi=200)
 
 
 # applications
@@ -783,7 +792,6 @@ def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', 
     
     plt.tight_layout()
     plt.savefig('../paper/orbit_correlations.pdf')
-    plt.savefig('../plots/conroy_group/orbit_correlations.png', dpi=200)
 
 def vc():
     """"""
@@ -958,7 +966,6 @@ def latte_ar(vary=['progenitor', 'bary', 'halo', 'dipole', 'quad', 'octu'], xmax
     plt.ylabel('$a_r$ (pc Myr$^{-2}$)')
 
     plt.tight_layout()
-    plt.savefig('../plots/conroy_group/latte_ar_{}.png'.format(vlabel), dpi=150)
 
 
 # tables
@@ -989,3 +996,9 @@ def orbit_properties(name):
     
     for k in t.colnames:
         print(k, np.array(t[k])[0])
+
+def orbit_properties_all(p):
+    """"""
+    t = Table.read('../data/crb/ar_orbital_summary.fits')
+    if p in t.colnames:
+        Table([t['name'], t[p]]).pprint(max_lines=20)

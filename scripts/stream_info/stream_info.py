@@ -3554,7 +3554,6 @@ def plot_ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=1):
     
     plt.tight_layout()
     plt.savefig('../plots/ar_crb_{}_sight{:d}.pdf'.format(vlabel, Nsight))
-    plt.savefig('../plots/conroy_group/ar_crb_{}_sight{:d}.png'.format(vlabel, Nsight), dpi=200)
     
     # save stream constraints
     tout = Table([t['name'], t['rapo'], t['rcur'], t['length'], rmin, rmin_err, armin, armin_err], names=('name', 'rapo', 'rcur', 'length', 'rmin', 'rmin_err', 'armin', 'armin_err'))
@@ -4309,7 +4308,6 @@ def comp_obsmodes(vary=['progenitor', 'bary', 'halo'], align=True, component='ha
     
     plt.tight_layout()
     plt.savefig('../plots/obsmode_comparison.pdf')
-    plt.savefig('../plots/conroy_group/obsmode_comparison.png', dpi=200)
 
 
 # progenitor's orbit
