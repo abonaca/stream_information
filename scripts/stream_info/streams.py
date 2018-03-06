@@ -11,13 +11,15 @@ from astropy.table import Table
 import astropy.coordinates as coord
 import gala.coordinates as gc
 
-from .stream_info import *
+#from stream_info import find_greatcircle, wfit_plane
 import streakline
 import ffwd
 import emcee
+import myutils
 
 from scipy import stats
 from scipy import interpolate
+import scipy.linalg
 import time
 import pickle
 import shutil
@@ -690,16 +692,6 @@ def find_progenitor(name='gd1', test=False, verbose=False, cont=False, nstep=100
     # adjust circular velocity in this halo
     vobs['vcirc'] = vcirc_potential(observer['galcen_distance'], pparams=pparams)
     
-    # plot observed stream
-    plt.close()
-    fig, ax = plt.subplots(1,2, figsize=(10,5))
-    
-    for i in range(2):
-        plt.sca(ax[i])
-        plt.plot(observed.obs[0], observed.obs[i+1], 'ko')
-    
-    plt.tight_layout()
-    
     # initialize progenitor properties
     if test | ((not test) & (not cont)):
         x0_obs, v0_obs = get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, wangle, mod_err, observer, vobs, footprint, ranges)
@@ -708,8 +700,15 @@ def find_progenitor(name='gd1', test=False, verbose=False, cont=False, nstep=100
     #nfree = np.size(pinit)
     nfree = 8
     
+    # rotate observed stream
+    rotmatrix = find_greatcircle(stream=observed, save=False, graph=False)
+    xi, eta  = myutils.rotate_angles(observed.obs[0], observed.obs[1], rotmatrix)
+    observed.obs[0] = xi
+    observed.obs[1] = eta
+    wangle = 0*u.deg
+    
     if test:
-        print(lnprob_prog(pinit, potential, pparams, mf, dt, nstar, obsmode, wangle, mod_err, observer, vobs, footprint, observed, ranges))
+        print(lnprob_prog(pinit, potential, pparams, mf, dt, nstar, obsmode, rotmatrix, wangle, mod_err, observer, vobs, footprint, observed, ranges))
         pbest = pinit
         print(pbest)
     
@@ -718,7 +717,7 @@ def find_progenitor(name='gd1', test=False, verbose=False, cont=False, nstep=100
         
         # Define a sampler
         pool = get_pool(mpi=mpi, threads=nth)
-        sampler = emcee.EnsembleSampler(nwalkers, nfree, lnprob_prog, pool=pool, args=[potential, pparams, mf, dt, nstar, obsmode, wangle, mod_err, observer, vobs, footprint, observed, ranges])
+        sampler = emcee.EnsembleSampler(nwalkers, nfree, lnprob_prog, pool=pool, args=[potential, pparams, mf, dt, nstar, obsmode, rotmatrix, wangle, mod_err, observer, vobs, footprint, observed, ranges])
         
         if cont:
             # initialize random state
@@ -784,21 +783,29 @@ def find_progenitor(name='gd1', test=False, verbose=False, cont=False, nstep=100
     age = pbest[7]*u.Gyr
     
     # stream model parameters
-    params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': nstar, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'wangle': wangle, 'nstars':-1, 'sequential':True, 'errors': mod_err, 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': np.eye(3)}}
+    params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': nstar, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'wangle': wangle, 'nstars':-1, 'sequential':True, 'errors': mod_err, 'present': [0,1,2,3,4,5], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': rotmatrix}}
     
     model = Stream(**params['generate'])
     model.generate()
     model.observe(**params['observe'])
     
+    # plot observed stream
+    plt.close()
+    fig, ax = plt.subplots(1,2, figsize=(10,5))
+    
     for i in range(2):
         plt.sca(ax[i])
+        plt.plot(observed.obs[0], observed.obs[i+1], 'ko')
         plt.plot(model.obs[0], model.obs[i+1], 'ro')
+    
+    plt.tight_layout()
 
 def get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, wangle, mod_err, observer, vobs, footprint, ranges, seed=98):
     """Pick the best direction for initializing progenitor velocity vector"""
 
     colnan = np.array([np.any(np.isfinite(observed.obs[x])) for x in range(6)])
     Ndim = np.sum(colnan)
+    rotmatrix = np.eye(3)
     
     if Ndim<4:
         N = 50
@@ -822,7 +829,7 @@ def get_close_progenitor(observed, potential, pparams, mf, dt, nstar, obsmode, w
             #x0_obs, v0_obs = get_progenitor(observed, dp=dp_list[i], observer=mw_observer, pparams=pparams)
             plist = [j.value for j in x0_obs] + [j.value for j in v0_obs] + [4, 3]
             pinit = np.array(plist)
-            lnp[i] = lnprob_prog(pinit, potential, pparams, mf, dt, nstar, obsmode, wangle, mod_err, observer, vobs, footprint, observed, ranges)
+            lnp[i] = lnprob_prog(pinit, potential, pparams, mf, dt, nstar, obsmode, rotmatrix, wangle, mod_err, observer, vobs, footprint, observed, ranges)
             v0[i] = v0_obs
         
         v0_obs = v0[np.argmax(lnp)]
@@ -964,7 +971,7 @@ def bestfit(name='Sty'):
     plt.tight_layout()
 
 
-def lnprob_prog(x, potential, pparams, mf, dt, nstar, obsmode, wangle, mod_err, observer, vobs, footprint, observed, ranges):
+def lnprob_prog(x, potential, pparams, mf, dt, nstar, obsmode, rotmatrix, wangle, mod_err, observer, vobs, footprint, observed, ranges):
     """"""
     
     lnprior = lnprior_prog(x, ranges)
@@ -977,7 +984,7 @@ def lnprob_prog(x, potential, pparams, mf, dt, nstar, obsmode, wangle, mod_err, 
         age = x[7]*u.Gyr
         
         # stream model parameters
-        params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': nstar, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'wangle': wangle, 'nstars':-1, 'sequential':True, 'errors': mod_err, 'present': [], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': np.eye(3)}}
+        params = {'generate': {'x0': x0, 'v0': v0, 'progenitor': {'coords': 'equatorial', 'observer': observer, 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mi, 'mfinal': mf, 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': age, 'nstars': nstar, 'integrator': 'lf'}, 'observe': {'mode': obsmode, 'wangle': wangle, 'nstars':-1, 'sequential':True, 'errors': mod_err, 'present': [], 'observer': observer, 'vobs': vobs, 'footprint': footprint, 'rotmatrix': rotmatrix}}
         
         model = Stream(**params['generate'])
         model.generate()
