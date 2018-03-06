@@ -451,7 +451,6 @@ Figure~\ref{fig:sky_precision} summarizes \CRLB\ from fiducial 6D observations o
 Each panel in a grid shows positions of streams on the sky (in galactic $(l,b)$ coordinates), colored by the fractional CRLB on the parameter indicated in the upper right corner of the panel.
 The larger panel in the bottom has the scale and labels for each stream.
 Similar to Figure~\ref{fig:crb2d_comparison}, the color-bar saturates at 20\,\% to highlight parameters for which streams provide interesting constraints.
-Across the different parameters, streams provide diverse constraints: some parameters are constrained to the same degree by all of the streams, while there is variance from a few percent to more than 20\,\% for others.
 
 In addition to stream observations, the bounds on baryonic parameters were informed by a 10\,\% prior, so the \CRLB\ on these parameters are better than 10\,\% for all of the streams.
 To identify parameters whose bounds are determined predominantly by prior information, we calculated Kullback--Leibler divergence (KLD) between the prior and the bound:
@@ -465,11 +464,10 @@ None of the streams improved upon the prior information for the length scale of 
 Mock streams in our sample are sensitive to the overall mass in the baryonic components, but not to its spatial distribution, which is likely a result of them never reaching closer than 4\,kpc from the Galactic center.
 In the rest of the study, we focus on parameters for which streams provide constraints: the mass of the disk, and the halo parameters.
 
-
-- another global observation: none of the streams constrains halo scale radius better than 20\%
-- mixture for Vh, qx, qz, but no obvious trends with position on the sky
-- on the contrary, some streams that appear in similar regions of the sky have very different sensitivity to halo parameters (e.g., qx for nearly parallel sangarius and ps1d separated by 5\,deg are x and y\%, respectively)
-- so we next discuss how these depend on orbital properties
+Across the different parameters, streams provide diverse constraints: some parameters are constrained to the same degree by all of the streams, while there is variance from a few percent to more than 20\,\% for others.
+For example, none of the streams constrain halo scale radius better than 20\,\%, which is not entirely unexpected for this sample of streams where only four venture past the break at 30\,kpc.
+The constraints for other parameters are more varied across the sample; some streams like GD-1 are good at constraining all parameters, while some have a mediocre overall performance, but excel in one parameter, such as Sangarius for the halo $x$-axis flattening, $q_x$.
+There are no obvious trends between the quality of constraints and the stream position on the sky -- rather, streams observed in the similar region of the sky can have very different sensitivity to halo parameters (e.g., PS1D is nearly parallel and close to Sangarius, but its constraints on $q_x$ are worse than 20\,\%).
 
 \begin{figure}
 \begin{center}
@@ -481,11 +479,33 @@ The disk mass is better constrained by streams whose angular momentum vector is 
 \end{center}
 \end{figure}
 
+We next test the dependence of stream sensitivity to parameters of the gravitational potential on the intrinsic properties of the system -- the orbital properties of the progenitor.
+Specifically, Figure~\ref{fig:orbit_correlations} how \CRLB\ on disk mass and halo parameters on the y axis, depend on stream length, apocentric radius, orbit orientation and orbital eccentricity on the x axis.
+The grid is organized such that rows share the same model parameters, while columns share the same stream property.
+Each point in a panel represents a mock stream, color-coded by its length.
+The Pearson correlation coefficient ($p$ value) between the model parameter and the stream property is given in the top right corner of every panel.
+To emphasize stronger correlations, the text size of the quoted $p$ value and the brightness of the panel's background increase with the absolute size of the $p$ value.
 
+The Cram\' er--Rao bounds on all model parameters are better in the case of longer streams.
+For most parameters, this correlation with stream length is stronger than with any other stream property.
+Differences in stream models in halos of different halo scale velocity, as illustrated in Figure~\ref{fig:derivative_steps}, are easier to discern at the ends of a stream.
+Given a fixed observational uncertainty, this means that longer streams should in general be more sensitive to changes in the gravitational potential -- a hypothesis quantitatively confirmed with \CRLB\ of all model parameters decreasing with stream length.
+
+The length of a stream is its only intrinsic property which universally correlates with the \CRLB\ of model parameters, but other features of streams can be linked to a specific model parameter.
+For example, streams with smaller apocenters constrain the disk mass better (as visible in the top row, and second panel from the left of Figure~\ref{fig:orbit_correlations}).
+These streams never venture out in the halo, so their gravitational potential is dominated by the disk, and it is consequently the mass of the disk they pinpoint.
+Also intuitively, the flattening of the halo along the $z$-axis is better constrained by streams whose orbital planes are perpendicular to the Galactic disk.
+The $z$ component of the angular momentum is small on such orbits, and in the fourth panel of the bottom row of Figure~\ref{fig:orbit_correlations} we indeed see that the best \CRLB\ are obtained for streams with low value of $|L_z|/|L|$, where $L$ is the angular momentum averaged along the orbit.
+And finally, \CRLB\ on several model parameters anti-correlate at varying degrees with the eccentricity of the progenitor's orbit.
+Larger eccentricity means that the stream has orbited in a larger fraction of the Galaxy's volume, which seems to particularly inform 
+At a fixed eccentricity, longer streams provide better constraints, which is especially evident for a number of streams with an eccentricity of $e\approx0.4$.
+This dependence of \CRLB\ on multiple properties of a stream signifies that the combined information of several different streams will feature an interesting interplay of their intrinsic properties.
+% we can expect an interesting interplay between these properties when combining information from different streams.
 
 \subsection{Joint constraints}
 \label{sec:res_joint}
 % - CRB on halo parameters using different combinations of streams
+% truly the joint stream constraints being more than the sum of its parts.
 
 \begin{figure}
 \begin{center}
@@ -583,9 +603,9 @@ Long streams provide tighter constraints (\emph{center}), while the location of 
 
 \section{Discussion}
 \label{sec:discussion}
-% - context of stream constraints so far
-% - improvement in gd1+pal5 as expected?
-% - similarly, pal5+ngc5466 from lux prediction as ours?
+- context of stream constraints so far
+- improvement in gd1+pal5 as expected?
+- similarly, pal5+ngc5466 from lux prediction as ours?
 
 
 \section{Summary}
