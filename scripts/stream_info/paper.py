@@ -646,7 +646,8 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
     h = nrow * da
 
     plt.close()
-    fig, ax = plt.subplots(nrow, ncol, figsize=(w,h), sharex='col')
+    fig, ax = plt.subplots(nrow, ncol, figsize=(w,h), sharex='all')
+    #mpl.rc('text', usetex=True)
     
     for i in range(N):
         Nmulti = i+1
@@ -666,13 +667,15 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
         Ncomb = np.shape(comb_all)[0]
         
         nst = np.ones(Ncomb) * Nmulti
+        
+        plt.xlim(0.9, 13)
             
         for k in range(Nvar):
             plt.sca(ax[k%ncol][np.int64(k/ncol)])
             nst_off = (np.random.randn(Ncomb)-0.5)*0.01+1
             if (i==0) & (k==0):
-                plt.plot(nst*nst_off, p_all[:,k], 'o', color='0.4', ms=2, label='Single combination of N streams')
-                plt.plot(Nmulti, median[k], 'wo', mec='k', mew=2, ms=10, label='Median over different\ncombinations of N streams')
+                plt.plot(nst*nst_off, p_all[:,k], 'o', color='0.4', ms=2, label='Single combination\nof N streams')
+                plt.plot(Nmulti, median[k], 'wo', mec='k', mew=2, ms=10, label='Median over different\ncombinations of N\nstreams')
             else:
                 plt.plot(nst*nst_off, p_all[:,k], 'o', color='0.4', ms=2)
                 plt.plot(Nmulti, median[k], 'wo', mec='k', mew=2, ms=10)
@@ -697,7 +700,12 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
                     #print(k, j_, best_names)
                     label = ' + '.join(best_names)
                     
+                    if j_==0:
+                        label = '$\it{best}$: ' + label
+                    
+                    mpl.rc('text', usetex=True)
                     plt.text(Nmulti*1.1, p_all[ids_min[j_],k]*yoff, '{}'.format(label), fontsize='xx-small', va=va, ha=ha, rotation=orientation)
+                    mpl.rc('text', usetex=False)
                     if Nmin==1:
                         plt.plot([Nmulti*1.05, Nmulti*1.1], [p_all[ids_min[j_],k], p_all[ids_min[j_],k]], '-', color='0.', lw=0.75)
                         plt.plot([Nmulti*1.1, Nmulti*1.1], [p_all[ids_min[j_],k], p_all[ids_min[j_],k]*1.1], '-', color='0.', lw=0.75)
@@ -721,7 +729,7 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
     
     plt.tight_layout()
     plt.savefig('../paper/nstream_improvement.pdf')
-
+    #mpl.rc('text', usetex=False)
 
 # applications
 
@@ -971,7 +979,7 @@ def latte_ar(vary=['progenitor', 'bary', 'halo', 'dipole', 'quad', 'octu'], xmax
         plt.plot(r_stream, ar_stream.to(u.pc*u.Myr**-2), 'o', color=color)
         plt.errorbar(r_stream, ar_stream.to(u.pc*u.Myr**-2).value, yerr=ar_err.to(u.pc*u.Myr**-2).value, color=color, fmt='none', zorder=0)
         
-        #plt.fill_between(r_stream[ind], ((ar_stream-ar_err).to(u.pc*u.Myr**-2).value)[ind], ((ar_stream+ar_err).to(u.pc*u.Myr**-2).value)[ind], color=color, alpha=0.3)
+        plt.fill_between(r_stream[ind], ((ar_stream-ar_err).to(u.pc*u.Myr**-2).value)[ind], ((ar_stream+ar_err).to(u.pc*u.Myr**-2).value)[ind], color=color, alpha=0.3)
         
         f.close()
 
@@ -982,7 +990,7 @@ def latte_ar(vary=['progenitor', 'bary', 'halo', 'dipole', 'quad', 'octu'], xmax
     plt.ylabel('$a_r$ (pc Myr$^{-2}$)')
 
     plt.tight_layout()
-
+    plt.savefig('../plots/latte_ar_multistream.pdf')
 
 # tables
 def table_obsmodes(verbose=True):
