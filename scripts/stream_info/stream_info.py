@@ -586,10 +586,11 @@ def atlas_coordinates(observer=mw_observer):
 
 # great circle orientation
 
-def find_greatcircle(name='gd1', pparams=pparams_fid, dt=0.2*u.Myr):
+def find_greatcircle(stream=None, name='gd1', pparams=pparams_fid, dt=0.2*u.Myr, save=True, graph=True):
     """Save rotation matrix for a stream model"""
     
-    stream = stream_model(name, pparams0=pparams, dt=dt)
+    if stream==None:
+        stream = stream_model(name, pparams0=pparams, dt=dt)
     
     # find the pole
     ra = np.radians(stream.obs[0])
@@ -626,35 +627,39 @@ def find_greatcircle(name='gd1', pparams=pparams_fid, dt=0.2*u.Myr):
     R = np.dot(R2, np.matmul(R1, R0))
     xi, eta = myutils.rotate_angles(stream.obs[0], stream.obs[1], R)
     
-    np.save('../data/rotmatrix_{}'.format(name), R)
+    if save:
+        np.save('../data/rotmatrix_{}'.format(name), R)
+        
+        f = open('../data/mock_{}.params'.format(name), 'rb')
+        mock = pickle.load(f)
+        mock['rotmatrix'] = R
+        f.close()
+        
+        f = open('../data/mock_{}.params'.format(name), 'wb')
+        pickle.dump(mock, f)
+        f.close()
     
-    f = open('../data/mock_{}.params'.format(name), 'rb')
-    mock = pickle.load(f)
-    mock['rotmatrix'] = R
-    f.close()
+    if graph:
+        plt.close()
+        fig, ax = plt.subplots(1,2,figsize=(10,5))
+        
+        plt.sca(ax[0])
+        plt.plot(stream.obs[0], stream.obs[1], 'ko')
+        
+        plt.xlabel('R.A. (deg)')
+        plt.ylabel('Dec (deg)')
+        
+        plt.sca(ax[1])
+        plt.plot(xi, eta, 'ko')
+        
+        plt.xlabel('$\\xi$ (deg)')
+        plt.ylabel('$\\eta$ (deg)')
+        plt.ylim(-5, 5)
+        
+        plt.tight_layout()
+        plt.savefig('../plots/gc_orientation_{}.png'.format(name))
     
-    f = open('../data/mock_{}.params'.format(name), 'wb')
-    pickle.dump(mock, f)
-    f.close()
-    
-    plt.close()
-    fig, ax = plt.subplots(1,2,figsize=(10,5))
-    
-    plt.sca(ax[0])
-    plt.plot(stream.obs[0], stream.obs[1], 'ko')
-    
-    plt.xlabel('R.A. (deg)')
-    plt.ylabel('Dec (deg)')
-    
-    plt.sca(ax[1])
-    plt.plot(xi, eta, 'ko')
-    
-    plt.xlabel('$\\xi$ (deg)')
-    plt.ylabel('$\\eta$ (deg)')
-    plt.ylim(-5, 5)
-    
-    plt.tight_layout()
-    plt.savefig('../plots/gc_orientation_{}.png'.format(name))
+    return R
 
 def wfit_plane(x, r, p=None):
     """Fit a plane to a set of 3d points"""
@@ -3439,21 +3444,6 @@ def ar_r(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=
             vals, vecs = la.eigh(ca, eigvals=(Nw - Nx - 2, Nw - 1))
             vcomb = np.sqrt(np.sum(vecs**2*vals, axis=1))
             
-            ## plotting
-            #plt.sca(ax[0])
-            #plt.plot(r, vcomb/np.abs(af), '-')
-            #plt.ylim(0,2)
-            
-            #plt.sca(ax[1])
-            #plt.plot(r/rcur_, vcomb/np.abs(af), '-')
-            #plt.xlim(0,5)
-            #plt.ylim(0,2)
-        
-            #plt.sca(ax[2])
-            #plt.plot(r/rmax, vcomb/np.abs(af), '-')
-            #plt.xlim(0,5)
-            #plt.ylim(0,2)
-            
             # store
             idmin = np.argmin(vcomb / np.abs(af))
 
@@ -3629,6 +3619,118 @@ def plot_all_ar(Nsight=1):
     plt.tight_layout()
     plt.savefig('../plots/ar_crb_all_sight{:d}.pdf'.format(Nsight))
     plt.savefig('../paper/ar_crb_all.pdf')
+
+def ar_multi(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=True, Nsight=1, seed=39, verbose=True):
+    """Calculate precision in radial acceleration as a function of galactocentric radius for multiple streams"""
+    
+    np.random.seed(seed)
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    components = [c for c in vary if c!='progenitor']
+    Npar = len(pid)
+    
+    names = get_done()
+    N = len(names)
+    Nmax = len(max(names, key=len))
+    
+    armin = np.empty((N, Nsight))
+    r_armin = np.empty((N, Nsight))
+    
+    Npix = 300
+    r = np.linspace(0.1, 200, Npix)
+    dar = np.empty((N, Nsight, Npix))
+    ar = np.empty((N, Nsight, Npix))
+    rall = np.empty((N, Nsight, Npix))
+
+    plt.close()
+    fig, ax = plt.subplots(1,1, figsize=(8,6))
+    plt.sca(ax)
+    
+    for k in range(N):
+        names_in = [names[x] for x in range(k+1)]
+        if verbose: print(k, names_in)
+        cxi_all = np.zeros((Npar, Npar))
+        for e, name in enumerate(names_in):
+            # read in full inverse CRB for stream modeling
+            fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
+            cxi = fm['cxi']
+            cxi_all = cxi_all + cxi
+        
+        cx_all = stable_inverse(cxi_all)
+        cq = cx_all[6:,6:]
+        Npot = np.shape(cq)[0]
+        
+        for s in range(Nsight):
+            if Nsight==1:
+                # single sightline
+                mock = pickle.load(open('../data/mock_{}.params'.format('gd1'), 'rb'))
+                x0 = mock['x0']
+                xeq = coord.SkyCoord(ra=x0[0], dec=x0[1], distance=x0[2])
+                xg = xeq.transform_to(coord.Galactocentric)
+
+                rg = np.linalg.norm(np.array([xg.x.value, xg.y.value, xg.z.value]))
+                theta = np.arccos(xg.z.value/rg)
+                phi = np.arctan2(xg.y.value, xg.x.value)
+            else:
+                u_ = np.random.random(1)
+                v_ = np.random.random(1)
+                theta = np.arccos(2*u_ - 1)
+                phi = 2 * np.pi * v_
+            
+            xin = np.array([r*np.sin(theta)*np.cos(phi), r*np.sin(theta)*np.sin(phi), r*np.cos(theta)]).T
+            
+            arad_pix = np.empty((Npix, 1))
+            af = np.empty(Npix)
+            derf = np.empty((Npix, Npot))
+            
+            for i in range(Npix):
+                xi = xin[i]*u.kpc
+                a = acc_rad(xi, components=components)
+                af[i] = a
+                
+                dadq = apder_rad(xi, components=components)
+                derf[i] = dadq
+            
+            ca = np.matmul(derf, np.matmul(cq, derf.T))
+            
+            Nx = Npot
+            Nw = Npix
+            vals, vecs = la.eigh(ca, eigvals=(Nw - Nx - 2, Nw - 1))
+            vcomb = np.sqrt(np.sum(vecs**2*vals, axis=1))
+            
+            # store
+            idmin = np.argmin(vcomb / np.abs(af))
+
+            armin[k][s] = (vcomb / np.abs(af))[idmin]
+            r_armin[k][s] = r[idmin]
+            
+            dar[k][s] = vcomb
+            ar[k][s] = vcomb / np.abs(af)
+            rall[k][s] = r
+            
+            plt.plot(rall[k][s], ar[k][s]*100, '-', color=mpl.cm.viridis_r(k/12.), lw=2)
+    
+    t = Table([armin, r_armin, dar, ar, rall], names=('armin', 'rmin', 'dar', 'ar', 'r'))
+    t.pprint()
+    t.write('../data/crb/ar_multistream{}_{}_sight{:d}.fits'.format(N, vlabel, Nsight), overwrite=True)
+    
+    plt.xlabel('r (kpc)')
+    plt.ylabel('$\Delta$ $a_r$ / $a_r$ (%)')
+    plt.ylim(0,100)
+    
+    # add custom colorbar
+    sm = plt.cm.ScalarMappable(cmap=mpl.cm.viridis_r, norm=plt.Normalize(vmin=1, vmax=12))
+    # fake up the array of the scalar mappable. Urgh...
+    sm._A = []
+    
+    divider = make_axes_locatable(plt.gca())
+    cax = divider.append_axes('right', size='4%', pad=0.05)
+    
+    #cb = fig.colorbar(sm, ax=cax, pad=0.1, aspect=40, ticks=np.arange(1,13,3))
+    cb = plt.colorbar(sm, cax=cax, ticks=np.arange(1,13,3))
+    cb.set_label('Number of streams')
+    
+    plt.tight_layout()
+    plt.savefig('../plots/ar_multistream{}_{}_sight{:d}.png'.format(N, vlabel, Nsight))
 
 # flattening
 def delta_q(q='x', Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', j=0, align=True, fast=False, scale=False):
