@@ -669,26 +669,38 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
             
         for k in range(Nvar):
             plt.sca(ax[k%ncol][np.int64(k/ncol)])
+            nst_off = (np.random.randn(Ncomb)-0.5)*0.01+1
             if (i==0) & (k==0):
-                plt.plot(nst, p_all[:,k], 'o', color='0.8', ms=10, label='Single combination of N streams')
+                plt.plot(nst*nst_off, p_all[:,k], 'o', color='0.4', ms=2, label='Single combination of N streams')
                 plt.plot(Nmulti, median[k], 'wo', mec='k', mew=2, ms=10, label='Median over different\ncombinations of N streams')
             else:
-                plt.plot(nst, p_all[:,k], 'o', color='0.8', ms=10)
+                plt.plot(nst*nst_off, p_all[:,k], 'o', color='0.4', ms=2)
                 plt.plot(Nmulti, median[k], 'wo', mec='k', mew=2, ms=10)
             
             if Nmulti<=3:
                 if Nmulti==1:
                     Nmin = 3
+                    va = 'center'
+                    ha = 'left'
+                    orientation = 0
+                    yoff = 1
                 else:
                     Nmin = 1
+                    va = 'bottom'
+                    ha = 'center'
+                    orientation = 90
+                    yoff = 1.2
                 ids_min = p_all[:,k].argsort()[:Nmin]
                 
                 for j_ in range(Nmin):
                     best_names = [done[np.int64(i_)] for i_ in comb[ids_min[j_]][:Nmulti]]
-                    print(k, j_, best_names)
+                    #print(k, j_, best_names)
                     label = ' + '.join(best_names)
                     
-                    plt.text(Nmulti, p_all[ids_min[j_],k], '{}'.format(label), fontsize='xx-small')
+                    plt.text(Nmulti*1.1, p_all[ids_min[j_],k]*yoff, '{}'.format(label), fontsize='xx-small', va=va, ha=ha, rotation=orientation)
+                    if Nmin==1:
+                        plt.plot([Nmulti*1.05, Nmulti*1.1], [p_all[ids_min[j_],k], p_all[ids_min[j_],k]], '-', color='0.', lw=0.75)
+                        plt.plot([Nmulti*1.1, Nmulti*1.1], [p_all[ids_min[j_],k], p_all[ids_min[j_],k]*1.1], '-', color='0.', lw=0.75)
 
     for k in range(Nvar):
         plt.sca(ax[k%ncol][np.int64(k/ncol)])
@@ -702,7 +714,7 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
         plt.ylabel(params[k])
         
         if k==0:
-            plt.legend(frameon=False, fontsize='small', loc=1)
+            plt.legend(frameon=False, fontsize='x-small', loc=1)
     
         if k%ncol==nrow-1:
             plt.xlabel('Number of streams in a combination')
@@ -947,15 +959,19 @@ def latte_ar(vary=['progenitor', 'bary', 'halo', 'dipole', 'quad', 'octu'], xmax
         
         # stream constraints
         r_stream = t['rcur']
+        ind = np.argsort(r_stream)
         fint = scipy.interpolate.interp1d(r_ar, ar, )
         ar_stream = fint(r_stream)*ar.unit
         ar_err = ar_stream * t['armin']
+        ar_err = ar_stream * 0.05
         
         #plt.plot(x[:,0], x[:,1], 'o', label=halo)
         
         plt.plot(r_ar, ar.to(u.pc*u.Myr**-2), '-', lw=2, color=color, label='Latte m12{:1s}'.format(halo))
         plt.plot(r_stream, ar_stream.to(u.pc*u.Myr**-2), 'o', color=color)
         plt.errorbar(r_stream, ar_stream.to(u.pc*u.Myr**-2).value, yerr=ar_err.to(u.pc*u.Myr**-2).value, color=color, fmt='none', zorder=0)
+        
+        #plt.fill_between(r_stream[ind], ((ar_stream-ar_err).to(u.pc*u.Myr**-2).value)[ind], ((ar_stream+ar_err).to(u.pc*u.Myr**-2).value)[ind], color=color, alpha=0.3)
         
         f.close()
 
