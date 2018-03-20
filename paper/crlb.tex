@@ -504,8 +504,13 @@ This dependence of \CRLB\ on multiple properties of a stream signifies that the 
 
 \subsection{Joint constraints}
 \label{sec:res_joint}
-% - CRB on halo parameters using different combinations of streams
-% truly the joint stream constraints being more than the sum of its parts.
+So far, we have only analyzed the information content in individual streams.
+However, streams in our sample are independent experiments, so information they provide on the gravitational potential can be trivially combined.
+In this section we first show how to calculate joint constraints from multiple streams, and then discuss resulting improvements in inferred properties of the Galactic dark matter halo that all streams have in common. 
+
+The Fisher information matrix, given by Equation~\ref{eq:crlb}, is proportional to the probability of observing data $\vec{y_i}$ of stream $i$, given true parameters of the Galactic model $\vec{x}$, that is $C_{x,i}^{-1}\propto \ln(P(\vec{y_i}|\vec{x}))$.
+Since the probability for an ensemble of independent experiments is the product of individual likelihoods, it follows that the Fisher matrix information matrix for multiple streams is simply the sum of Fisher matrices for individual streams: $C_x^{-1} = \sum_{i} C_{x,i}^{-1}$.
+As in the case of individual streams, the Cram\' er--Rao bounds for multiple streams are the square-root of the diagonal of matrix $C_x$.
 
 \begin{figure}
 \begin{center}
@@ -522,6 +527,24 @@ However, for the halo shape parameters, combinations of the best individual stre
 \end{center}
 \end{figure}
 
+There are 11 streams in our sample, and we quantified constraints on the dark matter halo in all possible combinations.
+These are summarized in Figure~\ref{fig:nstream_summary}, where every panel shows constraints from a combination of streams on a single parameter of the dark matter halo as a function of the number of streams in a combination (gray points).
+There are $\binom{N}{11}$ unique combinations with a total of $N$ streams in a combination, so we highlight the median constraint at a given $N$ with larger white points.
+Unsurprisingly, different streams provide somewhat different constraints on the gravitational potential, so joint stream constraints are better than individual ones.
+For example, the median \CRLB\ from a triplet of streams is better than the best \CRLB\ from an individual stream in all halo parameters.
+Going even further and measuring the gravitational potential with ten streams simultaneously, results in the median precision of a few percent for the scale radius (bottom left), and for halo scale velocity (top left panel), $x/y$ axis ratio (top right) and $z/y$ axis ratio (bottom right) the median precision of a combination is better than a percent.
+Attaining such a precision in the analysis of the Galactic dark matter halo is within reach, and will truly usher in the era of \emph{precision} near-field cosmology.
+
+In addition to studying median constraints for a combination of streams, we also look into which streams are individually performing the best, and also which are a part of the best pair and best triplet.
+The best three individual streams on each panel are labeled to the right of their respective gray data points, while the best pair and triplet are noted vertically to the right of pair and triplet constraints, respectively.
+Scale velocity is best constrained by a combination of streams that constrain it well individually, so members of both the best pair and the best triplet are individually in the top three streams for scale velocity precision.
+However, for the rest of the parameters, which determine the halo's shape, it is often the case that at least one of the streams from the most constraining pair or triplet is not individually among the top three most constraining streams for that particular parameter.
+And in the case of $z/y$ halo axis ratio, none of the streams in the best triplet are in the top three individually.
+In recovering the halo shape, streams complement each other in a non-trivial manner, so the joint constraint is truly more than the sum of its parts.
+
+% - check whether gd1 a discriminator
+% - origin of non-trivial complementarity in orbital orientations?
+
 \section{Applications}
 
 \subsection{Forecasting and observation planning}
@@ -537,6 +560,13 @@ We also note that observing modes with the same dimension of data, but different
 \label{fig:obsmodes}
 \end{center}
 \end{figure}
+
+We have so far examined what aspects of the gravitational potential stellar streams constrain if high-quality observational data were available.
+Attaining these data would require extensive observational dedication to stellar streams, beyond the level expected for programs in the near term.
+However, the \emph{Gaia} mission and a number of spectroscopic projects are slated to soon map a significant fraction of the Milky Way at a lower resolution.
+Though in general less precise than the fiducial uncertainties we used so far, these surveys will have the scope required to provide at least one velocity component for most of the known streams in the next few years.
+In this section we analyze how constraints on the gravitational potential depend on the availability and quality of observational data along stellar streams. 
+
 
 % - different observing modes
 % - raise issue of member identification, which was not addressed here
@@ -612,7 +642,7 @@ Long streams provide tighter constraints (\emph{center}), while the location of 
 \label{sec:summary}
 
 
-\emph{Acknowledgements:} This work was improved upon following the thoughtful suggestions of the Conroy group, the Finkbeiner group, Dan Foreman-Mackey, Kathryn Johnston, Nikhil Padmanabhan, Adrian Price-Whelan and Hans-Walter Rix, and it is a pleasure to thank them.
+\emph{Acknowledgements:} This work was improved upon following the thoughtful suggestions of the Conroy group, the Finkbeiner group, the Stars Flatiron group, Dan Foreman-Mackey, Kathryn Johnston, Nikhil Padmanabhan, Adrian Price-Whelan and Hans-Walter Rix, and it is a pleasure to thank them.
 
 \bibliographystyle{aasjournal}
 \bibliography{crlb}
