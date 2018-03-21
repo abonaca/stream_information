@@ -2859,10 +2859,41 @@ def full_name(name):
     
     return full[name]
 
-def get_done():
+def get_done(sort_length=False):
     """"""
     done = ['gd1', 'tri', 'atlas', 'ps1a', 'ps1c', 'ps1e', 'ophiuchus', 'kwando', 'orinoco', 'sangarius', 'hermus', 'ps1d']
     done = ['gd1', 'tri', 'atlas', 'ps1a', 'ps1c', 'ps1e', 'kwando', 'orinoco', 'sangarius', 'hermus', 'ps1d']
+    
+    # length
+    if sort_length:
+        tosort = []
+        
+        for name in done:
+            mock = pickle.load(open('../data/mock_{}.params'.format(name), 'rb'))
+            tosort += [np.max(mock['xi_range']) - np.min(mock['xi_range'])]
+
+        done = [x for _,x in sorted(zip(tosort,done))]
+    
+    else:
+        tosort = []
+        
+        vary = ['progenitor', 'bary', 'halo']
+        Ndim = 6
+        errmode = 'fiducial'
+        align = True
+        pid, dp_fid, vlabel = get_varied_pars(vary)
+        pid_vh = myutils.wherein(np.array(pid), np.array([5]))
+        
+        for name in done:
+            fm = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
+            cxi = fm['cxi']
+            cx = stable_inverse(cxi)
+            
+            crb = np.sqrt(np.diag(cx))
+            tosort += [crb[pid_vh]]
+        
+        done = [x for _,x in sorted(zip(tosort,done))][::-1]
+    
     return done
 
 def store_mocks():
@@ -3962,6 +3993,10 @@ def multi_pdf(Nmulti=3, Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
     params = ['$\Delta$ {}{}'.format(x, y) for x,y in zip(plabels, punits)]
     Nvar = len(pid_comp)
     
+    pparams0 = pparams_fid
+    pparams_comp = [pparams0[x] for x in pid_comp]
+    pparams_arr = np.array([x.value for x in pparams_comp])
+    
     pp = PdfPages('../plots/corner_multi{:d}_{:s}{:1d}_a{:1d}_{:s}_{:s}.pdf'.format(Nmulti, errmode, Ndim, align, vlabel, component))
     fig = None
     ax = None
@@ -3977,6 +4012,11 @@ def multi_pdf(Nmulti=3, Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
     comb = sorted(list(set(all_comb)))
     Ncomb = len(comb)
     
+    comb_all = np.ones((Ncomb, N)) * np.nan
+    cx_all = np.empty((Ncomb, Nvar, Nvar))
+    p_all = np.empty((Ncomb, Nvar))
+    prel_all = np.empty((Ncomb, Nvar))
+    
     for i in range(Ncomb):
         print(i, [done[i_] for i_ in comb[i]])
         cxi = np.zeros((Ntot, Ntot))
@@ -3987,7 +4027,7 @@ def multi_pdf(Nmulti=3, Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
             #print('{} '.format(done[ind]), end='')
             
             dj = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, done[ind], align, vlabel))
-            cxi_ = dj['cxi']
+            cxi_ = dj['dxi']
             cxi = cxi + cxi_
             
             # select component of the parameter space
@@ -4000,12 +4040,17 @@ def multi_pdf(Nmulti=3, Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
             
             fig, ax = corner_ellipses(cq_, alpha=0.5, fig=fig, ax=ax)
 
-        cx = stable_inverse(cxi)
+        cx = stable_inverse(cxi + dj['pxi'])
         cq = cx[nstart[component]:nend[component], nstart[component]:nend[component]]
         print(np.sqrt(np.diag(cq)))
         
-        label = '.'.join([done[comb[i][i_]] for i_ in range(Nmulti)])
-        np.save('../data/crb/cx_multi{:d}_{:s}{:1d}_{:s}_a{:1d}_{:s}_{:s}'.format(Nmulti, errmode, Ndim, label, align, vlabel, component), cq)
+        #label = '.'.join([done[comb[i][i_]] for i_ in range(Nmulti)])
+        #np.save('../data/crb/cx_multi{:d}_{:s}{:1d}_{:s}_a{:1d}_{:s}_{:s}'.format(Nmulti, errmode, Ndim, label, align, vlabel, component), cq)
+
+        cx_all[i] = cq
+        p_all[i] = np.sqrt(np.diag(cq))
+        prel_all[i] = p_all[i]/pparams_arr
+        comb_all[i][:Nmulti] = np.array(comb[i])
 
         fig, ax = corner_ellipses(cq, fig=fig, ax=ax)
         
@@ -4022,7 +4067,8 @@ def multi_pdf(Nmulti=3, Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
         
         plt.tight_layout(rect=(0,0,1,0.95))
         pp.savefig(fig)
-    
+
+    np.savez('../data/crb/cx_collate_multi{:d}_{:s}{:1d}_a{:1d}_{:s}_{:s}'.format(Nmulti, errmode, Ndim, align, vlabel, component), comb=comb_all, cx=cx_all, p=p_all, p_rel=prel_all)
     pp.close()
 
 def collate(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='halo', align=True, Nmax=None):
@@ -4411,6 +4457,53 @@ def comp_obsmodes(vary=['progenitor', 'bary', 'halo'], align=True, component='ha
     plt.tight_layout()
     plt.savefig('../plots/obsmode_comparison.pdf')
 
+def vel_improvement(vary=['progenitor', 'bary', 'halo'], align=True, component='halo', errmode='fiducial'):
+    """"""
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    
+    pid_comp, dp_fid2, vlabel2 = get_varied_pars(component)
+    Nvar = len(pid_comp)
+    plabels, units = get_parlabel(pid_comp)
+    punits = [' (%)' for x in units]
+    params = ['$\Delta$ {}{}'.format(x, y) for x,y in zip(plabels, punits)]
+    
+    names = get_done()
+    
+    coll = []
+    
+    for Ndim in [3,4,6]:
+        coll += [np.load('../data/crb/cx_collate_multi1_{:s}{:1d}_a{:1d}_{:s}_{:s}.npz'.format(errmode, Ndim, align, vlabel, component))]
+    
+    rv = coll[0]['p_rel'] / coll[1]['p_rel']
+    pm = coll[1]['p_rel'] / coll[2]['p_rel']
+    
+    N = len(names)
+    prog_rv = np.empty(N)
+    prog_pm = np.empty(N)
+    
+    for i in range(N):
+        mock = pickle.load(open('../data/mock_{}.params'.format(names[i]), 'rb'))
+        pms = np.array([x.value for x in mock['v0'][1:]])
+        prog_rv[i] = np.abs(mock['v0'][0].value)
+        #prog_pm[i] = np.linalg.norm(pms)
+        prog_pm[i] = max(np.abs(pms))
+        
+    da = 2
+    
+    plt.close()
+    fig, ax = plt.subplots(Nvar, 3, figsize=(da*3, da*Nvar), sharex='col')
+    
+    for j in range(Nvar):
+        plt.sca(ax[j][0])
+        plt.plot(prog_rv, rv[:,j], 'ko')
+        
+        plt.sca(ax[j][1])
+        plt.plot(prog_rv/prog_pm, pm[:,j], 'ko')
+        
+        plt.sca(ax[j][2])
+        plt.plot(prog_pm, pm[:,j], 'ko')
+    
+    plt.tight_layout()
 
 # progenitor's orbit
 

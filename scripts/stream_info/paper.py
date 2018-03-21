@@ -600,7 +600,7 @@ def sky_legend(galactic=False):
     plt.tight_layout()
     plt.savefig('../paper/sky_legend_gal{:d}.pdf'.format(galactic))
 
-def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='halo', align=True, relative=False):
+def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', component='halo', align=True, relative=False, diag=False, itarget=0, flag_in=True):
     """Show how much parameters improve by including additional streams"""
     
     pid, dp_fid, vlabel = get_varied_pars(vary)
@@ -639,15 +639,15 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
     median = np.empty((Nvar, N))
     x = np.arange(N) + 1
     
-    da = 3
+    da = 3.2
     ncol = 2
     nrow = np.int64(Nvar/ncol)
     w = 4 * da
     h = nrow * da
+    np.random.seed(938)
 
     plt.close()
     fig, ax = plt.subplots(nrow, ncol, figsize=(w,h), sharex='all')
-    #mpl.rc('text', usetex=True)
     
     for i in range(N):
         Nmulti = i+1
@@ -669,7 +669,7 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
         nst = np.ones(Ncomb) * Nmulti
         
         plt.xlim(0.9, 13)
-            
+        
         for k in range(Nvar):
             plt.sca(ax[k%ncol][np.int64(k/ncol)])
             nst_off = (np.random.randn(Ncomb)-0.5)*0.01+1
@@ -680,6 +680,22 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
                 plt.plot(nst*nst_off, p_all[:,k], 'o', color='0.4', ms=2)
                 plt.plot(Nmulti, median[k], 'wo', mec='k', mew=2, ms=10)
             
+            # highlight combinations with the best stream
+            if diag:
+                Ncomb, Nstream = np.shape(comb_all)
+                ilabel = ''
+                
+                if flag_in:
+                    has_best = np.array([True if itarget in comb_all[i,:] else False for i in range(Ncomb)])
+                    if (i==0) & (k==0):
+                        ilabel = 'Has {}'.format(done[itarget])
+                else:
+                    has_best = np.array([True if itarget not in comb_all[i,:] else False for i in range(Ncomb)])
+                    if (i==0) & (k==0):
+                        ilabel = 'Without {}'.format(done[itarget])
+                
+                plt.plot((nst*nst_off)[has_best], p_all[:,k][has_best], 'o', color='orange', ms=2, label=ilabel)
+            
             if Nmulti<=3:
                 if Nmulti==1:
                     Nmin = 3
@@ -687,12 +703,14 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
                     ha = 'left'
                     orientation = 0
                     yoff = 1
+                    xoff = 1.15
                 else:
                     Nmin = 1
                     va = 'bottom'
                     ha = 'center'
                     orientation = 90
                     yoff = 1.2
+                    xoff = 1.1
                 ids_min = p_all[:,k].argsort()[:Nmin]
                 
                 for j_ in range(Nmin):
@@ -702,9 +720,12 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
                     
                     if j_==0:
                         label = '$\it{best}$: ' + label
+                        
+                        if Nmulti==1:
+                            plt.plot([Nmulti*1.05, Nmulti*1.1], [p_all[ids_min[j_],k], p_all[ids_min[j_],k]], '-', color='0.', lw=0.75)
                     
                     mpl.rc('text', usetex=True)
-                    plt.text(Nmulti*1.1, p_all[ids_min[j_],k]*yoff, '{}'.format(label), fontsize='xx-small', va=va, ha=ha, rotation=orientation)
+                    plt.text(Nmulti*xoff, p_all[ids_min[j_],k]*yoff, '{}'.format(label), fontsize='xx-small', va=va, ha=ha, rotation=orientation)
                     mpl.rc('text', usetex=False)
                     if Nmin==1:
                         plt.plot([Nmulti*1.05, Nmulti*1.1], [p_all[ids_min[j_],k], p_all[ids_min[j_],k]], '-', color='0.', lw=0.75)
@@ -718,7 +739,6 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
             plt.gca().yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
         
         plt.gca().xaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
-        #plt.gca().xaxis.set_minor_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
         plt.ylabel(params[k])
         
         if k==0:
@@ -728,8 +748,10 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
             plt.xlabel('Number of streams in a combination')
     
     plt.tight_layout()
-    plt.savefig('../paper/nstream_improvement.pdf')
-    #mpl.rc('text', usetex=False)
+    if diag:
+        plt.savefig('../plots/nstream_improvement_diag_w{:1d}_{:02d}.png'.format(flag_in, itarget))
+    else:
+        plt.savefig('../paper/nstream_improvement.pdf')
 
 # applications
 
