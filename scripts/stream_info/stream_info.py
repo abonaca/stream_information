@@ -3590,8 +3590,15 @@ def plot_all_ar(Nsight=1):
     vlist = [['progenitor', 'bary', 'halo'], ['progenitor', 'bary', 'halo', 'dipole'], ['progenitor', 'bary', 'halo', 'dipole', 'quad'], ['progenitor', 'bary', 'halo', 'dipole', 'quad', 'octu']]
     labels = ['Fiducial Galaxy', '+ dipole', '++ quadrupole', '+++ octupole']
     
+    alist = [0.2, 0.55, 1]
+    mslist = [11, 8, 5]
+    lwlist = [8, 5, 2]
+    fc = [0.8, 0.5, 0.2]
+    vlist = [['progenitor', 'bary', 'halo'], ['progenitor', 'bary', 'halo', 'dipole', 'quad'], ['progenitor', 'bary', 'halo', 'dipole', 'quad', 'octu']]
+    labels = ['Fiducial Galaxy', '++ quadrupole', '+++ octupole']
+    
     plt.close()
-    fig, ax = plt.subplots(1, 4, figsize=(20,5))
+    fig, ax = plt.subplots(1, 4, figsize=(16,4))
     
     for e, vary in enumerate(vlist):
         pid, dp_fid, vlabel = get_varied_pars(vary)
@@ -3615,11 +3622,22 @@ def plot_all_ar(Nsight=1):
         armin_err = 0.5 * (np.percentile(t['armin'], 84, axis=1) - np.percentile(t['armin'], 16, axis=1))
         rmin = np.median(t['rmin'], axis=1)
         rmin_err = 0.5 * (np.percentile(t['rmin'], 84, axis=1) - np.percentile(t['rmin'], 16, axis=1))
+        
+        # fit exponential
+        p = np.polyfit(t['length'], np.log(armin), 1)
+        print(1/p[0], np.exp(p[1]))
+        poly = np.poly1d(p)
+        x_ = np.linspace(np.min(t['length']), np.max(t['length']), 100)
+        y_ = poly(x_)
+        
         plt.sca(ax[1])
+        plt.plot(x_, np.exp(y_), '-', color=color, alpha=alpha, lw=lw, label='')
         plt.plot(t['length'], armin, 'o', color=color, ms=ms, alpha=alpha, label=labels[e])
         plt.errorbar(t['length'], armin, yerr=armin_err, color=color, fmt='none', zorder=0, alpha=alpha)
+        #plt.plot(t['length'], np.log(armin), 'o', color=color, ms=ms, alpha=alpha, label=labels[e])
+        #plt.errorbar(t['length'], np.log(armin), yerr=np.log(armin_err), color=color, fmt='none', zorder=0, alpha=alpha)
         
-        if e==3:
+        if e==len(vlist)-1:
             plt.legend(loc=1, fontsize='small', handlelength=0.5, frameon=False)
         plt.xlabel('Stream length (deg)')
         plt.ylabel('min $\Delta$ $a_r$')
@@ -4403,12 +4421,18 @@ def comp_obsmodes(vary=['progenitor', 'bary', 'halo'], align=True, component='ha
     plabels, units = get_parlabel(pid_comp)
     punits = [' (%)' for x in units]
     params = ['$\Delta$ {}{}'.format(x, y) for x,y in zip(plabels, punits)]
+    plainlabels = ['V_h', 'R_h', 'q_x', 'q_z']
     
     names = get_done()
     
-    errmodes = ['desi', 'gaia', 'fiducial', 'fiducial', 'fiducial']
-    Ndims = [4, 6, 3, 4, 6]
+    errmodes = ['fiducial', 'fiducial', 'fiducial', 'desi', 'gaia']
+    Ndims = [ 3, 4, 6, 4, 6]
     Nmode = len(errmodes)
+    
+    # fiducial
+    errmode = 'fiducial'
+    Ndim = 6
+    coll_fiducial = np.load('../data/crb/cx_collate_multi1_{:s}{:1d}_a{:1d}_{:s}_{:s}.npz'.format(errmode, Ndim, align, vlabel, component))
     
     #errmodes = ['fiducial', 'gaia', 'desi']
     #Ndims = [6,6,4]
@@ -4416,43 +4440,72 @@ def comp_obsmodes(vary=['progenitor', 'bary', 'halo'], align=True, component='ha
     labels = {'desi': 'DESI', 'gaia': 'Gaia', 'fiducial': 'Fiducial'}
     cfrac = {'desi': 0.8, 'gaia': 0.6, 'fiducial': 0.2}
     
-    da = 3
+    cmap = {'fiducial': mpl.cm.bone, 'desi': mpl.cm.pink, 'gaia': mpl.cm.pink}
+    frac = [0.8, 0.5, 0.2, 0.5, 0.2]
+    ls_all = ['-', '-', '-', '--', '--']
     a = 0.7
     
+    da = 3
+    ncol = 2
+    nrow = np.int64(Nvar/ncol)
+    w = 4 * da
+    h = nrow * da * 1.3
+    
     plt.close()
-    fig, ax = plt.subplots(Nvar, 1, figsize=(da*3, da*Nvar), sharex=True)
+    fig, ax = plt.subplots(nrow+2, ncol, figsize=(w, h), sharex=True, gridspec_kw = {'height_ratios':[3, 1.2, 3, 1.2]})
     
     for i in range(Nmode):
         errmode = errmodes[i]
         Ndim = Ndims[i]
         coll = np.load('../data/crb/cx_collate_multi1_{:s}{:1d}_a{:1d}_{:s}_{:s}.npz'.format(errmode, Ndim, align, vlabel, component))
         
-        lw = Ndims[i] * 0.7
-        color = mpl.cm.bone(cfrac[errmodes[i]])
+        lw = np.sqrt(Ndims[i]) * 2
+        ls = ls_all[i]
+        #color = mpl.cm.bone(cfrac[errmodes[i]])
+        color = cmap[errmode](frac[i])
         
         for j in range(Nvar):
-            plt.sca(ax[j])
-            plt.plot(coll['p_rel'][:,j]*100, '-', alpha=a, lw=lw, color=color, label='{} ({}D)'.format(labels[errmode], Ndims[i]))
+            #plt.sca(ax[j])
+            plt.sca(ax[j%ncol*2][np.int64(j/ncol)])
+            if labels[errmode]=='Fiducial':
+                label = '{} {}D'.format(labels[errmode], Ndims[i])
+            else:
+                label = '{} ({}D)'.format(labels[errmode], Ndims[i])
+            plt.plot(coll['p_rel'][:,j]*100, '-', ls=ls, alpha=a, lw=lw, color=color, label=label)
+            
+            plt.sca(ax[j%ncol*2+1][np.int64(j/ncol)])
+            plt.plot(coll['p_rel'][:,j]/coll_fiducial['p_rel'][:,j], '-', ls=ls, alpha=a, lw=lw, color=color)
+            
+            #print(errmode, j, np.median(coll['p_rel'][:,j]/coll_fiducial['p_rel'][:,j]), np.std(coll['p_rel'][:,j]/coll_fiducial['p_rel'][:,j]))
+            
     
     for j in range(Nvar):
-        plt.sca(ax[j])
+        plt.sca(ax[j%ncol*2][np.int64(j/ncol)])
         plt.ylabel(params[j])
         plt.gca().set_yscale('log')
         plt.gca().yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
         plt.gca().xaxis.set_major_locator(plt.NullLocator())
+        
+        plt.sca(ax[j%ncol*2+1][np.int64(j/ncol)])
+        plt.ylabel('$\\frac{\Delta %s}{\Delta {%s}_{,\,Fid\,6D}}$'%(plainlabels[j], plainlabels[j]), fontsize='medium')
+        plt.ylim(0.5, 10)
+        plt.gca().set_yscale('log')
+        plt.gca().yaxis.set_major_formatter(mpl.ticker.FuncFormatter(lambda y,pos: ('{{:.{:1d}f}}'.format(int(np.maximum(-np.log10(y),0)))).format(y)))
+        plt.gca().xaxis.set_major_locator(plt.NullLocator())
     
-    plt.sca(ax[0])
-    plt.legend(loc=2, fontsize='small', handlelength=0.8, frameon=True)
+    plt.sca(ax[nrow][ncol-1])
+    plt.legend(loc=0, fontsize='x-small', handlelength=0.8, frameon=True)
     
     # stream names
-    plt.sca(ax[Nvar-1])
-    y0, y1 = plt.gca().get_ylim()
-    fp = 0.8
-    yp = y0 + fp*(y1-y0)
-    
-    for e, name in enumerate(names):
-        txt = plt.text(e, yp, name, ha='center', va='top', rotation=90, fontsize='small', color='0.2')
-        txt.set_bbox(dict(facecolor='w', alpha=0.7, ec='none'))
+    for j in range(ncol):
+        plt.sca(ax[0][j])
+        y0, y1 = plt.gca().get_ylim()
+        fp = 0.8
+        yp = y0 + fp*(y1-y0)
+        
+        for e, name in enumerate(names):
+            txt = plt.text(e, yp, name, ha='center', va='top', rotation=90, fontsize='x-small', color='0.2')
+            txt.set_bbox(dict(facecolor='w', alpha=0.7, ec='none'))
     
     plt.tight_layout()
     plt.savefig('../plots/obsmode_comparison.pdf')

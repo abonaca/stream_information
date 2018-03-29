@@ -754,7 +754,110 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
         plt.savefig('../paper/nstream_improvement.pdf')
 
 # applications
-
+def ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=1):
+    """Explore constraints on radial acceleration, along the progenitor line"""
+    pid, dp_fid, vlabel = get_varied_pars(vary)
+    t = Table.read('../data/crb/ar_orbital_summary_{}_sight{:d}.fits'.format(vlabel, Nsight))
+    N = len(t)
+    fapo = t['rapo']/np.max(t['rapo'])
+    fapo = t['rapo']/100
+    flen = t['length']/20
+    flen = 0.8 * flen / np.max(flen)
+    fcolor = 0.8-flen
+    #fcolor[fcolor<0] = 0
+    #print(fcolor)
+    #print(t.colnames)
+    
+    # sort in fiducial order
+    names = get_done()
+    order = np.zeros(len(names), dtype=np.int64)
+    tlist = list(t['name'])
+    
+    for e, n in enumerate(names):
+        order[e] = tlist.index(n)
+    
+    # best acceleration
+    armin = np.median(t['armin'], axis=1)
+    armin_err = 0.5 * (np.percentile(t['armin'], 84, axis=1) - np.percentile(t['armin'], 16, axis=1))
+    rmin = np.median(t['rmin'], axis=1)
+    rmin_err = 0.5 * (np.percentile(t['rmin'], 84, axis=1) - np.percentile(t['rmin'], 16, axis=1))
+    
+    #acolor = np.log(armin)
+    acolor = armin
+    fcolor = acolor/np.max(acolor)*0.85
+    lw = 3
+    
+    plt.close()
+    fig = plt.figure(figsize=(13,7))
+    
+    gs1 = mpl.gridspec.GridSpec(1, 3, width_ratios=[1, 1, 0.5])
+    gs1.update(left=0.07, right=0.95, bottom=0.6, top=0.95, hspace=0.1, wspace=0.3)
+    gs2 = mpl.gridspec.GridSpec(1, 3)
+    gs2.update(left=0.07, right=0.95, bottom=0.1, top=0.45, hspace=0.1, wspace=0.3)
+    
+    ax = [[],[]]
+    for i in range(3):
+        ax[0] = ax[0] + [plt.subplot(gs1[i])]
+        ax[1] = ax[1] + [plt.subplot(gs2[i])]
+    
+    for i_ in range(N):
+        i = order[i_]
+        color = mpl.cm.bone(fcolor[i])
+        
+        plt.sca(ax[0][0])
+        if i_==0:
+            plt.plot(t['r'][i][0], t['dar'][i][1]/t['ar'][i][1], '--', color='0.7', lw=10, alpha=0.2, zorder=0, label='$a_r$')
+        plt.plot(t['r'][i][0], t['dar'][i][1], '-', color=color, lw=lw, alpha=0.7, label=t['name'][i])
+        
+        plt.sca(ax[0][1])
+        plt.plot(t['r'][i][0], t['ar'][i][1], '-', color=color, lw=lw, alpha=0.7)
+        
+    plt.sca(ax[0][0])
+    plt.xlabel('R (kpc)')
+    plt.ylabel('$\Delta$ $a_r$ (pc Myr$^{-2}$)')
+    plt.legend(ncol=2, frameon=False, fontsize='medium', handlelength=1, columnspacing=1, loc=2, bbox_to_anchor=(2.3,1))
+    
+    plt.sca(ax[0][1])
+    plt.xlabel('R (kpc)')
+    plt.ylabel('$\Delta$ $a_r$ / $a_r$')
+    
+    ax[0][0].set_yscale('log')
+    ax[0][1].set_yscale('log')
+    ax[0][2].axis('off')
+    
+    plt.sca(ax[1][0])
+    plt.scatter(t['length'], armin, c=fcolor, cmap='bone', vmin=0, vmax=1, s=60)
+    plt.errorbar(t['length'], armin, yerr=armin_err, color='0.3', fmt='none', zorder=0)
+    
+    plt.xlabel('Length (deg)')
+    plt.ylabel('min $\Delta$ $a_r$')
+    #plt.ylim(0, 3.5)
+    
+    plt.sca(ax[1][1])
+    a = np.linspace(0,90,100)
+    plt.plot(a, a, 'k-')
+    plt.scatter(t['rcur'], rmin, c=fcolor, cmap='bone', vmin=0, vmax=1, s=60)
+    plt.errorbar(t['rcur'], rmin, yerr=rmin_err, color='0.3', fmt='none', zorder=0)
+    plt.xlabel('$R_{cur}$ (kpc)')
+    plt.ylabel('$R_{min}$ (kpc)')
+    
+    plt.xlim(0,90)
+    plt.ylim(0,90)
+    
+    plt.sca(ax[1][2])
+    a = np.linspace(0,90,100)
+    plt.plot(a, a, 'k-')
+    plt.scatter(t['rapo'], rmin, c=fcolor, cmap='bone', vmin=0, vmax=1, s=60)
+    plt.errorbar(t['rapo'], rmin, yerr=rmin_err, color='0.3', fmt='none', zorder=0)
+    plt.xlabel('$R_{apo}$ (kpc)')
+    plt.ylabel('$R_{min}$ (kpc)')
+    
+    plt.xlim(0,90)
+    plt.ylim(0,90)
+    
+    #gs1.tight_layout(fig)
+    #gs2.tight_layout(fig)
+    plt.savefig('../paper/ar_crb.pdf')
 
 # interpretation
 def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=True):
@@ -876,63 +979,63 @@ def vc():
     plt.tight_layout()
     plt.savefig('../paper/vc_crb.pdf')
 
-def ar(current=False, vary=['progenitor', 'bary', 'halo']):
-    """Explore constraints on radial acceleration, along the progenitor line"""
-    pid, dp_fid, vlabel = get_varied_pars(vary)
-    t = Table.read('../data/crb/ar_orbital_summary_{}.fits'.format(vlabel))
-    N = len(t)
-    fapo = t['rapo']/np.max(t['rapo'])
-    fapo = t['rapo']/100
-    flen = t['length']/(np.max(t['length']) + 10)
-    fcolor = fapo
+#def ar(current=False, vary=['progenitor', 'bary', 'halo']):
+    #"""Explore constraints on radial acceleration, along the progenitor line"""
+    #pid, dp_fid, vlabel = get_varied_pars(vary)
+    #t = Table.read('../data/crb/ar_orbital_summary_{}.fits'.format(vlabel))
+    #N = len(t)
+    #fapo = t['rapo']/np.max(t['rapo'])
+    #fapo = t['rapo']/100
+    #flen = t['length']/(np.max(t['length']) + 10)
+    #fcolor = fapo
     
-    plt.close()
-    fig, ax = plt.subplots(1, 4, figsize=(20,5))
+    #plt.close()
+    #fig, ax = plt.subplots(1, 4, figsize=(20,5))
     
-    for i in range(N):
-        color = mpl.cm.bone(fcolor[i])
-        lw = flen[i] * 5
+    #for i in range(N):
+        #color = mpl.cm.bone(fcolor[i])
+        #lw = flen[i] * 5
         
-        plt.sca(ax[0])
-        plt.plot(t['r'][i], t['ar'][i], '-', color=color, lw=lw)
+        #plt.sca(ax[0])
+        #plt.plot(t['r'][i], t['ar'][i], '-', color=color, lw=lw)
         
-    plt.xlabel('R (kpc)')
-    plt.ylabel('$\Delta$ $a_r$ / $a_r$')
-    plt.ylim(0, 2.5)
+    #plt.xlabel('R (kpc)')
+    #plt.ylabel('$\Delta$ $a_r$ / $a_r$')
+    #plt.ylim(0, 2.5)
     
-    plt.sca(ax[1])
-    plt.scatter(t['length'], t['armin'], c=fcolor, cmap='bone', vmin=0, vmax=1)
+    #plt.sca(ax[1])
+    #plt.scatter(t['length'], t['armin'], c=fcolor, cmap='bone', vmin=0, vmax=1)
     
-    plt.xlabel('Length (deg)')
-    plt.ylabel('min $\Delta$ $a_r$')
-    #plt.ylim(0, 1)
+    #plt.xlabel('Length (deg)')
+    #plt.ylabel('min $\Delta$ $a_r$')
+    ##plt.ylim(0, 1)
     
-    plt.sca(ax[2])
-    a = np.linspace(0,90,100)
-    plt.plot(a, a, 'k-')
-    plt.plot(a, 2*a, 'k--')
-    plt.plot(a, 3*a, 'k:')
-    plt.scatter(t['rcur'], t['rmin'], c=fcolor, cmap='bone', vmin=0, vmax=1)
-    plt.xlabel('$R_{cur}$ (kpc)')
-    plt.ylabel('$R_{min}$ (kpc)')
+    #plt.sca(ax[2])
+    #a = np.linspace(0,90,100)
+    #plt.plot(a, a, 'k-')
+    #plt.plot(a, 2*a, 'k--')
+    #plt.plot(a, 3*a, 'k:')
+    #plt.scatter(t['rcur'], t['rmin'], c=fcolor, cmap='bone', vmin=0, vmax=1)
+    #plt.xlabel('$R_{cur}$ (kpc)')
+    #plt.ylabel('$R_{min}$ (kpc)')
     
-    plt.xlim(0,90)
-    plt.ylim(0,90)
+    #plt.xlim(0,90)
+    #plt.ylim(0,90)
     
-    plt.sca(ax[3])
-    a = np.linspace(0,90,100)
-    plt.plot(a, a, 'k-')
-    plt.plot(a, 2*a, 'k--')
-    plt.plot(a, 3*a, 'k:')
-    plt.scatter(t['rapo'], t['rmin'], c=fcolor, cmap='bone', vmin=0, vmax=1)
-    plt.xlabel('$R_{apo}$ (kpc)')
-    plt.ylabel('$R_{min}$ (kpc)')
+    #plt.sca(ax[3])
+    #a = np.linspace(0,90,100)
+    #plt.plot(a, a, 'k-')
+    #plt.plot(a, 2*a, 'k--')
+    #plt.plot(a, 3*a, 'k:')
+    #plt.scatter(t['rapo'], t['rmin'], c=fcolor, cmap='bone', vmin=0, vmax=1)
+    #plt.xlabel('$R_{apo}$ (kpc)')
+    #plt.ylabel('$R_{min}$ (kpc)')
     
-    plt.xlim(0,90)
-    plt.ylim(0,90)
+    #plt.xlim(0,90)
+    #plt.ylim(0,90)
     
-    plt.tight_layout()
-    plt.savefig('../plots/ar_crb_{}.pdf'.format(vlabel))
+    #plt.tight_layout()
+    #plt.savefig('../plots/ar_crb_{}.pdf'.format(vlabel))
 
 def min_ar():
     """"""
