@@ -543,7 +543,6 @@ And in the case of $z/y$ halo axis ratio, none of the streams in the best triple
 In recovering the halo shape, streams complement each other in a non-trivial manner, so the joint constraint is truly more than the sum of its parts.
 
 % - check whether gd1 a discriminator
-% - origin of non-trivial complementarity in orbital orientations?
 
 \section{Applications}
 
@@ -642,8 +641,7 @@ For example, attaining the best measurement of the radial acceleration at the ap
 Alternatively, if the best measurement is at a stream's current position, that means that streams are foremost a local measure of the enclosed mass.
 Uncovering the true relation in our fiducial, parametric model of the Galaxy is hindered by the structure such a model imposes on all spatially-resolved constraints.
 As a final application of our framework to measure information content in streams, in the next section we relax our assumptions about the gravitational potential and distinguish between these radically different scenarios using a more flexible potential model.
-% show what properties of more flexible potentials are constrained by stellar streams
-% These are radically different scenarios 
+
 
 \subsection{More flexible potential models}
 \label{sec:bfe}
@@ -694,57 +692,91 @@ Aimed with this knowledge, we can tailor observational experiments and prioritiz
 
 \section{Discussion}
 \label{sec:discussion}
+This paper performs an information analysis of cold stellar streams, and quantifies how streams on different orbits constrain global parameters of the dark matter halo.
+In \S\,\ref{sec:dis_origin} we reflect the results relating stream properties to aspects of the gravitational potential they constrain.
+In this first analysis of its kind, we made a number of simplifying assumptions, which we critically revisit in \S\,\ref{sec:dis_caveats}.
+We briefly discuss possible extensions to the basic framework in \S\,\ref{sec:dis_extensions} and close by considering the implications for future studies of streams in \S\,\ref{sec:dis_applications}.
 
-* how it fits with the literature
-- context of stream constraints so far
-- improvement in gd1+pal5 as expected?
-- similarly, pal5+ngc5466 from lux prediction as ours?
+\subsection{Origin of information in stellar streams}
+\label{sec:dis_origin}
+- open w discussion what most important things are: this paper performs an information analysis of cold streams in mw, we consider models constraining all the streams, shows that streams like this are good for that
 
-* understanding implications:
 - position of best constraint, why different in more flexible
--- intuition that in flexible -- zeroing in on the stream; comes from stream==orbit
+-- intuition that in flexible we're zeroing in on the stream; comes from stream==orbit
 -- not fully flexible now, can't see
 -- mathematically: there are derivatives getting zeroed out, can add perturbations as long as they add up to zero at the location of the data (thermometer analogy)
 -- could be data basis functions are orthogonal in theory space, but requirement might be different for data (orthogonality is an integral in some space, so subjective to what chosen -- could even be data instead of space/velocity space)
 
 - why proper motions not bringing too much for some streams -- check projection of the velocity vector
+- origin of non-trivial complementarity in orbital orientations?
+- cf, pal5+ngc5466 from lux prediction
 
-- raise issue of member identification, which was not addressed here
+\subsection{Caveats regarding the current framework}
+\label{sec:dis_caveats}
+% - list assumptions at the beginning of methods section (each gets a paragraph: how much it affects the results, why hard to relax, etc)
+The Fisher framework for assessing the information contained in a given set of observables has the intrinsic limitation of being tied to a model.
+In our case, this means that we are not measuring the information in the observed streams, but rather in toy streams that are comparable to the streams in the Milky Way.
+Given that there are no kinematic measurements for most of these streams, our choice for the direction of motion in the toy stream was somewhat arbitrary.
+The information content in streams depends on properties of the progenitor to some extent, so our results serve to illustrate how streams constrain the potential in general, rather than to make detailed predictions for these exact streams.
+Furthermore, by testing how sensitive stream observables are to changes around the fiducial potential we only measured the precision with which streams would constrain parameters of the gravitational potential.
+These predictions are robust to the choice of a fiducial model; for example, in prior applications to the cosmic microwave background, the precision in recovered parameters of the $\Lambda$CDM model matched the predicted Cram\'er--Rao bounds, even though they were calculated in a model with different fiducial parameters (cit).
+However, without a full search of the likelihood surface, we have no handle on biases that might arise in potential recovery using streams.
 
-* additional extensions
-- in current format:
-- most efficient stream / best place along the stream to get extra observations
-- lsst era, when too many streams will be known to follow up every one of them
-- m31 / extragalactic applications
+The Fisher analysis is performed in the context of a model because it ultimately relies on calculating derivatives of the data with respect to the parameters of the model, and these derivatives are evaluated at the fiducial values of the model parameters.
+In some problems, the derivatives are known exactly, but the transformation from the parameters of the gravitational potential and position of the stream's progenitor to the properties of the stream is highly non-linear, and there are no analytic derivatives that connect these two sets.
+For simplicity, we employed numerical derivatives, and chose steps of an appropriate size to ensure their convergence for all the model parameters (see \S\,\ref{sec:derivatives}).
+This conservative choice guarantees that the \CRLB\ are not overly optimistic due to noisy derivatives.
+Still, the fact that our derivatives are numerical is the main technical limitation of this work, and in the next section we outline how to improve upon this.
+
+Another caveat of this work is that its stream data model is only a naive reflection of the more complicated reality. 
+In particular, we assume the observations are normally distributed and uniformly sample the stream, the uncertainties are homoscedastic, and that the stream members are identified with perfect confidence. 
+In reality, measurements are typically made in the densest parts of a stream, their uncertainties vary (e.g., brighter stars are measured better), and they might not be Gaussian in all of the observables (e.g., if distance information is coming from parallaxes, then uncertainties in distance are not Gaussian, even if parallaxes are normally distributed).
+Additionally, if stream kinematics overlap with the Milky Way field population, it is impossible to identify stream members without further chemical information, so instead we can only assign a membership probability.
+However, we expect the average stream track to be measured well in a six-dimensional space for all of the nearby streams in the \emph{Gaia} era, so even though this basic model fails to capture complexities of observational data, it is on average credible, and can easily be relaxed and tailored for forecasting specific data sets.
+
+Finally, we note that the analytic gravitational potential we used can hardly account for the dynamics of the Milky Way over extended periods of time.
+In the early universe, we expect the Galaxy to have evolved through constant merging which triggered migrations within the already formed stellar populations (kareem, us), while at the present the motions of stars are affected both by the Sagittarius dwarf galaxy (cits) and by the Magellanic system (cits).
+A simple decomposition of the Galaxy into a bulge, disk and halo component has been the only tractable method of inferring the gravitational potential (cits), but due to the increase in both precision and volume of potential tracers, it is fast reaching the limit of its applicability (see Section~\S\,\ref{sec:res_joint}).
+Inspired by the expansion we have begun in Section~\S\,\ref{sec:bfe}, in the following section we suggest a way forward using a more flexible representation of the underlying gravitational field.
+
+\subsection{Extensions of the basic forecasting framework}
+\label{sec:dis_extensions}
+In the previous section we identified the use of numerical derivatives and overly idealized form of the gravitational potential as immediate targets for improving our inference of the information in stellar streams.
+The numerical derivative of stream observable $y_i$ with respect to the model parameter $x_i$ measures the response of the observable $\Delta y_i$ to the change in parameter $\Delta x_i$, and is calculated by differencing the observable $y_i$ between two stream models separated by $\Delta x_i$ at a fixed position along the stream.
+In principle, one can imagine using the orbital integrator to directly propagate the change in parameter $x_i$ into observable $y_i$, instead of creating separate stream models to evaluate this difference.
+Indeed, such functionality, called auto-differentiation, is common in machine-learning codes, such as tensorflow (cit), and also exists in some N-body codes, such as Yu Feng's (cit).
+In this work we opted for evaluating numerical derivatives because our legacy code does not support auto-differentiation, however, it tops our list of future extensions.
+Principal derivatives of stream observables with respect to model parameters will not only make for more robust \CRLB, but could also aid in fitting streams, as more advanced parameter-estimation methods, such as Hamiltonian Monte Carlo, rely on both the likelihood and the derivative of the likelihood.
 
 - influence of LMC/Sgr in the CRLB formalism
--- need time dependent bfe self-consistently, otherwise building in wrongness (like lm10)
--- need to maintain thin and old disk
--- potential complexities need to be realistic, not adding noise to the problem
 -- lmc perturbing on timescale these streams created
--- need to test in a live potential, model streams with a toy, bfe, where is the answer better?
--- self-consistent to put in external things
--- can we make the case for flexible + time-evolving models with ophiuchus, or perhaps some of the streams close to the LMC?
+-- numerous streams found in the direction of LMC, not analyzed yet, but likely heavily influenced
+-- evidence for orbit change in ophiuchus
+-- need time dependent bfe self-consistently, that still maintains a thin and old disk, otherwise building in wrongness (like lm10)
+-- for example, external perturbations we added in \S\,\ref{sec:bfe} are self-consistent, but of limited use in representing a galactic potential
 -- posit whether galaxy simulations would provide good models, or just a basis in which we evolve individual subhalos
+-- potential complexities need to be realistic, not adding noise to the problem -- delegate for a future study to choose best approach
+% -- need to test in a live potential, model streams with a toy potential, bfe, where is the answer better?
 
-* return to the assumptions paper makes and criticize them
-- placeholder in discussion: crb w noisy derivatives -> overly optimistic information (reason why so much time spent on derivatives)
-- list assumptions at the beginning of methods section (each gets a paragraph: how much it affects the results, why hard to relax, etc)
--- here: not modeling streams with actual data -- modeling toys comparable to streams we know about
--- haven't done the fitting, asking how precise would be if we did the fitting
--- credibly naive model of what the data are, reality more complicated, places with better measurements along the stream (membership not required?), assuming we can measure the track well in 6D, this will be true/not for these reasons in Gaia era
--- also assuming that the noise is well behaved (noise gaussian) -- could be non-trivial error issues in real data (distances from parallax)
--- gravitational potential is a toy (although people have been using them)
+\subsection{Implications for stream studies in the Milky Way and beyond}
+\label{sec:dis_applications}
+We studied the information content in stellar streams with the dual intent of learning what they are telling us about the gravitational potential intrinsically, and what we can measure about the gravitational potential using a given set of data.
+Such forecasting, while standard in other areas of astronomy (cite cmb), is rather novel in near-field cosmology.
+The stream studies in particular were until now limited by the scarcity of sources, so individual objects were dedicated the individual follow-up and subsequent modeling.
+However, advances in discovery techniques applied to the legacy data (cit recent carl), as well as the emergence of deeper data (cit des), have increased the count of known stellar streams to x (cit rev).
+The majority of these new detections have no associated kinematics, a trend likely to be extended in the LSST era, when the number of objects to observe spectroscopically, both in the Milky Way and other galaxies in the local universe, will be prohibitively large (cit elts).
+In this new regime, it will be essential to identify the most efficient targets among the streams, and also within the stream itself, to optimally use the shared resources -- a task ideally suited for the framework developed in this work.
 
-- open w discussion what most important things are: this paper performs an information analysis of cold streams in mw, we consider models constraining all the streams, shows that streams like this are good for that
+In addition to resulting in a tool for observation planning, measuring the information content in streams gave us pointers on ways to optimally extract it.
+First, we should infer the gravitational potential using a population of streams, because as a group they outperform any individual stream by more than an order of magnitude (see Figure~\ref{fig:nstream_summary}).
+Second, streams are measuring local properties (see Section~\S\,\ref{sec:interpretation}), so we should describe the gravitational potential with a very flexible model that can adequately capture information provided by streams without imposing additional structure.
+Third, if using sufficiently flexible model, we should be able to analyze each stream individually and measure the acceleration field at their respective locations.
+The inference on the global potential field can then be done as a separate step of interpolating between these individual measurements.
+The approach we outlined capitalizes on the hierarchical structure of the problem, which makes it computationally less expensive than simultaneously fitting all of the streams, and at the same time it not only enables, but requires a realistic representation of the Milky Way.
 
-- full stream simulating, expensive
--- numerical derivatives, autodif, also good for hmc
--- if we're right streams local acc, it will be much much less expensive to model them simultaneously --> ends disc on a very positive note, we'll learn a) less computationally expensive (just measuring local acc, hierarchical structure of the model) b) flexible mw c) fast independent stream fitting
 
-- naive way forward:
--- lay down information for local acceleration 
--- interpolate between those with a model (role of bfe, make sure these values are physically realizable)
+% -- if we're right streams local acc, it will be much much less expensive to model them simultaneously --> ends disc on a very positive note, we'll learn a) less computationally expensive (just measuring local acc, hierarchical structure of the model) b) flexible mw c) fast independent stream fitting
+
 
 % -- be careful though, as we are extrapolating somewhat the results from a toy model
 % -- place to admit anything we're uncertain about (dwh will help write it in a positive way, simplyfing things to make this possible, aware of those choices, made them consciously)
