@@ -860,7 +860,7 @@ def ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=1):
     plt.savefig('../paper/ar_crb.pdf')
 
 # interpretation
-def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=True):
+def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=True, Nsight=1):
     """Show how CRBs on different potential parameters depend on orbital properties of the progenitor"""
     
     pid, dp_fid, vlabel = get_varied_pars(vary)
@@ -876,7 +876,7 @@ def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', 
 
     #p = np.hstack([p_bary[:,2][:,np.newaxis], p_halo, p_halo[:,0][:,np.newaxis]/p_halo[:,1][:,np.newaxis]])
     p = np.hstack([p_bary[:,2][:,np.newaxis], p_halo]) #, np.sqrt(4*p_halo[:,0][:,np.newaxis]**2 + p_halo[:,1][:,np.newaxis]**2) ])
-    t = Table.read('../data/crb/ar_orbital_summary.fits')
+    t = Table.read('../data/crb/ar_orbital_summary_{}_sight{:d}.fits'.format(vlabel, Nsight))
     
     nrow = 5
     ncol = 5
@@ -898,6 +898,7 @@ def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', 
     mask = t['name']!='ssangarius'
     cback = '#FFD8A7'
     cback = [1, 237/255, 214/255]
+    cback = [0.5, 0.5, 0.5]
     
     plt.close()
     fig, ax = plt.subplots(nrow, ncol, figsize=(ncol*da, nrow*da), sharex='col', sharey='row')
@@ -906,7 +907,7 @@ def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', 
         for j in range(ncol):
             plt.sca(ax[i][j])
             #plt.plot(xvar[j][mask], p[:,i][mask], 'o', ms=5, color='0.2')
-            plt.scatter(xvar[j][mask], p[:,i][mask], c=xvar[0][mask], vmax=30, cmap='copper')
+            plt.scatter(xvar[j][mask], p[:,i][mask], c=xvar[0][mask], vmax=30, cmap='binary', s=50, edgecolors='k')
             
             corr = scipy.stats.pearsonr(xvar[j][mask], p[:,i][mask])
             fs = np.abs(corr[0])*10+7
