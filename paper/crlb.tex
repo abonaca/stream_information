@@ -93,17 +93,18 @@ In our final section~\ref{sec:discussion}, we discuss the implications of these 
 Numerous methods have been developed to estimate properties of a dark matter halo by modeling observations of stellar streams \citep[e.g.,][]{}.
 In this approach, the dark matter halo is usually described by an analytic model with a handful of free parameters.
 We define the information content in this context as the best-case uncertainties on our model parameters achievable using the observational data at hand.
-Formally, the lower bound on the variance of a deterministic parameter is given by the Cram\' er--Rao lower bound \citep[\CRLB,][]{Cramer1946, Rao1945}.
+Formally, the lower bound on the variance of an unbiased frequentist estimator of a deterministic parameter is given by the Cram\' er--Rao lower bound \citep[\CRLB,][]{Cramer1946, Rao1945}.
+It also relates to Bayesian inferences because it is, at least heurstically, (the inverse of) an asymptotic measure of the information coming to an inference from the likelihood function.
 
 For some data set $\vec{y}$ (e.g., a vector of position and velocity measurements of stars along a stream), the associated covariance matrix is $C_y$.
-Given the model parameters $\vec{x}$ (e.g., a vector with the mass and scale radius of a dark matter halo), the Cram\' er--Rao bound is the covariance matrix $C_x$.
-The \CRLB\ is set by the inverse of a Fisher information matrix \citep{}:
+Given the model parameters $\vec{x}$ (e.g., a vector with the mass and scale radius of a dark matter halo), the Cram\' er--Rao bound (under the assumptions that the noise is Gaussian and the model predictions are continuous) becomes the covariance matrix for the model parameters $C_x$, which is a local linear transformation of the covariance matrix for the data $C_y$.
+That is, the \CRLB\ for vector $\vec{x}$ is a covariance matrix or variance tensor, which itself is the inverse of a Fisher information matrix \citep{}:
 \begin{equation}
 C_x^{-1} = \left(\frac{d\vec{y}}{d\vec{x}}\right)^{T} C_y^{-1} \left(\frac{d\vec{y}}{d\vec{x}}\right) + V_x^{-1}
 \label{eq:crlb}
 \end{equation}
-where $V_x$ is a covariance matrix containing the prior knowledge of model parameters.
-In the next two subsections, we describe individual terms of Equation~\ref{eq:crlb}: model and its existing constraints (\S\ref{sec:model}), the change in stream observables $\vec{y}$ as a function of changes in the gravitational potential $\vec{x}$, i.e., the derivative $d\vec{y}/d\vec{x}$ (\S\ref{sec:derivatives}), and the adopted observational uncertainties, which set the covariance matrix $C_y$ (\S\ref{sec:datasets}).
+where the derivative object is a rectangular matrix, and $V_x$ is a covariance matrix representing any prior knowledge of model parameters (which, strictly, ought to be likelihood information or a Fisher matrix from prior data).
+In the next two subsections, we describe individual terms of Equation~\ref{eq:crlb}: the model and its existing constraints (\S\ref{sec:model}), the change in stream observables $\vec{y}$ as a function of changes in the gravitational potential $\vec{x}$, i.e., the derivative $d\vec{y}/d\vec{x}$ (\S\ref{sec:derivatives}), and the adopted observational uncertainties, which set the covariance matrix $C_y$ (\S\ref{sec:datasets}).
 
 \subsection{Model definition}
 \label{sec:model}
