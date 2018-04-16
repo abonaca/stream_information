@@ -22,6 +22,7 @@
 \shorttitle{information in stellar streams}
 \shortauthors{bonaca \& hogg}
 
+%@arxiver{nstream_improvement.pdf}
 \usepackage{amsmath}
 
 \begin{document}\sloppy\sloppypar\raggedbottom\frenchspacing % trust me
@@ -73,16 +74,28 @@ We show that kinematic measurements of stream stars are essential for producing 
 \keywords{foo --- bar --- hello --- world}
 
 \section{Introduction} \label{sec:intro}
+Immediately following the discovery of the first accreted structures in the Milky Way's halo \citep{ibata1994, ti1998}, \citet{johnston1999} recognized that these tidal tails can inform about the properties of the halo itself, concluding \emph{``you can judge a galaxy by its tail''}.
+They simulated tidal disruption of a Sagittarius-like satellite in different models of the Milky Way, and showed that with precise observations of the stream's positions and kinematics, the mass and shape of the halo can be constrained with a percent precision.
+Despite the urgency to understand the distribution of matter in the Galaxy, in particular the dark matter-dominated halo, it took several years for the comprehensive models of the Sagittarius system to emerge \citep{helmi2004, johnston2005, lm10}.
+Gathering the required observational data was the main cause of the delay -- streams are diffuse and faint, so it is challenging to isolate stream members from the overwhelming Milky Way field.
 
-\begin{itemize}
- \item establish streams useful in constraining gravitational potential
- \item tied to parametric models (too complex for inference otherwise, at least in current approaches)
- \item constraints only as good as the model (VL2 results)
- \item so, since not likely that the true potential is NFW, what are the streams actually constraining? 
- \item explicitly state this is the last use of toy models, used here to develop a framework, but should move to more flexible models in the future (DWH)
- \item here we're building a framework to measure the information content of stellar streams regarding the gravitational potential
- \item two-fold goals: given a simple parametric model, what kind of data do we need? what aspect of a (non-parametric) potential do individual streams constrain?
-\end{itemize}
+To this day, a total of four streams have been used to measure the Milky Way's gravitational potential: tidal tails of the Sagittarius dwarf galaxy \citep{lm10,gibbons2014,dl2017}, Orphan stream \citep{newberg2010}, GD-1 stream \citep{koposov2010, bowden2015} and tails of Palomar~5 globular cluster \citep{kupper2015}.
+A consensus among the nearby streams is that the inner halo is nearly spherical \citep{bovy2016}, however there is no global solution that simultaneously reproduces properties of all streams \citep{pearson2015}.
+The inference of halo properties in its outskirts is particularly sensitive to the adopted parametric form; for example, there are equally viable models of the Sagittarius stream in a triaxial halo \citep{lm10}, a halo interacting with the Large Magellanic Cloud that is oblate in the inner part and only mildly triaxial in the outer part \citep{vch2013} and a spherical halo with non-monotonically decreasing density profile \citep{ibata2013}. 
+
+Stream studies have so far adopted simple, analytic forms to describe the dark matter halo because the current data can reliably constrain only a limited number of free parameters.
+However, N-body simulations of galaxy formation predict more complex halos \citep[e.g.,][]{diemand2007,springel2008,wetzel2016}, 
+so in \citet{bonaca2014} we tested how accurately the streams that were simulated in a cosmological dark matter halo can be modeled in static, analytic potentials.
+We found that on average, a population of streams recovers the true halo mass as well as allowed by the analytic model (which itself can be biased a few tens of percent), but that individual streams can be extremely biased, thus posing the question: what are the stellar streams actually measuring?
+
+To quantitatively address this question, we here build a framework for measuring the information content in stellar streams regarding the gravitational potential.
+Our goals are two-fold: (1) given a simple parametric model of the Galaxy, we want to know what kind of data we need to optimally constrain it, and more formally (2) what aspects of a non-parametric gravitational potential individual streams constrain.
+We use the formalism of Cram\'er--Rao lower bounds and describe how we adopted it to stellar streams in Section~\ref{sec:method}.
+We studied a sample of Milky Way-like streams (described in Appendix~\ref{sec:streams}), assuming current or near-future observational data sets (\S\,\ref{sec:datasets}).
+In Section~\ref{sec:results} we present how well streams constrain parameters of a simple potential, both individually (\S\S\,\ref{sec:res_ind},~\ref{sec:res_comp}) and jointly (\S\,\ref{sec:res_joint}).
+Exploring these constraints in a bit more detail, we show that data of higher dimensionality provide superior constraints to data of higher precision but lower dimensionality (\S\,\ref{sec:forecast}).
+Finally, relaxing our model for the gravitational potential, we show that streams best constrain the radial acceleration at their present location (\S\S\,\ref{sec:interpretation},~\ref{sec:bfe}).
+In our final section~\ref{sec:discussion}, we discuss the implications of these results for future studies endeavoring to constrain the Milky Way potential using stellar streams.
 
 
 \section{Methods}
@@ -317,6 +330,7 @@ Distances are slightly more precise, while the kinematics are a factor of 2 wors
 
 
 \section{Results}
+\label{sec:results}
 Following the steps outlined in section~\S\,\ref{sec:method}, we inferred the information content in 11 Milky Way-like streams.
 In this section, we first present constraints on the underlying gravitational potential from a single stream (\S\,\ref{sec:res_ind}), then compare constraints from different streams (\S\,\ref{sec:res_comp}), and finally explore joint constraints from multiple streams (\S\,\ref{sec:res_joint}).
 
@@ -535,6 +549,7 @@ In recovering the halo shape, streams complement each other in a non-trivial man
 % - check whether gd1 a discriminator
 
 \section{Applications}
+\label{sec:applications}
 
 \subsection{Forecasting and observation planning}
 \label{sec:forecast}
@@ -814,18 +829,11 @@ AB acknowledges generous support from the Institute for Theory and Computation a
 \bibliography{crlb}
 
 \appendix
-\section{Cold tidal streams in the Milky Way}
+\section{Cold tidal streams in a Milky Way-like galaxy}
 \label{sec:streams}
-
-Steps for creating a mock stream:
-\begin{itemize}
- \item obtain ridge points along the stream. This is done either by analyzing a match-filtered map showing the stream, or from published stream tracks (usually in a polynomial form).
- \item fit a polynomial to the ridge points, and define a stream coordinate system with one axis along the polynomial, and the other along the normal on the polynomial.
- \item query PanSTARRS1 star catalog and assign a membership probability. We assume that the total probability can be split in a spatial and color-magnitude component; $p = p_{spatial} \times p_{CMD}$. The spatial probability follows a normal distribution centered on the stream track (measured as described above), with dispersion matching the reported stream width. The color-magnitude probability is obtained from a matched filter based on the M13 globular cluster, and placed at the reported distance to the stream.
- \item select a hundred most likely members. If kinematic information is present, the lowest probability members are replaced by stars with kinematic measurements.
- \item these hundred members are then used to constrain parameters of the mock stream progenitor. The mock stream is created in a fiducial gravitational potential defined by the first 9 parameters listed in Table~\ref{t:model} and these parameters are kept fixed for all of the mock streams. The variable parameters are: 6D position of the progenitor today, initial mass of the progenitor (we assume the progenitor loses mass at a constant rate and disappears at the present, with the exception of Pal~5 and NGC~5466, where we use the present-day cluster mass), and the age of the stream. 
-\end{itemize}
-
+To study the information content in stellar streams, we generated a set of mock streams that have similar properties to the known streams in the Milky Way.
+We limited our study to eleven streams in the PanSTARRS footprint: ATLAS, GD-1, Hermus, Kwando, Orinoco, PS1A, PS1C, PS1D, PS1E, Sangarius and Triangulum.
+These streams range in length from a few to more than $50^\circ$ and in Galactocentric distance from 15 to 35\,kpc, thus representing some of the diversity in the currently known population.
 
 \begin{figure}
 \begin{center}
@@ -838,6 +846,33 @@ Streams where the mock deviates from observations likely experienced a different
 \label{fig:gallery}
 \end{center}
 \end{figure}
+
+Mock streams resembling observed objects, such as the ones used in this work, can be created following these steps:
+\begin{itemize}
+\item Obtain ridge points along the observed stream.
+For some streams, mean tracks have been published, usually in a polynomial form, and we used published tracks for Sangarius from \citet{grillmair2017a}, Kwando and Orinoco from \citet{grillmair2017b}, Hermus from \citet{grillmair2014} and Triangulum from \citet{bonaca2012}.
+For other streams, tracks can be obtained by directly analyzing a match-filtered map showing the stream, and we analyzed maps from \citet{bernard2016} to get positions of ATLAS, GD-1, PS1A, PS1C, PS1D, and PS1E.
+ 
+\item Fit a polynomial to the ridge points, and define a stream coordinate system with one axis along the polynomial, and the other along the normal on the polynomial.
+
+\item Query a star catalog and assign a membership probability \citep[we used PanSTARRS1,][]{ps1,schlafly2012,schlafly2011}.
+We assume that the total probability can be split in a spatial and color-magnitude component, $p = p_{spatial} \times p_{CMD}$.
+The spatial probability follows a normal distribution centered on the stream track (measured as described above), with dispersion matching the reported stream width.
+The color-magnitude probability is obtained from a matched filter based on the M13 globular cluster, and placed at the reported distance to the stream.
+
+\item Select most likely members.
+We decided to work with a hunderd stars per stream, and replaced the lowest probability members by stars with kinematic measurements, if any were available.
+Sky positions of the adopted stream members are shown in black in Figure~\ref{fig:gallery}.
+
+\item Constrain parameters of the mock stream progenitor so that it produces a stream matching the observed distribution of member stars.
+We created models of mock streams in a fiducial gravitational potential defined by the first 9 parameters listed in Table~\ref{t:model} and these parameters were kept fixed for all of the mock streams.
+The parameters we varied were: 6D position of the progenitor today, initial mass of the progenitor (we assume the progenitor loses mass at a constant rate and disappears at the present), and the age of the stream.
+We estimated these parameters following \citet{bonaca2014} and show the adopted mock streams in gray in Figure~\ref{fig:gallery}.
+\end{itemize}
+In most cases, mock streams track well the positions of their observed counterparts.
+For some, however, the fit is not particularly good; for example, we can't seem to reproduce the observed curvature of Kwando and Orinoco in our fiducial model.
+This discrepancy indicates that the true gravitational potential of the Milky Way is more complex than the simple model we adopted as our fiducial, and that just the positions of a population of streams can rule out some models \citep[cf.][]{pearson2015}.
+This work focused on assessing the precision, and not accuracy, of stream constraints, so it is acceptable that our fiducial potential is only approximately representative of the Milky Way.
 
 \section{Robust matrix inversion}
 \label{sec:inversion}
