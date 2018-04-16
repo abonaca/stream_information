@@ -3580,7 +3580,7 @@ def plot_ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=1):
     tout = Table([t['name'], t['rapo'], t['rcur'], t['length'], rmin, rmin_err, armin, armin_err], names=('name', 'rapo', 'rcur', 'length', 'rmin', 'rmin_err', 'armin', 'armin_err'))
     tout.write('../data/ar_constraints_{}_sight{}.fits'.format(vlabel, Nsight), overwrite=True)
 
-def plot_all_ar(Nsight=1):
+def plot_all_ar(Nsight=50):
     """Explore constraints on radial acceleration, along the progenitor line"""
 
     alist = [0.2, 0.4, 0.7, 1]
@@ -3591,14 +3591,16 @@ def plot_all_ar(Nsight=1):
     labels = ['Fiducial Galaxy', '+ dipole', '++ quadrupole', '+++ octupole']
     
     alist = [0.2, 0.55, 1]
-    mslist = [11, 8, 5]
-    lwlist = [8, 5, 2]
+    #mslist = [11, 8, 5]
+    mslist = [13, 10, 7]
+    #lwlist = [8, 5, 2]
+    lwlist = [9, 6, 3]
     fc = [0.8, 0.5, 0.2]
     vlist = [['progenitor', 'bary', 'halo'], ['progenitor', 'bary', 'halo', 'dipole', 'quad'], ['progenitor', 'bary', 'halo', 'dipole', 'quad', 'octu']]
     labels = ['Fiducial Galaxy', '++ quadrupole', '+++ octupole']
     
     plt.close()
-    fig, ax = plt.subplots(1, 4, figsize=(16,4))
+    fig, ax = plt.subplots(1, 3, figsize=(13.5,4.5))
     
     for e, vary in enumerate(vlist):
         pid, dp_fid, vlabel = get_varied_pars(vary)
@@ -3645,7 +3647,7 @@ def plot_all_ar(Nsight=1):
         
         plt.sca(ax[2])
         a = np.linspace(0,90,100)
-        plt.plot(a, a, 'k-')
+        plt.plot(a, a, 'k-', alpha=0.4)
         plt.plot(t['rcur'], rmin, 'o', color=color, ms=ms, alpha=alpha)
         plt.errorbar(t['rcur'], rmin, yerr=rmin_err, color=color, fmt='none', zorder=0, alpha=alpha)
         plt.xlabel('$R_{cur}$ (kpc)')
@@ -3654,16 +3656,16 @@ def plot_all_ar(Nsight=1):
         plt.xlim(0,90)
         plt.ylim(0,90)
         
-        plt.sca(ax[3])
-        a = np.linspace(0,90,100)
-        plt.plot(a, a, 'k-')
-        plt.plot(t['rapo'], rmin, 'o', color=color, ms=ms, alpha=alpha)
-        plt.errorbar(t['rapo'], rmin, yerr=rmin_err, color=color, fmt='none', zorder=0, alpha=alpha)
-        plt.xlabel('$R_{apo}$ (kpc)')
-        plt.ylabel('$R_{min}$ (kpc)')
+        #plt.sca(ax[3])
+        #a = np.linspace(0,90,100)
+        #plt.plot(a, a, 'k-')
+        #plt.plot(t['rapo'], rmin, 'o', color=color, ms=ms, alpha=alpha)
+        #plt.errorbar(t['rapo'], rmin, yerr=rmin_err, color=color, fmt='none', zorder=0, alpha=alpha)
+        #plt.xlabel('$R_{apo}$ (kpc)')
+        #plt.ylabel('$R_{min}$ (kpc)')
         
-        plt.xlim(0,90)
-        plt.ylim(0,90)
+        #plt.xlim(0,90)
+        #plt.ylim(0,90)
     
     plt.tight_layout()
     plt.savefig('../plots/ar_crb_all_sight{:d}.pdf'.format(Nsight))

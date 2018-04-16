@@ -133,14 +133,21 @@ def derivative_vis(name='atlas'):
     fig, ax = plt.subplots(2,1,figsize=(9,7), sharex=True)
     lw = 2
     
+    colplus = 'skyblue'
+    colminus = 'salmon'
+    colfid = '0.8'
+    
+    #colplus, colfid, colminus = [mpl.cm.Blues(x) for x in [0.2, 0.5, 0.7]]
+    #colplus, colfid, colminus = [mpl.cm.RdBu(x) for x in [0.65, 0.75, 0.85]]
+    
     plt.sca(ax[0])
-    plt.plot(fiducial.obs[0], fiducial.obs[1], 'o', color='0.8', ms=10, label='Fiducial stream model')
+    plt.plot(fiducial.obs[0], fiducial.obs[1], 'o', color=colfid, ms=10, label='Fiducial stream model')
     plt.plot(fiducial.obs[0][isort], bs_fiducial(fiducial.obs[0][isort]), 'k-', lw=lw, label='B-spline fit')
 
-    plt.plot(stream1.obs[0], stream1.obs[1], 'o', color='salmon', ms=10, zorder=0, label='$V_h$ = $V_{h, fid}$' + ' - {}'.format(dV.value) + ' km s$^{-1}$')
+    plt.plot(stream1.obs[0], stream1.obs[1], 'o', color=colminus, ms=10, zorder=0, label='$V_h$ = $V_{h, fid}$' + ' - {}'.format(dV.value) + ' km s$^{-1}$')
     plt.plot(stream1.obs[0][isort1], bs_stream1(stream1.obs[0][isort1]), '-', color='darkred', lw=lw, label='')
 
-    plt.plot(stream2.obs[0], stream2.obs[1], 'o', color='skyblue', ms=10, zorder=0, label='$V_h$ = $V_{h, fid}$' + ' + {}'.format(dV.value) + ' km s$^{-1}$')
+    plt.plot(stream2.obs[0], stream2.obs[1], 'o', color=colplus, ms=10, zorder=0, label='$V_h$ = $V_{h, fid}$' + ' + {}'.format(dV.value) + ' km s$^{-1}$')
     plt.plot(stream2.obs[0][isort2], bs_stream2(stream2.obs[0][isort2]), '-', color='midnightblue', lw=lw, label='')
     
     ra_arr = 51.4
