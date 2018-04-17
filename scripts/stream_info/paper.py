@@ -491,6 +491,15 @@ def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', ali
     
     Ns, Np = np.shape(p_all)
     
+    l = np.linspace(-180,180,100)
+    b = np.zeros(100)
+    plane_gal = coord.SkyCoord(l=l*u.deg, b=b*u.deg, frame=coord.Galactic)
+    plane_eq = plane_gal.icrs
+
+    cx_ = plane_eq.ra.wrap_at(180*u.deg).rad
+    cy_ = plane_eq.dec.rad
+    isort_ = np.argsort(cx_)
+    
     plt.close()
     fig, ax = plt.subplots(3,3,figsize=(15,7), subplot_kw=dict(projection='mollweide'))
     
@@ -499,6 +508,8 @@ def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', ali
         #ls = [':' if np.isfinite(x) & (x<kld_min) else '-' for x in kld[e]]
         
         stream = np.load('../data/streams/mock_observed_{}.npy'.format(name))
+        if not galactic:
+            stream[0] += 90
         ceq = coord.SkyCoord(ra=stream[0]*u.deg, dec=stream[1]*u.deg, frame='icrs')
         cgal = ceq.galactic
         if galactic:
@@ -538,6 +549,9 @@ def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', ali
         plt.setp(plt.gca().get_xticklabels(), visible=False)
         plt.setp(plt.gca().get_yticklabels(), visible=False)
         plt.grid(color='0.7', ls=':')
+        
+        if not galactic:
+            plt.plot(cx_[isort_], cy_[isort_], '--', color='0.7')
     
     # add custom colorbar
     sm = plt.cm.ScalarMappable(cmap=mpl.cm.viridis, norm=plt.Normalize(vmin=0, vmax=20))
@@ -552,12 +566,17 @@ def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', ali
     cb.set_label('Cramer $-$ Rao bounds (%)')
     
     plt.savefig('../paper/crb_onsky_gal{:d}.pdf'.format(galactic)) #, dpi=200)
+    plt.savefig('../paper/crb_onsky_gal{:d}.png'.format(galactic)) #, dpi=200)
 
 def sky_legend(galactic=False):
     """Label streams on the sky"""
     
     names = get_done()
     np.random.seed(538)
+    print(names)
+    lx_list = [133, 50, -140, -108, -15, -126, 72, 146, 126, 90, -98]
+    ly_list = [-5, 17, 1, 1, 19, 64, -32, -26, 38, -3, 37]
+    la_list = [70, 65, 90, 90, 92, 20, 0, 0, -50, -50, 35]
     
     plt.close()
     fig, ax = plt.subplots(1,1,figsize=(8,5), subplot_kw=dict(projection='mollweide'))
@@ -565,6 +584,9 @@ def sky_legend(galactic=False):
     
     for e, name in enumerate(names):
         stream = np.load('../data/streams/mock_observed_{}.npy'.format(name))
+        print(name, np.median(stream[0]))
+        if not galactic:
+            stream[0] += 90
         ceq = coord.SkyCoord(ra=stream[0]*u.deg, dec=stream[1]*u.deg, frame='icrs')
         cgal = ceq.galactic
         if galactic:
@@ -589,15 +611,35 @@ def sky_legend(galactic=False):
         
         label = full_name(name)
         
-        lx = np.radians(cx[0])
-        ly = np.radians(cy[0])
-        plt.text(lx, ly, label, fontsize='medium', color=scolor)
+        lx = np.radians(lx_list[e])
+        ly = np.radians(ly_list[e])
+        la = la_list[e]
+        plt.text(lx, ly, label, fontsize='medium', color=scolor, rotation=la, ha='center', va='center')
     
     if galactic:
         plt.xlabel('l (deg)')
         plt.ylabel('b (deg)')
     else:
-        plt.xlabel('R.A. (deg)')
+        l = np.linspace(-180,180,100)
+        b = np.zeros(100)
+        plane_gal = coord.SkyCoord(l=l*u.deg, b=b*u.deg, frame=coord.Galactic)
+        plane_eq = plane_gal.icrs
+        
+        cx_ = plane_eq.ra.wrap_at(wangle).rad
+        cy_ = plane_eq.dec.rad
+        isort = np.argsort(cx_)
+        plt.plot(cx_[isort], cy_[isort], '--', color='0.7')
+        plt.text(np.radians(-75), np.radians(-2), 'b = 0', rotation=75, fontsize='small', color='0.5')
+        plt.text(np.radians(70), np.radians(55), 'b = 0', rotation=-30, fontsize='small', color='0.5')
+        
+        tx_label = [150, 210, 270, 330, 30]
+        for e, tx in enumerate([-120, -60, 0, 60, 120]):
+            plt.text(np.radians(tx), np.radians(-60), '{:.0f}$\degree$'.format(tx_label[e]), ha='center', va='bottom', fontsize='small')
+            
+        
+        plt.setp(plt.gca().get_xticklabels(), visible=False)
+        plt.setp(plt.gca().get_yticklabels(), fontsize='small')
+        plt.xlabel('R.A. (deg)', labelpad=30)
         plt.ylabel('Dec (deg)')
     
     plt.gca().xaxis.set_major_locator(mpl.ticker.MultipleLocator(base=np.pi/3.))
