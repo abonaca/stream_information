@@ -105,7 +105,7 @@ C_x^{-1} = \left(\frac{d\vec{y}}{d\vec{x}}\right)^{T} C_y^{-1} \left(\frac{d\vec
 where the derivative object is a rectangular matrix, and $V_x$ is a covariance matrix representing any prior knowledge of model parameters (which, strictly, ought to be likelihood information or a Fisher matrix from prior data).
 
 Although strictly the \CRLB\ is a constraint on frequentist estimators, it also has an interpretation in Bayesian inference.
-Heuristically, it gives the variance of the posterior pdf when the data are very informative, or in the limit of very good data.
+Heuristically, it gives the variance of the posterior probability distribution function (pdf) when the data are very informative, or in the limit of very good data.
 It also delivers the variance of the posterior pdf precisely in the magic situation in which the model is linear (derivatives $d\vec{y}/d\vec{x}$ don't vary with parameters $x$) and both the noise and the prior pdf are Gaussian (and that prior variance is included as $V_x$ in the calculation), but that situation does not strictly apply here.
 Nonetheless, it is a first-order approximation to the uncertainties that would be obtained in a sensible Bayesian inference with good data, which is relevant to this work.
 
@@ -360,11 +360,11 @@ However, streams seem to contain little information on the baryonic matter compo
 We estimate how precisely every stream data set constrains the current position of the stream's progenitor, as well as the underlying gravitational potential.
 For a given combination of a stream and an observational set up, all of this information is contained in a 15~by~15 Fisher matrix $C_x$.
 In Section~\ref{sec:method}, we showed how to calculate the inverse of the Fisher matrix $C_x^{-1}$ (Equation~\ref{eq:crlb}).
-If the condition number of $C_x^{-1}$ is small, it can be easily inverted to obtain the Fisher matrix.
+If the condition number of $C_x^{-1}$ is small, it can be easily inverted to obtain the Cram\'er--Rao bounds.
 However, when the model parameters are poorly constrained, $C_x^{-1}$ has a large condition number, and it is then non-invertible by standard libraries.
-We find that condition numbers of calculated $C_x^{-1}$ tend to be large, so to get the Fisher matrix $C_x$, we use a robust, iterative method of matrix inversion, described in Appendix~\ref{sec:inversion}.
+We find that condition numbers of calculated $C_x^{-1}$ tend to be large, so to get the inverse $C_x$, we use a robust, iterative method of matrix inversion, described in Appendix~\ref{sec:inversion}.
 
-Once we have the Fisher matrix, the square root of its diagonal are the CRLB, which measure the best attainable precision in the 15 parameters of our model.
+Once we have the inverse of the Fisher matrix, the square root of its diagonal are the CRLB, which measure the best attainable precision in the 15 parameters of our model.
 If all of the model parameters were uncorrelated, the Fisher matrix would be diagonal.
 However, we find that Fisher matrices have off-diagonal elements for all of the streams, and in the remainder of this section, we discuss covariances between different model parameters inferred from observations of an ATLAS-like stream.
 
