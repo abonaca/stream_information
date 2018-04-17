@@ -59,7 +59,7 @@ The \CRLB\ formalism also permits us to assess the value of future measurements 
 We show that kinematic measurements of stream stars are essential for producing competitive constraints on the distribution of dark matter, which bodes well for stream studies in the age of \textsl{Gaia}.
 \end{abstract}
 
-\keywords{foo --- bar --- hello --- world}
+\keywords{Galaxy: halo --- dark matter --- Galaxy: kinematics and dynamics --- methods: statistical}
 
 \section{Introduction} \label{sec:intro}
 Immediately following the discovery of the first accreted structures in the Milky Way's halo \citep{ibata1994, ti1998}, \citet{johnston1999} recognized that these tidal tails can inform about the properties of the halo itself, concluding \emph{``you can judge a galaxy by its tail''}.
@@ -195,8 +195,8 @@ In what follows, we describe how we measure differences in stream models with di
 Solid lines show B-spline fits through these stream models.
 The coordinate system is rotated such that the $\xi$ coordinate is approximately along the fiducial stream model, and $\eta$ is perpendicular to this stream track. 
 (\emph{Bottom}) We define the derivative $d\eta / d V_h$ as the numerical derivative $\Delta\eta / \Delta V_h$.
-At a fixed coordinate $\xi$ along the stream, the numerical derivative is the ration of the difference between $\eta$ coordinates of models in the more massive and the less massive halo ($\Delta\eta$, marked with arrows in the top panel), and the total difference in halo scale velocity between these two models ($\Delta V_h$).
-This numerical derivative as a function of position along the stream is shown in a black line on the bottom panel.
+At a fixed coordinate $\xi$ along the stream, the numerical derivative is the ratio of the difference between $\eta$ coordinates of models in the more massive and the less massive halo ($\Delta\eta$, marked with arrows in the top panel), and the total difference in halo scale velocity between these two models ($\Delta V_h$, 80\,km\,s$^{-1}$ in this example).
+This numerical derivative is shown on the bottom panel as a function of the position along the stream.
 }
 \label{fig:derivative_steps}
 \end{center}
@@ -204,11 +204,12 @@ This numerical derivative as a function of position along the stream is shown in
 
 Cold streams analyzed in this work are very thin, most of them being at least two orders of magnitude longer than they are wide, and we treat them as one dimensional in the plane of the sky.
 With each stream, we work in a spherical coordinate system ($\xi$, $\eta$) whose equator ($\eta=0$) is a great circle best-fitting the stream track, and the $\xi$ coordinate is our independent variable.
-A detailed description of the great-circle fitting and a complete listing of rotation matrices for all of the analyzed streams are deferred until Appendix~\ref{sec:streams}, while an example of a resulting transformation is shown in Figure~\ref{fig:derivative_steps}, which shows positions of mock stream members in a rotated coordinate system.
+% A detailed description of the great-circle fitting and a complete listing of rotation matrices for all of the analyzed streams are deferred until Appendix~\ref{sec:streams}, while
+An example of this transformation is shown in Figure~\ref{fig:derivative_steps}, which shows positions of ATLAS-like stream members in a rotated coordinate system.
 
-We then measure deviations from the fiducial model at fixed positions along the stream ($\xi$), and use these numerical derivatives in our \CRLB\ calculation.
-We illustrate the calculation of the $d\eta/d V_h$ derivative in Figure~\ref{fig:derivative_steps}, where in the top we show the on-sky position of a fiducial model in gray, and in red and blue models with a lower and higher halo scale velocity, respectively.
-The numerical derivative at a position $\xi$ is then simply the difference between the $\eta(\xi)$ positions in the models of different scale velocity, divided by the difference in scale velocity between the models.
+We measure deviations from the fiducial model at fixed positions along the stream ($\xi$), and use these numerical derivatives in our \CRLB\ calculation.
+We illustrate the calculation of the $d\eta/d V_h$ derivative in Figure~\ref{fig:derivative_steps}, where in the top we show the on-sky position of a fiducial stream model in gray, and in red and blue models with a lower and higher halo scale velocity, respectively.
+The numerical derivative at a position $\xi_k$ is then simply the difference between the $\eta(\xi_k)$ positions in the models of different scale velocity, divided by the difference in scale velocity between the models.
 The bottom panel of Figure~\ref{fig:derivative_steps} shows how this derivative varies along the stream.
 Derivatives in other data dimensions (distance, radial velocity, proper motions), and with respect to other model parameters, are calculated in the same fashion.
 More formally, we calculate numerical derivatives using the following expression:
@@ -216,7 +217,7 @@ More formally, we calculate numerical derivatives using the following expression
 \left.\frac{d y_i}{d x_j}\right\rvert_{\xi_k} = \left.\left(\frac{y_i(x_{0,j} + \Delta x_j) - y_i(x_{0,j} - \Delta x_j)}{2\Delta x_j}\right)\right\rvert_{\xi_k}
 \label{eq:derivative}
 \end{equation}
-where $y_i$ is the observable (either position $\eta$, distance, or one of the velocity components), $x_{0,j}$ is the fiducial value of parameter $x_j$, $\Delta x_j$ is a small value, and $\xi_k$ is the position along the stream where the derivative is evaluated.
+where $y_i$ is the observable (either position $\eta$, distance, or one of the observed velocity components), $x_{0,j}$ is the fiducial value of parameter $x_j$, $\Delta x_j$ is a small value, and $\xi_k$ is the position along the stream where the derivative is evaluated.
 A point to note is that we are not sensitive to changes along the stream within this formalism, which effectively reduces the dimensionality of our data, and might appear as not using the data to its full extent.
 However, the coordinate along the stream (i.e., the stream length) is extremely correlated with the stream age, which is very poorly constrained with just the phase space distribution of the debris.
 Consequently, not considering variations along the stream results in only a negligible loss of information.
@@ -224,11 +225,12 @@ Consequently, not considering variations along the stream results in only a negl
 \begin{figure*}
 \begin{center}
 \includegraphics[width=\textwidth]{derivative_steps.pdf}
-\caption{Optimal steps in parameter space for calculating numerical derivatives are marked with red vertical lines.
-The top two rows present progenitor parameters, starting with progenitor position, $\rm RA_p$, on the left, until progenitor proper motion $\mu_p$ on the right.
-The first of these two rows shows the values of evaluated numerical derivative, $\Delta y/\Delta x$, as a function of step size for parameter $x$ used in calculation, $\Delta x$, and the second row shows how the derivatives along the stream observables evaluated at a step size $\Delta x_j$ deviate from derivatives at adjacent step sizes $\Delta x_{j-1}$ and $\Delta x_{j+1}$.
+\caption{Optimal steps for calculating numerical derivatives are marked with red vertical lines for all the parameters in our model of an ATLAS-like stream.
+The top two rows present progenitor parameters, starting with progenitor's position, $RA_p$, on the left, through its proper motion $\mu_{\delta,p}$ on the right (for full description of model parameters, see Table~\ref{t:model}).
+The first of these two rows shows the values of evaluated numerical derivative, $\Delta y/\Delta x$, as a function of step size $\Delta x$, and the five different lines are for each of the stream observables. 
+The second row shows how the derivatives evaluated at a step size $\Delta x_j$ deviate from derivatives at adjacent step sizes $\Delta x_{j-1}$ and $\Delta x_{j+1}$.
 Similarly, the middle two rows present derivatives for parameters defining the bulge and the disk, while the bottom two rows are dedicated to parameters of the dark matter halo.
-For all of the model parameters, there is a local minimum in derivative deviation.
+For all of the model parameters, there is a local minimum in derivative deviation where the derivatives are the most stable.
 We adopt the optimal step size (red points and vertical lines) as the smallest step with a derivative deviation within a factor of 2 from the local minimum.
 }
 \label{fig:derivative_conv}
@@ -238,13 +240,13 @@ We adopt the optimal step size (red points and vertical lines) as the smallest s
 The above prescription for calculating numerical derivatives relies (1) on the ability to evaluate any stream observable at a given position along the stream $\xi$, and (2) on the size of the parameter step $\Delta x$, and we now describe our strategies for addressing these points.
 Both physical and model streams are a collection of stars, and thus all of the observables are discrete in nature (points in Figure~\ref{fig:derivative_steps}), which complicates comparison of different stream models.
 However, to the first order, streams are one dimensional structures, and lines in the top panel of Figure~\ref{fig:derivative_steps} show that a B-spline fits well the distribution of stream positions.
-We proceed by representing a stream model with a B-spline, which makes for a trivial evaluation of a stream observable at any position $\xi$.
+We proceed by representing a stream model with a B-spline, which makes for a trivial evaluation of a stream observable at any position $\xi_k$.
 This approach only takes into account information provided by the mean stream track, but not density variations along the track, and as such does not estimate the full information content in streams.
 Nevertheless, the observed density variations along the streams are a convolution of true variations and observational incompleteness, which typically remains unconstrained.
 Since the measurements of stream densities are uncertain, and we expect most of the information on the gravitational potential to be encoded in the stream track, in this work we focus on analyzing only the information content in the average positions of stream members, so approximating a stream model with a line is appropriate.
 
 Finally, to robustly evaluate numerical derivatives entering the calculation of Cram\' er--Rao bounds, we explore how the derivatives depend on $\Delta x$, the parameter step size from Equation~\ref{eq:derivative}.
-For every model parameter, we vary the step size by 10 orders of magnitude, store values of derivatives for different observables at several positions along the stream, and search for the step size where the derivatives are most stable.
+To find the optimal $\Delta x$, we vary the step size by 10 orders of magnitude for every model parameter, store values of derivatives for different observables at several positions along the stream, and search for the step size where the derivatives are the most stable.
 Our metric for derivative stability at a step size $\Delta x_j$ is the overall deviation of derivatives evaluated at the adjacent step sizes $\Delta x_{j-1}$ and $\Delta x_{j+1}$, denoted $\Delta \dot{y}$ and defined as:
 \begin{equation}
 \Delta \dot{y} = \sum_i \left(\left.\frac{dy_i}{dx}\right\vert_{\Delta x_j} - \left.\frac{dy_i}{dx}\right\vert_{\Delta x_{j-1}}\right)^2 + \sum_i \left(\left.\frac{dy_i}{dx}\right\vert_{\Delta x_j} - \left.\frac{dy_i}{dx}\right\vert_{\Delta x_{j+1}}\right)^2
@@ -260,9 +262,9 @@ Large deviations for large step sizes are due to derivatives being in the non-li
 The adopted step size is in between these two regimes, and is calculated for each stream individually.
 For most parameters, the adopted size is rather small (e.g., on the order of $\rm m\,s^{-1}$ for velocities), but it still produces physically different stream models, underlying the importance of quantitative selection of step size in numerical differentiation.
 
-While we presented a robust method to calculate numerical derivatives, a better solution would be to obtain derivatives directly when creating a stream model.
+While we presented a robust method to calculate numerical derivatives, a fully self-consistent solution would be to obtain derivatives directly when creating a stream model.
 This is usually done using auto-differentiation, which has not been implemented in our legacy orbit integrator.
-Evaluating exact derivatives of stream models with respect to input model parameters remains the most important technical improvement left for future work.
+Evaluating exact derivatives of stream models with respect to input model parameters remains the most important technical improvement left for future work, and is discussed in \S\,\ref{sec:dis_extensions}.
 
 
 \subsection{Sets of observational data}
@@ -288,7 +290,7 @@ The amount of information we can learn about the gravitational potential from a 
 The intrinsic sensitivity, encoded in the derivatives of stream observables with respect to potential parameters, has been discussed above.
 In this section, we set up different stream data sets, defined by the type, amount and precision of observations at hand.
 
-For simplicity, we assume that observations are uniformly distributed every 0.5\,deg along each stream, with a minimum of 15 measurement points per stream.
+For simplicity, we assume that observations across the different data sets are uniformly distributed every 0.5\,deg along each stream, with a minimum of 15 measurement points per stream.
 We also assume that all the different types of data (e.g., radial velocity, proper motions) are measured at these same positions along the stream and that the uncertainties are the same for a given type of observation.
 All of these assumptions make for a highly idealized scenario: there are density inhomogeneities along the streams, so the likely members are hardly equidistant; different types of data are typically obtained for different stars; and observational uncertainties are a function of stellar brightness, color, and often distance.
 However, in this work we merely aim to demonstrate a framework for calculating the information content of a stream data set.
@@ -296,12 +298,11 @@ More realistic data can be analyzed in the same way to produce tailored predicti
 
 In measuring the information content in the Milky Way streams, we consider the following scenarios of data availability:
 \begin{enumerate}
-\item fiducial data set obtainable with targeted kinematic follow-up,
-\item present data on positions of stream stars with radial velocities from DESI and DESI-like surveys,
-\item data on stream members from the final data release of the Gaia mission, and
-% \item integrated-light data, as available for extragalactic streams.
+\item fiducial data set obtainable from wide-field photometric surveys with targeted kinematic follow-up,
+\item present data on positions of stream stars with radial velocities from DESI and DESI-like surveys, and
+\item data on stream members from the final data release of the Gaia mission.
 \end{enumerate}
-Observational uncertainties in each of these cases are summarized in Table~\ref{t:datasets}, and described in more detail below.
+Adopted observational uncertainties for these scenarios are summarized in Table~\ref{t:datasets}, and justified in more detail below.
 
 For the fiducial data set, we assume that the positions of stream members come from photometric surveys, radial velocities from targeted spectroscopic follow-up, and proper motions from long-baseline, spacecraft observations.
 The on-sky positions of stars are measured very precisely (for example, better than 0.5\,'' in SDSS, cit), so the uncertainty in stream position equals the stream width.
@@ -748,7 +749,7 @@ In our case, this means that we are not measuring the information in the observe
 Given that there are no kinematic measurements for most of these streams, our choice for the direction of motion in the toy stream was somewhat arbitrary.
 The information content in streams depends on properties of the progenitor to some extent, so our results serve to illustrate how streams constrain the potential in general, rather than to make detailed predictions for these exact streams.
 Furthermore, by testing how sensitive stream observables are to changes around the fiducial potential we only measured the precision with which streams would constrain parameters of the gravitational potential.
-These predictions are robust to the choice of a fiducial model; for example, in prior applications to the cosmic microwave background, the precision in recovered parameters of the $\Lambda$CDM model matched the predicted Cram\'er--Rao bounds, even though they were calculated in a model with different fiducial parameters (cit).
+These predictions are robust to the choice of a fiducial model; for example, in prior applications to the cosmic microwave background, the precision in recovered parameters of the $\Lambda$CDM model matched the predicted Cram\'er--Rao bounds, even though they were calculated in a model with different fiducial parameters \citep{bond1997,spergel2003}.
 However, without a full search of the likelihood surface, we have no handle on biases that might arise in potential recovery using streams.
 
 The Fisher analysis is performed in the context of a model because it ultimately relies on calculating derivatives of the data with respect to the parameters of the model, and these derivatives are evaluated at the fiducial values of the model parameters.
