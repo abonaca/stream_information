@@ -1176,7 +1176,7 @@ def table_obsmodes(verbose=True):
     """Save part of the latex table with information on observing modes"""
     
     obsmodes = pickle.load(open('../data/observing_modes.info', 'rb'))
-    modes = ['fiducial', 'desi', 'gaia', 'exgal']
+    modes = ['fiducial', 'desi', 'gaia']
     names = obsmode_name(modes)
     
     fout = open('../paper/obsmodes.tex', 'w')
