@@ -109,66 +109,73 @@ Through the rest of this section, we describe individual terms of Equation~\ref{
 \subsection{Model definition}
 \label{sec:model}
 The \CRLB\ formalism can only quantify information in the context of a model, which in our case is a model of a stellar stream in the gravitational potential of the Milky Way.
-We consider cold stellar streams originating from disrupting globular clusters, which have been well-modeled with direct N-body simulations (refs).
-These studies have shown that the phase-space distribution of the resulting debris is predominantly set by properties of the gravitational potential and the orbit of the progenitor, with a weaker dependence on the internal properties of the progenitor (ahwk).
+We consider cold stellar streams originating from disrupting globular clusters, which have been well-modeled with direct N-body simulations \citep[e.g.,][]{baumgardt2003, dehnen2004}.
+Follow-up studies have shown that the phase-space distribution of the resulting debris is predominantly set by properties of the gravitational potential and the orbit of the progenitor, with a weaker dependence on the internal properties of the progenitor \citep{kupper2010, kupper2012}.
 Hence, our model consists of parameters defining the gravitational potential and a 6-dimensional position of the progenitor.
 
-To represent the global properties of the Milky Way, we represent the gravitational potential as a combination of a Hernquist bulge (parameterized with mass and scale radius), a Miyamoto-Nagai disk (with parameters for disk mass, scale length and scale height) and a spherical NFW halo (parameterized with scale velocity, scale radius, and axis ratios $q_x=q_z=1$).
+To represent the global gravitational potential of the Milky Way, we use a combination of a Hernquist bulge \citep[parameterized with mass, $M_b$, and scale radius, $a_b$]{hernquist1990}, a Miyamoto-Nagai disk \citep[with parameters for disk mass, $M_d$, scale length, $a_d$, and scale height, $b_d$]{mn} and a spherical NFW halo \citep[parameterized with scale velocity, scale radius, and axis ratios $q_x=q_z=1$]{nfw}.
 We provide the fiducial values for this model in Table~\ref{t:model}, along with measurement uncertainties where available.
-This potential is similar to MWPotential2014 \citep{galpy}, and fits a range observed Milky Way properties (e.g., rotation curve, ..., cit).
+This potential is similar to \texttt{MWPotential2014} \citep{galpy}, and fits a range of observed Milky Way properties. % (e.g., rotation curve, ..., cit).
 
-Next, we search for globular cluster orbits in the fiducial gravitational potential that produce stellar streams similar to those observed in the Milky Way.
+Next, we search for orbits of globular clusters in this fiducial gravitational potential that produce stellar streams similar to those observed in the Milky Way.
+Our final sample contains analogs of ATLAS, GD-1, Hermus, Kwando, Orinoco, PS1A, PS1C, PS1D, PS1E, Sangarius and Triangulum streams, and in Appendix~\ref{sec:streams} we describe how we created streams in our fiducial gravitational potential that match properties of observed streams.
 Briefly, we use the streakline method to forward-model stream observations in a modification of the \FF\ framework from \citet{bonaca2014}.
-For each stream, we vary the properties of its progenitor, while keeping the potential fixed at fiducial values.
-Observations of all streams consist of on-sky positions of likely members, and their distance estimates from the location in the color-magnitude diagram.
-Some streams have been better characterized, for example, with radial velocities from follow-up spectroscopy, and we include these extra dimensions of data in the parameter search if they are available.
-In Appendix~\ref{sec:streams}, we provide current progenitor positions, initial masses and stream ages, which reproduce observations for most of the Galactic streams present in the PanSTARRS1 footprint, as well as more details on the above procedure.
-When calculating the \CRLB\ for streams, we keep the progenitor mass and age fixed at their best-fitting values, as they are highly degenerate, and only use the present-day position of the progenitor as model parameters (defined in the observable space with the progenitor's two on-sky position angles, distance, radial velocity and two proper motion components). 
+For each observed stream, we keep the potential fixed at fiducial values, and derive current progenitor positions, initial masses and stream ages that reproduce observations.
+% Observations of all streams consist of on-sky positions of likely members, and their distance estimates from the location in the color-magnitude diagram.
+% Some streams have been better characterized, for example, with radial velocities from follow-up spectroscopy, and we include these extra dimensions of data in the parameter search if they are available.
+% We derive current progenitor positions, initial masses and stream ages, which reproduce observations.
+% In Appendix~\ref{sec:streams}, we provide current progenitor positions, initial masses and stream ages, which reproduce observations for a selection of stellar streams present in the PanSTARRS1 footprint, as well as more details on the above procedure.
+However, when calculating the \CRLB\ for streams, we fix the progenitor mass and age to their best-fitting values, as they are highly degenerate.
+Instead, as model parameters we only use the present-day position of the progenitor, defined in the space of observables with the progenitor's two on-sky position angles ($RA_p$, $Dec_p$), distance $d_p$, radial velocity $V_{r,p}$ and two proper motion components ($\mu_{\alpha,p}$, $\mu_{\delta,p}$). 
 
 The complete model for measuring the information content in stellar streams has 15 parameters: nine for the distribution of matter in the Galaxy and six for the position of the stream progenitor (as defined in Table~\ref{t:model}).
 Some of these parameters have already been measured, and we include these prior constraints as appropriate. 
-For example, progenitors of streams are generally unknown, but several have been identified, such as globular clusters Palomar~5 and NGC~5466, and we include observational uncertainties on their position in our analysis through covariance matrix $V$ in Equation~\ref{eq:crlb}.
-A substantial body of work has also been dedicated to constraining the mass components of the Milky Way.
-As a result, properties of the bulge and the disk are known with a precision of x\% (cit) (from different kinds of study too?), which we include in covariance matrix $V$.
-The halo mass, however, is still uncertain up to a factor of a few (cits), and the reported constraints on the halo shape are conflicting (cit), so the information that streams provide on the dark matter halo we measure independently of prior work.
+For example, progenitors of streams in our sample are unknown, so these are left completely unconstrained.
+% but several have been identified, such as globular clusters Palomar~5 and NGC~5466, and we include observational uncertainties on their position in our analysis through covariance matrix $V$ in Equation~\ref{eq:crlb}.
+On the other hand, a substantial body of work has been dedicated to constraining the stellar components of the Milky Way.
+As a result, properties of the bulge and the disk are known with a precision of $\lesssim10\%$ \citep{bobylev2017}.
+For simplicity, we adopt $10\%$ priors, as indicated in Table~\ref{t:model}, and include them in covariance matrix $V$.
+The halo mass, however, is still uncertain up to a factor of a few \citep[e.g.,][]{eadie2016, zaritsky2017}, and the reported constraints on the halo shape are conflicting \citep[e.g.,][]{loebman2014, bowden2016}, so we measure the information that streams provide on the dark matter halo independently of prior work.
 
-\begin{center}
 \begin{table}
+\begin{center}
 \begin{tabular}{l c c c l}
 \hline
 \hline
-Parameter & Symbol & Fiducial value & Uncertainty & Reference \\
+Parameter & Symbol & Fiducial value & Uncertainty \\
 \hline
 \hline
-Bulge mass & $M_b$ & & & \\
-Bulge scale radius & $a_b$ & & & \\
-Disk mass & $M_d$ & & & \\
-Disk scale radius & $a_d$ & & & \\
-Disk scale height & $b_d$ & & & \\
+Bulge mass & $M_b$ & $5\times10^{9}\rm M_\odot$ & $0.5\times10^{9}\rm M_\odot$ \\
+Bulge scale radius & $a_b$ & 0.7\,kpc & 0.07\,kpc \\
+Disk mass & $M_d$ & $6.8\times10^{10}\rm M_\odot$ & $0.68\times10^{10}\rm M_\odot$ \\
+Disk scale radius & $a_d$ & 3\,kpc & 0.3\,kpc\\
+Disk scale height & $b_d$ & 0.28\,kpc& 0.028\,kpc \\
 \hline
-Halo scale velocity & $V_h$ & & & \\
-Halo scale radius & $R_h$ & & & \\
-Halo $y$ axis ratio & $q_y$ & & & \\
-Halo $z$ axis ratio & $q_z$ & & & \\
+Halo scale velocity & $V_h$ & 430\,km\,s$^{-1}$ & N/A \\
+Halo scale radius & $R_h$ & 30\,kpc & --''-- \\
+Halo $y$ axis ratio & $q_y$ & 1 & --''-- \\
+Halo $z$ axis ratio & $q_z$ & 1 & --''-- \\
 \hline
-Progenitor RA & $RA_p$ & & & \\
-Progenitor Dec & $Dec_p$ & & & \\
-Progenitor distance & $d_p$ & & & \\
-Progenitor radial velocity & $V_{r,p}$ & & & \\
-Progenitor RA proper motion & $\mu_{\alpha,p}$ & & & \\
-Progenitor Dec proper motion & $\mu_{\delta,p}$ & & & \\
+Progenitor RA & $RA_p$ & varied & N/A \\
+Progenitor Dec & $Dec_p$ & --''-- & --''-- \\
+Progenitor distance & $d_p$ & --''-- & --''-- \\
+Progenitor radial velocity & $V_{r,p}$ & --''-- & --''-- \\
+Progenitor RA proper motion & $\mu_{\alpha,p}$ & --''-- & --''-- \\
+Progenitor Dec proper motion & $\mu_{\delta,p}$ & --''-- & --''-- \\
 \hline
 \hline
 \end{tabular}
 \caption{Model parameters}
 \label{t:model}
-\end{table}
 \end{center}
+\end{table}
+
+% np.log10(0.5e10)*u.Msun, 0.7*u.kpc, np.log10(6.8e10)*u.Msun, 3*u.kpc, 0.28*u.kpc, 430*u.km/u.s, 30*u.kpc
 
 \subsection{Calculating numerical derivatives for the \CRLB}
 \label{sec:derivatives}
 Intuitively, we can think of the Cram\'er--Rao bounds as quantifying how much we can change the parameters of a model $\vec{x}$, without violating the observational uncertainties of our data $\vec{y}$.
-So, to calculate these bounds, we need the inverse of how much the observed quantities $\vec{y}$ vary as a function of model parameters $\vec{x}$, or formally the derivative $d\vec{y}/d\vec{x}$.
+So, to calculate these bounds, we need to know how much the observed quantities $\vec{y}$ vary as a function of model parameters $\vec{x}$, or formally the derivative $d\vec{y}/d\vec{x}$.
 Given that in our case the data are a collection of points in a 6-dimensional space (3D positions and 3D velocities of stream members), this derivative becomes a non-trivial calculation.
 In what follows, we describe how we measure differences in stream models with different input parameters.
 
