@@ -496,7 +496,8 @@ def sky_all(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', ali
     plane_gal = coord.SkyCoord(l=l*u.deg, b=b*u.deg, frame=coord.Galactic)
     plane_eq = plane_gal.icrs
 
-    cx_ = plane_eq.ra.wrap_at(180*u.deg).rad
+    #cx_ = plane_eq.ra.wrap_at(180*u.deg).rad
+    cx_ = ((plane_eq.ra+90*u.deg).wrap_at(180*u.deg)).rad
     cy_ = plane_eq.dec.rad
     isort_ = np.argsort(cx_)
     
@@ -625,16 +626,16 @@ def sky_legend(galactic=False):
         plane_gal = coord.SkyCoord(l=l*u.deg, b=b*u.deg, frame=coord.Galactic)
         plane_eq = plane_gal.icrs
         
-        cx_ = plane_eq.ra.wrap_at(wangle).rad
+        cx_ = ((plane_eq.ra+90*u.deg).wrap_at(wangle)).rad
         cy_ = plane_eq.dec.rad
         isort = np.argsort(cx_)
         plt.plot(cx_[isort], cy_[isort], '--', color='0.7')
-        plt.text(np.radians(-75), np.radians(-2), 'b = 0', rotation=75, fontsize='small', color='0.5')
-        plt.text(np.radians(70), np.radians(55), 'b = 0', rotation=-30, fontsize='small', color='0.5')
+        plt.text(np.radians(-132), np.radians(-34), 'b = 0', rotation=-35, fontsize='small', color='0.5', ha='center', va='center')
+        plt.text(np.radians(72), np.radians(66), 'b = 0', rotation=30, fontsize='small', color='0.5', ha='center', va='center')
         
         tx_label = [150, 210, 270, 330, 30]
         for e, tx in enumerate([-120, -60, 0, 60, 120]):
-            plt.text(np.radians(tx), np.radians(-60), '{:.0f}$\degree$'.format(tx_label[e]), ha='center', va='bottom', fontsize='small')
+            plt.text(np.radians(tx), np.radians(-60), '{:.0f}$\degree$'.format(tx_label[e]), ha='center', va='center', fontsize='small')
             
         
         plt.setp(plt.gca().get_xticklabels(), visible=False)
