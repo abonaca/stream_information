@@ -272,6 +272,7 @@ def crb_2d(name='atlas', vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
     ax = None
     
     frac = [0.8, 0.5, 0.2]
+    dim_labels = ['3D fiducial data:\non-sky positions & distances', '4D fiducial data:\npositions & radial velocities', '6D fiducial data:\nfull phase space']
     
     for e, Ndim in enumerate([3,4,6]):
         d = np.load('../data/crb/cxi_{:s}{:1d}_{:s}_a{:1d}_{:s}.npz'.format(errmode, Ndim, name, align, vlabel))
@@ -284,6 +285,9 @@ def crb_2d(name='atlas', vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
         else:
             fig, ax = corner_ellipses(cx, fig=fig, ax=ax, dax=2, color=color, alpha=0.7, lw=3)
         
+        plt.sca(ax[0][-1])
+        plt.plot([0,1], [1,1], '-', lw=3, color=color, alpha=0.7, label=dim_labels[e])
+        
     # labels
     for k in range(Nvar-1):
         plt.sca(ax[-1][k])
@@ -291,6 +295,11 @@ def crb_2d(name='atlas', vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
         
         plt.sca(ax[k][0])
         plt.ylabel(params[k+1])
+    
+    
+    plt.sca(ax[0][-1])
+    plt.legend(fontsize='xx-large', loc=1, bbox_to_anchor=(0., 0.))
+    plt.ylim(0,0.1)
     
     # correlations
     k = 0

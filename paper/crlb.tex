@@ -342,14 +342,14 @@ Distances are slightly more precise, while the kinematics are a factor of 2 wors
 Following the steps outlined in section~\S\,\ref{sec:method}, we inferred the information content in 11 Milky Way-like streams.
 In this section, we first present constraints on the underlying gravitational potential from a single stream (\S\,\ref{sec:res_ind}), then compare constraints from different streams (\S\,\ref{sec:res_comp}), and finally explore joint constraints from multiple streams (\S\,\ref{sec:res_joint}).
 
-\subsection{Individual stream}
+\subsection{Constraints from an individual stream}
 \label{sec:res_ind}
 
 \begin{figure*}
 \begin{center}
 \includegraphics[width=\textwidth]{crb_correlations.pdf}
 \caption{A visualization of correlations between Cram\'er--Rao bounds (ellipses) on all 15 of the model parameters for an ATLAS-like stream.
-The lightest colored ellipses show constraints achievable when only on-sky positions and distances are known, medium shaded ellipses are constraints produced with an addition of radial velocities, while the darkest ellipses are constraints with the full 6-D phase space information on stream members.
+The lightest colored ellipses show constraints achievable when only on-sky positions and distances are known, medium shaded ellipses are constraints produced with an addition of radial velocities, while the darkest ellipses come from the full 6D phase space information on stream members.
 The addition of kinematic data drastically improves constraints on most of the parameters, indicating that kinematics are essential for meaningful recovery of the Galactic potential.
 However, streams seem to contain little information on the baryonic matter components of the Galaxy -- these constraints do not improve with more data and remain prior-dominated.
 }
@@ -358,17 +358,18 @@ However, streams seem to contain little information on the baryonic matter compo
 \end{figure*}
 
 We estimate how precisely every stream data set constrains the current position of the stream's progenitor, as well as the underlying gravitational potential.
-For a given combination of a stream and an observational set up, all of this information is contained in a 15~by~15 Fisher matrix $C_x$.
-In Section~\ref{sec:method}, we showed how to calculate the inverse of the Fisher matrix $C_x^{-1}$ (Equation~\ref{eq:crlb}).
-If the condition number of $C_x^{-1}$ is small, it can be easily inverted to obtain the Cram\'er--Rao bounds.
+For a given combination of a stream and an observational setup, all of this information is contained in a matrix of Cram\'er--Rao lower bounds (\CRLB, $C_x$).
+% a 15~by~15 \CRLB\ matrix $C_x$.
+In Section~\ref{sec:method}, we showed how to calculate its inverse -- the Fisher matrix $C_x^{-1}$ (Equation~\ref{eq:crlb}).
+If the condition number of $C_x^{-1}$ is small, it can be easily inverted to obtain the Cram\'er--Rao lower bounds.
 However, when the model parameters are poorly constrained, $C_x^{-1}$ has a large condition number, and it is then non-invertible by standard libraries.
 We find that condition numbers of calculated $C_x^{-1}$ tend to be large, so to get the inverse $C_x$, we use a robust, iterative method of matrix inversion, described in Appendix~\ref{sec:inversion}.
 
-Once we have the inverse of the Fisher matrix, the square root of its diagonal are the CRLB, which measure the best attainable precision in the 15 parameters of our model.
-If all of the model parameters were uncorrelated, the Fisher matrix would be diagonal.
-However, we find that Fisher matrices have off-diagonal elements for all of the streams, and in the remainder of this section, we discuss covariances between different model parameters inferred from observations of an ATLAS-like stream.
+Once we have the \CRLB, the square root of its diagonal are the bounds on individual parameters of our model.
+If all of the model parameters were uncorrelated, the \CRLB\ matrix would be diagonal.
+However, we find that \CRLB\ have off-diagonal elements for all of the streams, and in the remainder of this section, we discuss covariances between different model parameters inferred from observations of an ATLAS-like stream.
 
-The corner plot in Figure~\ref{fig:crb_correlations} visualizes the structure of the Fisher matrix for an ATLAS-like stream, under the assumption of fiducial observational uncertainties.
+The corner plot in Figure~\ref{fig:crb_correlations} visualizes the structure of the \CRLB\ matrix for an ATLAS-like stream, under the assumption of fiducial observational uncertainties.
 Ellipses in each panel show covariant CRLB for a single pair of model parameters, with different colors indicating the dimension of the assumed fiducial data set: the lightest ellipses are constraints from 3D positions only, the medium ellipses include 3D positions and radial velocities, and the darkest ellipses are for the full 6D fiducial data set.
 Properties of an ellipse for a pair of parameters $i,j$ are determined from a slice of the Fisher matrix $C_x$ such that its rotation angle $\theta$, width $w$ and height $h$ are given by:
 \begin{align*}
@@ -383,8 +384,8 @@ In some cases, the impact of additional data is drastic.
 For example, the presence of radial velocities in a data set collapses the uncertainty in the progenitor radial velocity, $V_{r_p}$, by an order of magnitude (compare the lightest and medium-colored ellipses in the fourth column from the left in Figure~\ref{fig:crb_correlations}).
 For other parameters, additional data can break degeneracies existing in bounds from less extensive data sets, such as that between the halo scale velocity, $V_h$, and halo $x$-axis ratio, $q_x$, which are tightly correlated when constrained by a 3D data set, but show hardly any correlation when analyzed with 6D data (see panel in the second row from the bottom, and the third column from the right).
 Typically however, additional data only tightens parameter constraints, and keeps the correlations between parameters in place.
-Finally, for some parameters, additional data provides almost no additional constraints.
-For the ATLAS-like stream presented in Figure~\ref{fig:crb_correlations}, additional data has no impact on the on-sky position of the progenitor, which is mainly inferred from the on-sky positions of stream stars, as well as on some bulge and disk properties, which are dominated by the prior.
+Finally, for some parameters, additional data provide almost no additional constraints.
+For the ATLAS-like stream presented in Figure~\ref{fig:crb_correlations}, additional data have no impact on the on-sky position of the progenitor, which is mainly inferred from the on-sky positions of stream stars, as well as on some bulge and disk properties, which are dominated by the prior.
 Given that the pericenter of this stream is 23\,kpc, which is approximately 30 and 7 times beyond the bulge and disk scale lengths, respectively, it is unsurprising that its debris provides little information on these components.
 This example serves a cautionary tale -- obtaining additional data along a stream can be expensive, so it is important to quantify the expected gains beforehand, and we have provided a framework to do so.
 
@@ -396,26 +397,27 @@ Since these constraints from 3D data are much weaker than those from 4D and 6D d
 % To corroborate the relation between kinematics and precision in mass estimates, we note that adding radial velocities to positions alone decreases the uncertainty in estimated halo mass (predominantly set by the halo scale velocity $V_h$) by an order of magnitude.
 
 As the final element of our exploration of a Fisher information matrix for a single stream, we discuss correlations between constraints on different parameters.
-The CRLB ellipses in different panels of Figure~\ref{fig:crb_correlations} exhibit the whole range of correlations: from strongly and mildly (anti-)correlated, to those completely uncorrelated.
+The CRLB ellipses in different panels of Figure~\ref{fig:crb_correlations} exhibit a whole range of correlations: from strongly and mildly (anti-)correlated, to those completely uncorrelated.
 We quantify these covariances with the Pearson correlation coefficient, which for a pair of parameters $(i,j)$ is simply $p = C_{x,ij} / \sqrt{C_{x,ii}\,C_{x,jj}}$, where $C_{x,kl}$ is the $k,l$ element of the Fisher matrix $C_x$.
 We report correlation coefficients for parameters constrained with 6D fiducial data set in the upper right corner of each panel in Figure~\ref{fig:crb_correlations}, and discuss below the most extreme values.
 
-On-sky positions of an ATLAS-like progenitor are perfectly anti-correlated, which reflects this stream's one-dimensional nature and its projected span from southeast to northwest.
+On-sky positions of an ATLAS-like progenitor are perfectly anti-correlated, which stems from the requirement that the position of the progenitor is on top of the one-dimensional stream track, and the stream's projected span from southeast to northwest.
 Similarly, the progenitor's proper motions are anti-correlated, indicating that at least one component of the velocity vector is aligned with the stream.
-This is further supported by the strong correlations between progenitor's proper motions and its radial velocity -- a mark that there is a more physical decomposition of progenitor's velocity vector.
+This is further supported by the strong correlations between the progenitor's proper motions and its radial velocity -- a mark that there is a more physical decomposition of the progenitor's velocity vector.
 One would expect similar behavior for the 3D spatial position of the progenitor, however, distances in our fiducial case are too uncertain to exhibit correlations with on-sky positions.
 
 In addition to correlations arising from the geometry of stream observations, there are also covariances originating from the physical aspects of stream constraints on the gravitational potential.
-For example, scale velocity and scale radius of the dark matter halo are mildly anti-correlated, which is expected if the stream is most sensitive to the total amount of matter within the volume it orbits, but is somewhat agnostic to the distribution of matter.
+For example, scale velocity and scale radius of the dark matter halo are mildly anti-correlated, which is expected if the stream is most sensitive to the total amount of matter within some volume of the Galaxy, but is somewhat agnostic to the way the matter is distributed.
 In order to conserve the total mass in the halo, $M_h \propto V_h^2\,R_h$, the halo scale velocity needs to decrease as its scale radius increases, so the correlation between these two parameters is negative.
-On the other hand, streams provide little additional information regarding the bulge and disk parameters, so most of them are constrained by the priors alone and decoupled from other parameters.
-However, the disk mass is mildly anti-correlated with the halo scale velocity, and strongly correlated with the halo scale radius.
-This can again be understood in the context of streams only constraining the mass enclosed within their orbits, because as the halo scale radius increases, or the halo scale velocity decreases, the mass of the inner halo decreases.
-The total enclosed mass has a halo and a disk contribution, so if the halo component decreases, the disk must increase, which then introduces the observed correlations between the halo and disk parameters. 
+% On the other hand, streams provide little additional information regarding the bulge and disk parameters, so most of them are constrained by the priors alone and decoupled from other parameters.
+Similarly, the disk mass is mildly anti-correlated with the halo scale velocity, and strongly correlated with the halo scale radius.
+This can again be understood in the context of streams only constraining the total mass in the inner galaxy, with contributions from both the disk and the halo.
+The central halo density decreases as the halo scale radius increases (or the halo scale velocity decreases), so to conserve the total mass, the disk mass must also increase, which then introduces the observed correlations between the halo and disk parameters. 
+% The total enclosed mass has a halo and a disk contribution, so if the halo component decreases, the disk must increase, which then introduces the observed correlations between the halo and disk parameters. 
 
 There are also strong correlations between the halo scale radius and the progenitor's kinematics.
 These underscore the importance of including the progenitor parameters in measuring the information content in stellar streams, as neglecting to do so would lead to overly optimistic estimates.
-Furthermore, this mixing between parameters describing the progenitor and those describing the distribution of matter indicate that some streams might be at a more informative orbital phase or position relative to the Sun, a prospect we investigate in the next section where we compare stream performance in constraining parameters of the gravitational field.
+Furthermore, this mixing between parameters describing the progenitor and those describing the distribution of matter indicates that some streams might be at a more informative orbital phase or position relative to the Sun, a prospect we investigate in the next section where we compare stream performance in constraining parameters of the gravitational field.
 
 \subsection{Comparison between streams}
 \label{sec:res_comp}
