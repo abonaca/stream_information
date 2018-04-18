@@ -777,34 +777,25 @@ Inspired by the expansion we have begun in Section~\S\,\ref{sec:bfe}, in the fol
 \label{sec:dis_extensions}
 In the previous section we identified the use of numerical derivatives and overly idealized forms of the gravitational potential as prime targets for improving our inference of the information in stellar streams.
 The numerical derivative of stream observable $y_i$ with respect to the model parameter $x_i$ measures the response of the observable $\Delta y_i$ to the change in parameter $\Delta x_i$, and is calculated by differencing the observable $y_i$ between two stream models separated by $\Delta x_i$ at a fixed position along the stream.
-In principle, one can imagine using the orbital integrator to directly propagate the change in parameter $x_i$ into observable $y_i$, instead of creating separate stream models to evaluate this difference.
-Indeed, such functionality, called auto-differentiation, is common in machine-learning codes (e.g., tensorflow, cit), and also exists in some N-body codes (e.g., Yu Feng's, cit).
+In principle, one can imagine using the orbit integrator to directly propagate the change in parameter $x_i$ into observable $y_i$, instead of creating separate stream models to evaluate this difference.
+Indeed, such functionality, called auto-differentiation, is common in machine-learning codes \citep[e.g., \emph{tensorflow},][]{tensorflow}, and also exists in some N-body codes \citep[e.g., \emph{FASTPM},][]{feng2016}.
 In this work we opted for evaluating numerical derivatives because our legacy code does not support auto-differentiation, however, implementing it tops our list of future extensions.
-Principal derivatives of stream observables with respect to model parameters will not only make for more robust \CRLB, but could also aid in fitting streams, as more advanced parameter-estimation methods, such as Hamiltonian Monte Carlo, rely on evaluating both the likelihood and the likelihood derivative.
+Principal derivatives of stream observables with respect to model parameters will not only make for more robust \CRLB, but could also aid in fitting streams, as higher-order parameter-estimation methods, such as Hamiltonian Monte Carlo, rely on evaluating both the likelihood and the likelihood derivative.
 
 To fully describe a population of streams, we need a realistic model of the Galaxy.
-The latest generation of hydrodynamical simulations have produced models that well reproduce a multitude of features observed in galaxies, both as individual objects (Latte) and as a population (TNG).
-Part of their success is in the achieved high resolution, so at the present a Milky Way-like galaxy is modeled by up to x particles (cit).
+The latest generation of hydrodynamical simulations have produced models that well reproduce a multitude of features observed in galaxies, both as individual objects \citep[e.g.,][]{wetzel2016} and as a population \citep[e.g.,][]{pillepich2018,nelson2018}.
+Part of their success is in the achieved high resolution, so at the present a Milky Way-like galaxy is modeled by up to 140 million particles \citep{wetzel2016}.
 Ultimately, we would like to have a description of a galaxy that is representative of these models, but at a fraction of the numerical cost.
-In the classic study, \citet{ho} developed a set of basis functions for density and gravitational potential that can reproduce complex morphology of galaxies with a small number of terms (lowing, lilley).
-The force residuals are on the order of x (cit), so representing the gravitational potential with an expansion of these basis functions is tempting.
-However, a truly realistic solution needs to accurately capture not only the structure of the galaxy, but also its evolution in time.
-Even though the Milky Way has had a relatively quiet recent merger history, it is currently undergoing a major merger with the Large Magellanic Cloud (LMC), which has been a source of gravitational perturbation for at least a billion years -- sufficiently long to affect stellar streams.
+In the classic study, \citet{ho} developed a set of basis functions for density and gravitational potential that can reproduce complex morphology of galaxies with a small number of terms \citep[e.g.,][]{lowing2011}.
+These expansions reproduce the force field of an N-body simulation with a precision of a few percent, so representing the gravitational potential in our model with an expansion of basis functions is tempting.
+However, a truly realistic solution needs to accurately capture not only the current structure of the galaxy, but also its evolution in time.
+Even though the Milky Way has had a relatively quiet recent merger history, it is currently undergoing a major merger with the Large Magellanic Cloud \citep[e.g.,][]{besla2007, penarrubia2016}, which has been a source of gravitational perturbation for at least a billion years -- sufficiently long to affect stellar streams.
 Specifically, \citet{lm10} showed that the only static, ellipsoidal halo that reproduces both the positions and radial velocities along the Sagittarius stream is triaxial.
 This model correctly predicted proper motions along the stream \citep{sohn2015}, so it appears to be describing the effective potential well, even though it is cosmologically improbable \citep{debattista2013}.
 On the other hand, modeling Sagittarius in a combined system of the Milky Way and the LMC relaxes the requirement for the dark matter halo to be triaxial \citep{vch2013}, signaling that having a model of the potential that is correct on average is no guarantee of recovering the true halo shape.
 To ensure that the complexities added to the model are realistic, the basis function expansion should thus be time-dependent, simultaneously describing the interaction between the Milky Way and the LMC, while maintaining a thin and old disk. 
-We delegate to a future study the development of such a model and its implementation for mapping the dark matter in the Galaxy.
+We delegate the development of such a model and its implementation for mapping the dark matter in the Galaxy to a future study.
 
-% - influence of LMC/Sgr in the CRLB formalism
-% -- lmc perturbing on timescale these streams created
-% -- numerous streams found in the direction of LMC, not analyzed yet, but likely heavily influenced
-% -- evidence for orbit change in ophiuchus
-% -- need time dependent bfe self-consistently, that still maintains a thin and old disk, otherwise building in wrongness (like lm10)
-% -- for example, external perturbations we added in \S\,\ref{sec:bfe} are self-consistent, but of limited use in representing a galactic potential
-% -- posit whether galaxy simulations would provide good models, or just a basis in which we evolve individual subhalos
-% -- potential complexities need to be realistic, not adding noise to the problem -- delegate for a future study to choose best approach
-% -- need to test in a live potential, model streams with a toy potential, bfe, where is the answer better?
 
 \subsection{Implications for stream studies in the Milky Way and beyond}
 \label{sec:dis_applications}
