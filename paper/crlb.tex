@@ -667,8 +667,8 @@ As a final application of our framework to measure information content in stream
 
 \subsection{More flexible potential models}
 \label{sec:bfe}
-One of the main findings in this work is that stellar streams combined provide an extremely precise handle on properties of the dark matter halo, with individual parameters of a triaxial NFW model being constrained to $\lesssim1\%$ (Section~\S\,\ref{sec:res_joint}).
-At this level of precision, NFW is no longer an adequate representation of the underlying potential field, which additionally motivates the expansion to more complex and more flexible models.
+One of the main findings in this work is that combining stellar streams provides an extremely precise handle on properties of the dark matter halo, with individual parameters of a triaxial NFW model being jointly constrained to $\lesssim1\%$ (Section~\S\,\ref{sec:res_joint}).
+At this level of precision, NFW is no longer an adequate representation of the underlying potential field \citep[e.g.,][]{bonaca2014}, which additionally motivates the expansion to more complex and more flexible models.
 In this section, we explore stream constraints on the radial acceleration when the basic model of the Galaxy is allowed to be perturbed.
 
 We introduce more flexibility into the gravitational field that streams orbit by considering a potential model that is a combination of the Galactic potential and a perturber: $\Phi = \Phi_{G} + \Phi_{p}$. 
@@ -677,40 +677,43 @@ For simplicity, we assume that the perturbation is caused by external multipoles
 \Phi_{p}^{l_{max}}(r) = \sum_{l=1}^{l=l_{max}}\sum_{m=-l}^{m=l} a_{lm} Y_{lm}(\theta,\phi) r^l
 \label{eq:multipoles}
 \end{equation}
-where $r$ is the distance from the center of the Galaxy, $Y_{lm}$ are spherical Bessel functions, $l_{max}$ determines the highest order perturbation, and coefficients $a_{lm}$ are additional parameters of this model.
+where $r$ is the distance from the center of the Galaxy, $Y_{lm}$ are spherical Bessel functions, $l_{max}$ determines the highest order perturbation, and coefficients $a_{lm}$ are the additional parameters of this model.
 We choose vanishing coefficients, $a_{lm}=0$, such that this flexible potential is equivalent to the fiducial Galaxy we analyzed so far, but it has the additional model freedom.
-In principle, a multipole decomposition of a high order ($l\approx X$) can reproduce the structure of dark matter halos expected in the CDM paradigm even on small scales (cit lowing, lilley).
-We limit the scope of this section to merely illustrate the effects of loosening the potential structure by including up to octupole perturbations, $l_{max}=3$.
+In principle, a multipole decomposition of a high order ($l\approx 10$) can reproduce the structure of dark matter halos expected in the $\Lambda$CDM paradigm even on small scales \citep{lowing2011}.
+We limit the scope of this section to merely illustrate the effects of loosening the potential structure by including perturbations up to octupole order, $l_{max}=3$.
 A perturbation of order $l$ adds $2\,l+1$ additional parameters to the model, so our extended model has at most 15 new parameters in addition to the 15 from the basic study (listed in Table~\ref{t:model}).
 In what follows, we explore how this additional freedom propagates into recovery of the underlying acceleration field using Milky Way-like stellar streams.
 
 \begin{figure*}
 \begin{center}
 \includegraphics[width=\textwidth]{ar_crb_all.pdf}
-\caption{Fractional constraints on the circular velocity by 6-D phase space data on stellar streams (with lighter colors representing streams with larger apocenters).
-Precision in recovered circular velocity as a function of distance from the Galactic center (\emph{left}).
-Streams vary in their ability to constrain circular velocity (thicker lines are used for more competitive constraints), but all have a single Galactocentric distance where the constraint is maximized.
-Long streams provide tighter constraints (\emph{center}), while the location of the best constraint correlates with the orbital apocenter (\emph{right}).
+\caption{
+Fractional constraints on the radial acceleration from 6D data on stellar streams in models of increasing complexity: light green for the basic model of the Galaxy, dark green for additional dipole and quadrupole freedom, and purple for freedom up to the octupole term.
+Radial profiles of the acceleration constraints are shown for a couple of streams on the left, dependence of the best measured acceleration on the stream length is in the middle, and locations of best constraints as a function of current stream position are on the right.
+In more flexible models, observations of streams provide less information on the radial acceleration, especially if a stream is short.
+However, modeling streams with sufficient freedom also enables them to measure the local acceleration at their current position.
+In this regime, combining constraints from different streams becomes computationally tractable.
 }
 \label{fig:ar_all}
 \end{center}
 \end{figure*}
 
-Figure~\ref{fig:ar_all} shows constraints on radial acceleration as the potential model gets progressively more complicated; light green symbols indicate a basic model of the Galaxy, dark green is for the basic model with a dipole and a quadrupole freedom, while purple is for a model that includes up to the octupole term.
-The left-most panel shows the relative precision in radial acceleration as a function of distance from the galactic center for an arbitrary sightline, and to reduce clutter, we only present constraints from two streams.
-As expected, models with more parameters (darker colors) are less constrained overall, and their acceleration profiles have larger \CRLB\ at all radii. 
-The precision of the best measured relative acceleration increases exponentially with stream length (shown for all streams in the second panel of Figure~\ref{fig:ar_all}), and the scale length is $l_0\approx17^\circ$ in all models.
-For streams of the same length, the best acceleration measurement in a model with added quadrupole freedom is a factor of two worse than in the basic model, while additional octupole component increases this uncertainty by a factor of five relative to the basic model.
+Figure~\ref{fig:ar_all} shows constraints on the radial acceleration as the potential model gets progressively more complicated; light green symbols indicate our basic model of the Galaxy, dark green is for the basic model with a dipole and a quadrupole freedom, while purple is for a model that includes up to the octupole term.
+Left panel shows the relative precision in radial acceleration as a function of distance from the galactic center for an arbitrary sightline, and to reduce clutter, we only present constraints from two streams.
+Unsurprisingly, the same amount of data constrains models with more parameters less well overall, so the acceleration profiles of more flexible models have larger \CRLB\ at all radii. 
+The precision of the best measured relative acceleration increases exponentially with stream length (shown for all streams in the middle panel of Figure~\ref{fig:ar_all}), and the scale length is $l_0\approx17^\circ$ in all models.
+For streams of the same length, the best acceleration measurement in a model with added dipole and quadrupole freedom is a factor of two worse than in the basic model, while additional octupole component increases this uncertainty by a factor of five relative to the basic model.
 
-While the uncertainty in recovery of all parameters increases with model flexibility, the constraints on radial acceleration become more localized.
-Radial profiles of precision in radial acceleration (left-most panel of Figure~\ref{fig:ar_all}) have deeper minima in progressively more flexible models, which indicates that each stream intrinsically measures only a specific region of the Galaxy.
-In the third and fourth panel from the left we show the location of the best measured acceleration as a function of current stream position and its apocenter, respectively.
-The seeming relation between the position of the best constraint with the apocenter dissolves going from the basic to less constrictive models, while a new relation with the current location emerges.
+While the uncertainty in recovery of all parameters increases with model flexibility, constraints on the radial acceleration also become more localized in more flexible models.
+Radial profiles of precision in the radial acceleration (left panel of Figure~\ref{fig:ar_all}) have deeper minima in progressively more flexible models, which indicates that each stream intrinsically measures only a specific region of the Galaxy.
+Bounds on the radial acceleration in the basic model indicated that streams are the most constraining within their apocentra (see bottom right of Figure~\ref{fig:ar}), however, this seeming relation dissolves in less constrictive models of the Galaxy.
+Instead, we find that progressively more complex models move the best measured location closer to the current location (Figure~\ref{fig:ar_all}, right).
 In our most flexible model, the best constraints for all but a few streams are attained within $1\,\sigma$ of their current position.
+
 
 Augmenting the basic model of the Galaxy with external multipoles is a naive first step towards a spatially flexible and realistic model for the Milky Way, but it already afforded the physical insight that stellar streams are most sensitive to its present environs.
 The finding that streams constrain the mass enclosed within their current position, with a precision determined by their length, has far-reaching implications for observational studies as both the position and length are directly observable.
-Aimed with this knowledge, we can tailor observational experiments and prioritize telescope resources to study most informative streams.
+Aimed with this knowledge, we can tailor observational experiments and prioritize telescope resources to study the most informative streams.
 
 \section{Discussion}
 \label{sec:discussion}
