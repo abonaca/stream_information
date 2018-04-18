@@ -11,6 +11,7 @@
 \newcommand{\acronym}[1]{{\small{#1}}}
 \newcommand{\CRLB}{\acronym{CRLB}}
 \newcommand{\FF}{\texttt{FAST FORWARD}}
+\newcommand{\package}[1]{\textsl{#1}}
 
 % aastex parameters
 %%\hypersetup{linkcolor=red,citecolor=green,filecolor=cyan,urlcolor=magenta}
@@ -48,7 +49,7 @@ New York University}
 Cold stellar streams---produced by tidal disruptions of clusters---are long-lived, coherent dynamical features in the halo of the Milky Way.
 They have delivered precise information about the gravitational potential, including constraints on the shape of the dark-matter halo.
 Because of their different ages and different positions in phase space, different streams tell us different things about the Galaxy.
-Here we employ a Cram\'er--Rao (\CRLB) or Fisher-matrix approach to understand the quantitative information content in eleven known streams (ATLAS, GD-1, Hermus, Kwando, Orinoco, PS1A, PS1C, PS1D, PS1E, Sangarius and Triangulum).
+Here we employ a Cram\'er--Rao (\CRLB) or Fisher-matrix approach to understand the quantitative information content in (toy versions of) eleven known streams: ATLAS, GD-1, Hermus, Kwando, Orinoco, PS1A, PS1C, PS1D, PS1E, Sangarius and Triangulum.
 This approach depends on a generative model, which we have developed previously, and which permits calculation of derivatives of predicted stream properties with respect to Galaxy and stream parameters.
 We find that in simple analytic models of the Milky Way, streams on eccentric orbits contain the most information about the halo shape.
 For each stream, there are near-degeneracies between dark-matter-halo properties and parameters of the bulge, the disk, and the stream progenitor itself, but simultaneous fitting of multiple streams will constrain all parameters at the percent level.
@@ -778,7 +779,7 @@ Inspired by the expansion we have begun in Section~\S\,\ref{sec:bfe}, in the fol
 In the previous section we identified the use of numerical derivatives and overly idealized forms of the gravitational potential as prime targets for improving our inference of the information in stellar streams.
 The numerical derivative of stream observable $y_i$ with respect to the model parameter $x_i$ measures the response of the observable $\Delta y_i$ to the change in parameter $\Delta x_i$, and is calculated by differencing the observable $y_i$ between two stream models separated by $\Delta x_i$ at a fixed position along the stream.
 In principle, one can imagine using the orbit integrator to directly propagate the change in parameter $x_i$ into observable $y_i$, instead of creating separate stream models to evaluate this difference.
-Indeed, such functionality, called auto-differentiation, is common in machine-learning codes \citep[e.g., \emph{tensorflow},][]{tensorflow}, and also exists in some N-body codes \citep[e.g., \emph{FASTPM},][]{feng2016}.
+Indeed, such functionality, called auto-differentiation, is common in machine-learning codes \citep[e.g., \package{tensorflow},][]{tensorflow}, and also exists in some N-body codes \citep[e.g., \package{FASTPM},][]{feng2016}.
 In this work we opted for evaluating numerical derivatives because our legacy code does not support auto-differentiation, however, implementing it tops our list of future extensions.
 Principal derivatives of stream observables with respect to model parameters will not only make for more robust \CRLB, but could also aid in fitting streams, as higher-order parameter-estimation methods, such as Hamiltonian Monte Carlo, rely on evaluating both the likelihood and the likelihood derivative.
 
@@ -786,7 +787,7 @@ To fully describe a population of streams, we need a realistic model of the Gala
 The latest generation of hydrodynamical simulations have produced models that well reproduce a multitude of features observed in galaxies, both as individual objects \citep[e.g.,][]{wetzel2016} and as a population \citep[e.g.,][]{pillepich2018,nelson2018}.
 Part of their success is in the achieved high resolution, so at the present a Milky Way-like galaxy is modeled by up to 140 million particles \citep{wetzel2016}.
 Ultimately, we would like to have a description of a galaxy that is representative of these models, but at a fraction of the numerical cost.
-In the classic study, \citet{ho} developed a set of basis functions for density and gravitational potential that can reproduce complex morphology of galaxies with a small number of terms \citep[e.g.,][]{lowing2011}.
+In the classic study, \citet{ho} developed a set of basis functions for density and gravitational potential that can reproduce complex morphology of galaxies with a small number of terms \citep[e.g.,][]{lowing2011, lilley2018a, lilley2018b}.
 These expansions reproduce the force field of an N-body simulation with a precision of a few percent, so representing the gravitational potential in our model with an expansion of basis functions is tempting.
 However, a truly realistic solution needs to accurately capture not only the current structure of the galaxy, but also its evolution in time.
 Even though the Milky Way has had a relatively quiet recent merger history, it is currently undergoing a major merger with the Large Magellanic Cloud \citep[e.g.,][]{besla2007, penarrubia2016}, which has been a source of gravitational perturbation for at least a billion years -- sufficiently long to affect stellar streams.
@@ -822,11 +823,22 @@ The approach we outlined capitalizes on the hierarchical structure of the proble
 % --- paragraph for every comment someone made
 % --- refer back to sections when discussing eg numerical derivative, grav model
 
-\acknowledgements
+\acknowledgements{
 This work was improved upon following the thoughtful suggestions of the Conroy group at Harvard, the Finkbeiner group at Harvard, the NYC Stars group convening at the Flatiron Institute, Dan Foreman-Mackey, Kathryn Johnston, Nikhil Padmanabhan, Adrian Price-Whelan, Hans-Walter Rix, Hy Trac and Dan Weisz, and it is a pleasure to thank them.
 AB acknowledges generous support from the Institute for Theory and Computation at Harvard University; and the Max-Planck-Institut f\"ur Astronomie and the Flatiron Institute Center for Computational Astrophysics, where parts of this work were developed.
 DWH was partially supported by the National Science Foundation (grant AST-1517237).
 All code used in this work and all results are available at \url{https://github.com/abonaca/stream_information}.
+}
+
+\software{
+    \package{Astropy} \citep{astropy},
+    \package{gala} \citep{gala},
+    \package{h5py} (\url{https://www.h5py.org/}),
+    \package{IPython} \citep{ipython},
+    \package{matplotlib} \citep{mpl},
+    \package{numpy} \citep{numpy},
+    \package{scipy} \citep{scipy}
+}
 
 \bibliographystyle{aasjournal}
 \bibliography{crlb}
