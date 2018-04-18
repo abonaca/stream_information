@@ -15,7 +15,8 @@ gitstuff.tex: ../.git/logs/HEAD
 
 ${NAME}.pdf: ${NAME}.tex gitstuff.tex
 	${LATEX} ${NAME}
-	( grep "Rerun to get" ${NAME}.log && ${LATEX} ${NAME} ) || echo "Done."
+	bibtex ${NAME}
+	${LATEX} ${NAME}
 	( grep "Rerun to get" ${NAME}.log && ${LATEX} ${NAME} ) || echo "Done."
 
 clean:
