@@ -613,53 +613,56 @@ This result, combined with the improvements expected from combining multiple str
 In this work, we analyzed what stellar streams tell us about the Galaxy they orbit, and to do so, we described the Galaxy with a parametric gravitational potential.
 This choice made it easy to create models of streams, and study how the distribution of the debris reacts to changes in the properties of the Galaxy.
 However, the gravitational potential is a theoretical construct, sourced by the distribution of matter in the Galaxy.
-In this section, we relate constraints which streams put on the parameters of the gravitational potential to other, more physical properties of the Galaxy.
+In this section, we relate constraints which streams put on the parameters of the gravitational potential to more physical properties of the Galaxy.
 
-In general, Cram\'er--Rao bounds on a set of variables $\vec{q}$ can be propagated to variables $\vec{p}(\vec{q})$ using:
+In general, Cram\'er--Rao bounds on a set of variables $\vec{q}$ can be propagated to a new set of variables $\vec{p}(\vec{q})$ using \citep{albrecht2009}:
 \begin{equation}
 C_p = \left(\frac{d\vec{p}}{d\vec{q}}\right)^{T} C_q \left(\frac{d\vec{p}}{d\vec{q}}\right)
 \label{eq:propagation}
 \end{equation}
 Since the matter density and gravitational potential are related through Poisson's equation, $4\pi\rho = \nabla^2\Phi$, it is possible to translate constraints on the potential field to constraints on the density field directly.
-However, calculating the derivatives in Equation~\ref{eq:propagation} in this case would require integrating the Poisson's equation, which would be an involved calculation for a triaxial Galactic potential.
+However, calculating the derivatives in Equation~\ref{eq:propagation} in this case would require integrating the Poisson's equation, which would be an involved calculation for a Galactic potential that can in principle be triaxial.
 On the other hand, radial acceleration is also a physical quantity, and conveniently, it is a simple derivative of the potential, $a_r = \partial\Phi / \partial r$.
 In a spherically symmetric potential, radial acceleration, $a_r(r)$, directly correlates with the enclosed mass, $M(<r)$, as $a_r = G M(<r)/r^2$.
-Hence, to better understand the physical aspects of the Galaxy that streams constrain, we propagate the Cram\'er--Rao bounds on parameters of the gravitational potential to bounds on radial acceleration at different distances from the Galactic center.
+Hence, to better understand physical aspects of the Galaxy that streams constrain, we propagate Cram\'er--Rao bounds on parameters of the gravitational potential to bounds on the radial acceleration at different distances from the Galactic center, with the expectation that bounds on the radial acceleration can be interpreted as bounds on the enclosed mass.
 
 \begin{figure*}
 \begin{center}
 \includegraphics[width=\textwidth]{ar_crb.pdf}
 \caption{Constraints on the radial acceleration by fiducial 6D phase-space data on stellar streams.
 Precision in total and fractional radial acceleration as a function of distance from the Galactic center (top left and right, respectively), with the radial acceleration profile shown in dashed gray on the left.
-Streams vary in their ability to constrain radial acceleration (darker lines are used for more competitive constraints), but all have a single Galactocentric distance where the fractional constraint is maximized.
-Long streams provide tighter constraints (bottom left), while the location of the best constraint correlates non-linearly with the present-day position (bottom center) and linearly with the orbital apocenter (bottom right).
+Streams vary in their ability to constrain radial acceleration, but all have a single Galactocentric distance where the fractional constraint is maximized.
+Long streams provide tighter constraints (bottom left), and are colored darker in all panels.
+% (darker lines are used for more competitive constraints)
+Location of the best constraint in the simple model of the Galaxy seems to correlate non-linearly with the present-day position (bottom center) and linearly with the orbital apocenter (bottom right), but see Figure~\ref{fig:ar_all} for constraints on the radial acceleration in more flexible models.
 }
 \label{fig:ar}
 \end{center}
 \end{figure*}
 
-The top left panel of Figure~\ref{fig:ar} shows constraints on radial acceleration as a function of distance from the galactic center along a random line of sight using cold streams observed in the fiducial 6D case (solid lines).
-Quantitatively, different streams provide constraints that span an order of magnitude at all radii, consistent with the spread in the \CRLB\ on the model parameters (see Section~\ref{sec:forecast}), but in general, stream constraints are qualitatively similar.
+The top left panel of Figure~\ref{fig:ar} shows constraints on the radial acceleration as a function of distance from the galactic center along a random line of sight using cold streams observed in the fiducial 6D case (solid lines).
+Quantitatively, different streams provide constraints that span an order of magnitude at all radii, consistent with the spread in the \CRLB\ on model parameters (see Section~\ref{sec:forecast}), but in general, stream constraints are qualitatively similar.
 For example, the recovery of accelerations is expected to be very uncertain close to the galactic center using any stream, with the typical uncertainty on the order of the acceleration itself (shown as a dashed light-gray line).
-This region of the galaxy is baryon-dominated, and we have already found stellar streams to be fairly agnostic on the distribution of baryons (see Section~\S\,\ref{sec:res_ind}), likely due to difficulty in recovering properties of the gravitational potential inside the streams' pericenter, which then drives this uncertainty in accelerations.
+This region of the galaxy is baryon-dominated, and we have already found stellar streams to be fairly agnostic on the distribution of baryons (see Section~\S\,\ref{sec:res_ind}), likely due to perceived difficulty in recovering properties of the gravitational potential inside the streams' pericenter, which then drives this uncertainty in accelerations.
 At large radii, constraints on radial acceleration improve for all streams, with the \CRLB\ for some objects featuring a local minimum before continuing to decrease.
 The overall acceleration is also decreasing, so we show \CRLB\ on the radial acceleration relative to the acceleration in the top right.
 The relative uncertainty on the acceleration is large at small radii, it then decreases to a local minimum and asymptotically increases at large radii.
-The exact profile varies between different streams, but the presence of a local minimum is universal, indicating that the information inferred from streams is radially confined.
+The exact profile varies between different streams, but the presence of a local minimum is universal, indicating that the information streams provide about the gravitational potential is radially confined.
 
 In the bottom panels of Figure~\ref{fig:ar} we explore in more detail the best constraints on the acceleration achievable using streams in our sample.
-Bottom left panel presents the best relative \CRLB\ for a given stream as a function of the stream length.
 Since the galaxy model is not spherically symmetric, we calculated constraints on the radial acceleration along 50 random lines of sight and marked the median with circles, while the errorbars indicate 16th and 84th percentile in all three panels of the second row.
-Similarly to constraints on the parameters of the galactic potential, the best constraints on the acceleration are generally better for long streams, although there is some scatter between different streams, and also for a given stream among different lines of sight.
+Bottom left panel presents the best relative \CRLB\ for a given stream as a function of the stream length.
+Similarly to constraints on the parameters of the galactic potential, the best constraints on the acceleration are generally better for long streams (shown in darker colors), although there is some scatter between different streams, and also for a given stream among different lines of sight.
 We next consider where these best measurements of the acceleration are obtained, parameterized with the location of the local minimum in the fractional constraints on the radial acceleration, $R_{min}$.
-In the middle bottom panel we show $R_{min}$ as a function of current radial distance of the stream, $R_{cur}$, and as a function of the progenitor's apocenter, $R_{apo}$, on the bottom right.
-The positions of best stream constraints are scattered off the one-to-one line (solid black), but in general seem to correlate with both quantities, although with different functional forms, so it is unclear which, or if either, of these relations is intrinsic.
+In the middle bottom panel we show $R_{min}$ as a function of current radial distance of the stream from the Galactic center, $R_{cur}$, and on the bottom right as a function of the progenitor's apocenter, $R_{apo}$.
+In both cases, positions of the best stream constraints are scattered off the one-to-one line (solid black), but they in general seem to correlate with both quantities.
+Different functional forms relate $R_{min}$ to $R_{cur}$ and $R_{apo}$ (non-linear and approximately linear, respectively), so it is unclear which, or if either, of these relations is intrinsic.
 
-Understanding how the location of a stream's best constraint is set would help in interpreting what they are actually measuring.
-For example, attaining the best measurement of the radial acceleration at the apocenter would imply that streams at any point in time contain information on their whole orbital history, constraining the total enclosed mass within their apocentra.
+Understanding how the location of a stream's best constraint is set would help in interpreting what the streams are actually measuring.
+For example, attaining the best measurement of the radial acceleration at the apocenter would imply that streams at any point in time contain information on their whole orbital history, constraining the total mass enclosed within their apocentra.
 Alternatively, if the best measurement is at a stream's current position, that means that streams are foremost a local measure of the enclosed mass.
-Uncovering the true relation in our fiducial, parametric model of the Galaxy is hindered by the structure such a model imposes on all spatially-resolved constraints.
-As a final application of our framework to measure information content in streams, in the next section we relax our assumptions about the gravitational potential and distinguish between these radically different scenarios using a more flexible potential model.
+Uncovering the true relation in our fiducial, parametric model of the Galaxy is hindered by the structure that such a model imposes on all spatially-resolved constraints.
+As a final application of our framework to measure information content in streams, in the next section we relax our assumptions about the gravitational potential and distinguish between these radically different interpretations using a more flexible potential model.
 
 
 \subsection{More flexible potential models}

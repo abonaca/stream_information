@@ -816,7 +816,7 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
         plt.savefig('../paper/nstream_improvement.pdf')
 
 # applications
-def ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=1):
+def ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=50):
     """Explore constraints on radial acceleration, along the progenitor line"""
     pid, dp_fid, vlabel = get_varied_pars(vary)
     t = Table.read('../data/crb/ar_orbital_summary_{}_sight{:d}.fits'.format(vlabel, Nsight))
@@ -846,8 +846,9 @@ def ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=1):
     
     #acolor = np.log(armin)
     acolor = armin
-    fcolor = acolor/np.max(acolor)*0.85
-    lw = 3
+    acolor = flen
+    fcolor = acolor/np.max(acolor)+0.2
+    lw = 4
     
     plt.close()
     fig = plt.figure(figsize=(13,7))
@@ -864,7 +865,7 @@ def ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=1):
     
     for i_ in range(N):
         i = order[i_]
-        color = mpl.cm.bone(fcolor[i])
+        color = mpl.cm.binary(fcolor[i])
         
         plt.sca(ax[0][0])
         if i_==0:
@@ -888,17 +889,17 @@ def ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=1):
     ax[0][2].axis('off')
     
     plt.sca(ax[1][0])
-    plt.scatter(t['length'], armin, c=fcolor, cmap='bone', vmin=0, vmax=1, s=60)
+    plt.scatter(t['length'], armin, c=fcolor, cmap='binary', vmin=0, vmax=1, s=70, edgecolors='k')
     plt.errorbar(t['length'], armin, yerr=armin_err, color='0.3', fmt='none', zorder=0)
     
     plt.xlabel('Length (deg)')
-    plt.ylabel('min $\Delta$ $a_r$')
+    plt.ylabel('min ($\Delta$ $a_r$ / $a_r$)')
     #plt.ylim(0, 3.5)
     
     plt.sca(ax[1][1])
     a = np.linspace(0,90,100)
     plt.plot(a, a, 'k-')
-    plt.scatter(t['rcur'], rmin, c=fcolor, cmap='bone', vmin=0, vmax=1, s=60)
+    plt.scatter(t['rcur'], rmin, c=fcolor, cmap='binary', vmin=0, vmax=1, s=70, edgecolors='k')
     plt.errorbar(t['rcur'], rmin, yerr=rmin_err, color='0.3', fmt='none', zorder=0)
     plt.xlabel('$R_{cur}$ (kpc)')
     plt.ylabel('$R_{min}$ (kpc)')
@@ -909,7 +910,7 @@ def ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=1):
     plt.sca(ax[1][2])
     a = np.linspace(0,90,100)
     plt.plot(a, a, 'k-')
-    plt.scatter(t['rapo'], rmin, c=fcolor, cmap='bone', vmin=0, vmax=1, s=60)
+    plt.scatter(t['rapo'], rmin, c=fcolor, cmap='binary', vmin=0, vmax=1, s=70, edgecolors='k')
     plt.errorbar(t['rapo'], rmin, yerr=rmin_err, color='0.3', fmt='none', zorder=0)
     plt.xlabel('$R_{apo}$ (kpc)')
     plt.ylabel('$R_{min}$ (kpc)')
