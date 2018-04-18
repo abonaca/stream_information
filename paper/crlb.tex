@@ -745,27 +745,15 @@ In general, we expect more freedom in the model to allow for perturbations away 
 With a moderately flexible model, we were able to demonstrate this localization of stream information in the radial direction, whereas future studies with fully flexible potentials will test whether stream constraints are local in all three dimensions.
 
 
-% - origin of non-trivial complementarity in orbital orientations?
-% - cf, pal5+ngc5466 from lux prediction
-% - these questions can now be explored on formal footing
-% - streams analyzed so far are available at following url
-
-% - second goal
-% - position of best constraint, why different in more flexible
-% -- mathematically: there are derivatives getting zeroed out, can add perturbations as long as they add up to zero at the location of the data %(thermometer analogy)
-% -- this is now indicated in 1d, but should be tested in 3d with fully flexible models, which we discuss in more detail in \S\,
-% -- intuition that in flexible we're zeroing in on the stream; comes from stream==orbit
-% -- could be data basis functions are orthogonal in theory space, but requirement might be different for data (orthogonality is an integral in some space, so subjective to what chosen -- could even be data instead of space/velocity space)
-
 \subsection{Caveats regarding the current framework}
 \label{sec:dis_caveats}
 The Fisher framework for assessing the information contained in a given set of observables has the intrinsic limitation of being tied to a model.
 In our case, this means that we are not measuring the information in the observed streams, but rather in toy streams that are comparable to the streams in the Milky Way.
-Given that there are no kinematic measurements for most of these streams, our choice for the direction of motion in the toy stream was somewhat arbitrary.
+Given that there are no kinematic measurements for most of these streams, our choice for the direction of motion in the toy stream is somewhat arbitrary.
 The information content in streams depends on properties of the progenitor to some extent, so our results serve to illustrate how streams constrain the potential in general, rather than to make detailed predictions for these exact streams.
 Furthermore, by testing how sensitive stream observables are to changes around the fiducial potential we only measured the precision with which streams would constrain parameters of the gravitational potential.
 These predictions are robust to the choice of a fiducial model; for example, in prior applications to the cosmic microwave background, the precision in recovered parameters of the $\Lambda$CDM model matched the predicted Cram\'er--Rao bounds, even though they were calculated in a model with different fiducial parameters \citep{bond1997,spergel2003}.
-However, without a full search of the likelihood surface, we have no handle on biases that might arise in potential recovery using streams.
+However, without the full mapping of the likelihood surface, we have no handle on biases that might arise in potential recovery using streams.
 
 The Fisher analysis is performed in the context of a model because it ultimately relies on calculating derivatives of the data with respect to the parameters of the model, and these derivatives are evaluated at the fiducial values of the model parameters.
 In some problems, the derivatives are known exactly, but the transformation from the parameters of the gravitational potential and position of the stream's progenitor to the properties of the stream is highly non-linear, and there are no analytic derivatives that connect these two sets.
@@ -775,13 +763,13 @@ Still, the fact that our derivatives are numerical is the main technical limitat
 
 Another caveat of this work is that its stream data model is only a naive reflection of the more complicated reality. 
 In particular, we assume the observations are normally distributed and uniformly sample the stream, the uncertainties are homoscedastic, and that the stream members are identified with perfect confidence. 
-In reality, measurements are typically made in the densest parts of a stream, their uncertainties vary (e.g., brighter stars are measured better), and they might not be Gaussian in all of the observables (e.g., if distance information is coming from parallaxes, then uncertainties in distance are not Gaussian, even if parallaxes are normally distributed).
-Additionally, if stream kinematics overlap with the Milky Way field population, it is impossible to identify stream members without further chemical information, so instead we can only assign a membership probability.
+In reality, measurements are typically made in the densest parts of a stream, their uncertainties vary (e.g., brighter stars are measured better), and they might not be Gaussian in all of the observables (e.g., if distance information is coming from parallaxes, then uncertainties in distance are not Gaussian, even if the parallaxes themselves are normally distributed).
+Additionally, if stream kinematics overlap with the Milky Way field population, it is impossible to reliably identify stream members without further chemical information, so instead we can only label stars with a membership probability.
 However, we expect the average stream track to be measured well in a six-dimensional space for all of the nearby streams in the \emph{Gaia} era, so even though this basic model fails to capture complexities of observational data, it is on average credible, and can easily be relaxed and tailored for forecasting specific data sets.
 
 Finally, we note that the analytic gravitational potential we used can hardly account for the dynamics of the Milky Way over extended periods of time.
-In the early universe, we expect the Galaxy to have evolved through constant merging which triggered migrations within the already formed stellar populations (kareem, us), while at the present the motions of stars are affected both by the Sagittarius dwarf galaxy (cits) and by the Magellanic system (cits).
-A simple decomposition of the Galaxy into a bulge, disk and halo component has been the only tractable method of inferring the gravitational potential (cits), but due to the increase in both precision and volume of potential tracers, it is fast reaching the limit of its applicability (see Section~\S\,\ref{sec:res_joint}).
+In the early universe, we expect the Galaxy to have evolved through constant merging which triggered migrations within the already formed stellar populations \citep[e.g.,][]{elbadry2016,bonaca2017}, while at the present the motions of stars are affected both by the Sagittarius dwarf galaxy \citep{laporte2017} and by the Magellanic system \citep[e.g.,][]{gomez2015,laporte2018a}.
+A simple decomposition of the Galaxy into a bulge, disk and halo component has been the only tractable method of inferring the gravitational potential \citep[e.g.,][]{lm10,koposov2010,bovy2016}, but due to the increase in both precision and volume of potential tracers, it is fast reaching the limit of its applicability (see Section~\S\,\ref{sec:res_joint}).
 Inspired by the expansion we have begun in Section~\S\,\ref{sec:bfe}, in the following section we suggest a way forward using a more flexible representation of the underlying gravitational field.
 
 \subsection{Extensions of the basic forecasting framework}
