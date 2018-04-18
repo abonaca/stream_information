@@ -526,19 +526,20 @@ However, streams in our sample are independent experiments, so information they 
 In this section we first show how to calculate joint constraints from multiple streams, and then discuss resulting improvements in inferred properties of the Galactic dark matter halo that all streams have in common. 
 
 The Fisher information matrix, given by Equation~\ref{eq:crlb}, is proportional to the probability of observing data $\vec{y_i}$ of stream $i$, given true parameters of the Galactic model $\vec{x}$, that is $C_{x,i}^{-1}\propto \ln(P(\vec{y_i}|\vec{x}))$.
-Since the probability for an ensemble of independent experiments is the product of individual likelihoods, it follows that the Fisher matrix information matrix for multiple streams is simply the sum of Fisher matrices for individual streams: $C_x^{-1} = \sum_{i} C_{x,i}^{-1}$.
-As in the case of individual streams, the Cram\' er--Rao bounds for multiple streams are the square-root of the diagonal of matrix $C_x$.
+Since the probability for an ensemble of independent experiments is the product of individual likelihoods, it follows that the Fisher information matrix for multiple streams is simply the sum of Fisher matrices for individual streams: $C_x^{-1} = \sum_{i} C_{x,i}^{-1}$.
+Note, however, that prior $V_x^{-1}$ should only be included once in the sum.
+As in the case of individual streams, the Cram\' er--Rao bounds for multiple streams are given by the inverse of the Fisher matrix, $C_x$.
 
 \begin{figure*}
 \begin{center}
 \includegraphics[width=\textwidth]{nstream_improvement.pdf}
 \caption{Constraints on halo parameters improve when multiple streams are combined.
 Each panel shows Cram\'er--Rao bounds on a halo parameter, as a function of the number of streams used to derive the bounds.
-Gray points show constraints from a single combination of streams, while white points are the median across all the possible combinations for a given number of streams.
-Combining any ten streams would provide percent-level precision in all parameters, except the scale radius, which is constrained at the $\sim10\%$-level.
-We also label the three streams with best individual constraints on halo parameters, the best pair and the best triple.
-For the scale velocity, the best pair and triple are a combination of the streams that have best individual constraints.
-However, for the halo shape parameters, combinations of the best individual streams do not provide the tightest pair or triple constraints, indicating that streams compound the information content in non-trivial ways.
+Gray points show constraints from a single combination of streams, while white points are the median across all possible combinations for a given number of streams.
+Combining any ten streams would provide percent-level precision in all parameters, except the scale radius, which is constrained at a few percent level.
+We label the top three streams for each halo parameter, as well as the best-performing pairs and triples.
+For the halo scale velocity, the best pair and triple are a combination of streams that top the individual constraints.
+However, the information in halo shape parameters is combined in less trivial ways, so that the tightest pair and triple constraints include contributions from streams which are not strongly constraining individually.
 }
 \label{fig:nstream_summary}
 \end{center}
@@ -549,17 +550,15 @@ These are summarized in Figure~\ref{fig:nstream_summary}, where every panel show
 There are $\binom{N}{11}$ unique combinations with a total of $N$ streams in a combination, so we highlight the median constraint at a given $N$ with larger white points.
 Unsurprisingly, different streams provide somewhat different constraints on the gravitational potential, so joint stream constraints are better than individual ones.
 For example, the median \CRLB\ from a triplet of streams is better than the best \CRLB\ from an individual stream in all halo parameters.
-Going even further and measuring the gravitational potential with ten streams simultaneously, results in the median precision of a few percent for the scale radius (bottom left), and for halo scale velocity (top left panel), $x/y$ axis ratio (top right) and $z/y$ axis ratio (bottom right) the median precision of a combination is better than a percent.
+Going even further and measuring the gravitational potential with ten streams simultaneously results in the median precision of a few percent for the scale radius (bottom left), while the median precision for halo scale velocity (top left panel), $x/y$ axis ratio (top right) and $z/y$ axis ratio (bottom right) is better than a percent.
 Attaining such a precision in the analysis of the Galactic dark matter halo is within reach, and will truly usher in the era of \emph{precision} near-field cosmology.
 
-In addition to studying median constraints for a combination of streams, we also look into which streams are individually performing the best, and also which are a part of the best pair and best triplet.
+In addition to studying median constraints for a combination of streams, we also look into which streams are individually performing the best, and also which are a part of the best pair and the best triplet for different halo parameters.
 The best three individual streams on each panel are labeled to the right of their respective gray data points, while the best pair and triplet are noted vertically to the right of pair and triplet constraints, respectively.
 Scale velocity is best constrained by a combination of streams that constrain it well individually, so members of both the best pair and the best triplet are individually in the top three streams for scale velocity precision.
 However, for the rest of the parameters, which determine the halo's shape, it is often the case that at least one of the streams from the most constraining pair or triplet is not individually among the top three most constraining streams for that particular parameter.
-And in the case of $z/y$ halo axis ratio, none of the streams in the best triplet are in the top three individually.
 In recovering the halo shape, streams complement each other in a non-trivial manner, so the joint constraint is truly more than the sum of its parts.
 
-% - check whether gd1 a discriminator
 
 \section{Applications}
 \label{sec:applications}
