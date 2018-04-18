@@ -969,7 +969,7 @@ def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', 
         for j in range(ncol):
             plt.sca(ax[i][j])
             #plt.plot(xvar[j][mask], p[:,i][mask], 'o', ms=5, color='0.2')
-            plt.scatter(xvar[j][mask], p[:,i][mask], c=xvar[0][mask], vmax=30, cmap='binary', s=50, edgecolors='k')
+            plt.scatter(xvar[j][mask], p[:,i][mask], c=xvar[0][mask], vmax=30, cmap='binary', s=65, edgecolors='k')
             
             corr = scipy.stats.pearsonr(xvar[j][mask], p[:,i][mask])
             fs = np.abs(corr[0])*10+7
