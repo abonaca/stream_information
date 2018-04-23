@@ -814,6 +814,7 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
         plt.savefig('../plots/nstream_improvement_diag_w{:1d}_{:02d}.png'.format(flag_in, itarget))
     else:
         plt.savefig('../paper/nstream_improvement.pdf')
+        plt.savefig('../paper/nstream_improvement.png')
 
 # applications
 def ar(current=False, vary=['progenitor', 'bary', 'halo'], Nsight=50):

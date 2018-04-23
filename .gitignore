@@ -1,2 +1,12 @@
 *.pyc
 *~
+*npy
+*npz
+*params
+*fits
+*txt
+*info
+*backup
+
+*bbl
+*blg
