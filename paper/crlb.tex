@@ -582,9 +582,9 @@ In Figure~\ref{fig:obsmodes} we show the \CRLB\ assuming uncertainties from a DE
 DESI-like observations are equivalent to the fiducial 4D observing mode, but assume a factor of 2 larger uncertainties in radial velocities.
 This uncertainty, however, has little impact on the recovered \CRLB, which are on average 7\,\% larger than in the fiducial 4D for the halo scale velocity, and only 1\,\% larger for $x/y$ axis ratio of the halo.
 Gaia-like observations inherit uncertainties of the fiducial 6D observing mode, but assume distances are known an order of magnitude more precisely, while the proper motions are a factor of 2 worse than in the fiducial case.
-Again, these differences in data precision have a modest impact the resulting \CRLB: Gaia-like data is on average slightly less constraining than the fiducial case, but only marginally so.
+Again, these differences in data precision have a modest impact {\bf on} the resulting \CRLB: Gaia-like data is on average slightly less constraining than the fiducial case, but only marginally so.
 The largest difference of 20\,\% between the Gaia-like and fiducial 6D data is in halo $z$ axis flattening, whereas the smallest is 3\,\% for $x$ axis flattening.
-The dispersion between these two observing mode is 20\,\% -- larger than the median difference, and indeed, Figure~\ref{fig:obsmodes} shows that some streams are more informative with Gaia-like data, while others provide better constraints on the halo with fiducial 6D data.
+The dispersion between these two observing {\bf modes} is 20\,\% -- larger than the median difference, and indeed, Figure~\ref{fig:obsmodes} shows that some streams are more informative with Gaia-like data, while others provide better constraints on the halo with fiducial 6D data.
 
 To summarize, additional dimensions in stream observations improve constraints on the dark matter halo by a factor of few, while the increase in data precision only improves the precision in model parameters by a few percent.
 This result, combined with the improvements expected from combining multiple streams (see Section~\S\,\ref{sec:res_joint}) suggests that lower-resolution, large-scale surveys which can target many streams would produce an optimal data set to constrain the Galactic potential with stellar streams.
@@ -602,7 +602,7 @@ C_p = \left(\frac{d\vec{p}}{d\vec{q}}\right)^{T} C_q \left(\frac{d\vec{p}}{d\vec
 \label{eq:propagation}
 \end{equation}
 Since the matter density and gravitational potential are related through Poisson's equation, $4\pi\rho = \nabla^2\Phi$, it is possible to translate constraints on the potential field to constraints on the density field directly.
-However, calculating the derivatives in Equation~\ref{eq:propagation} in this case would require integrating the Poisson's equation, which would be an involved calculation for a Galactic potential that can in principle be triaxial.
+However, calculating the derivatives in Equation~\ref{eq:propagation} in this case would require integrating Poisson's equation, which would be an involved calculation for a Galactic potential that can in principle be triaxial.
 On the other hand, radial acceleration is also a physical quantity, and conveniently, it is a simple derivative of the potential, $a_r = \partial\Phi / \partial r$.
 In a spherically symmetric potential, radial acceleration, $a_r(r)$, directly correlates with the enclosed mass, $M(<r)$, as $a_r = G M(<r)/r^2$.
 Hence, to better understand physical aspects of the Galaxy that streams constrain, we propagate Cram\'er--Rao bounds on parameters of the gravitational potential to bounds on the radial acceleration at different distances from the Galactic center, with the expectation that bounds on the radial acceleration can be interpreted as bounds on the enclosed mass.
@@ -614,7 +614,7 @@ Hence, to better understand physical aspects of the Galaxy that streams constrai
 Precision in total and fractional radial acceleration as a function of distance from the Galactic center (top left and right, respectively), with the radial acceleration profile shown in dashed gray on the left.
 Streams vary in their ability to constrain radial acceleration, but all have a single Galactocentric distance where the fractional constraint is maximized.
 Long streams provide tighter constraints (bottom left), and are colored darker in all panels.
-Location of the best constraint in the simple model of the Galaxy seems to correlate non-linearly with the present-day position (bottom center) and linearly with the orbital apocenter (bottom right), but see Figure~\ref{fig:ar_all} for constraints on the radial acceleration in more flexible models.
+Location of the best constraint in the simple model of the Galaxy seems to correlate non-linearly with the present-day position {\bf of the stream} (bottom center) and linearly with the orbital apocenter (bottom right), but see Figure~\ref{fig:ar_all} for constraints on the radial acceleration in more flexible models.
 }
 \label{fig:ar}
 \end{center}
@@ -626,8 +626,10 @@ For example, the recovery of accelerations is expected to be very uncertain clos
 This region of the galaxy is baryon-dominated, and we have already found stellar streams to be fairly agnostic on the distribution of baryons (see Section~\S\,\ref{sec:res_ind}), likely due to perceived difficulty in recovering properties of the gravitational potential inside the streams' pericenter, which then drives this uncertainty in accelerations.
 At large radii, constraints on radial acceleration improve for all streams, with the \CRLB\ for some objects featuring a local minimum before continuing to decrease.
 The overall acceleration is also decreasing, so we show \CRLB\ on the radial acceleration relative to the acceleration in the top right.
-The relative uncertainty on the acceleration is large at small radii, it then decreases to a local minimum and asymptotically increases at large radii.
-The exact profile varies between different streams, but the presence of a local minimum is universal, indicating that the information streams provide about the gravitational potential is radially confined.
+The relative uncertainty on the acceleration is large at small radii{\bf ;} it then decreases to a local minimum and asymptotically increases at large radii.
+The exact {\bf radial dependence of the acceleration precision} varies between different streams, but the presence of a local minimum is universal.
+{\bf This means that streams do not measure accelerations equally well everywhere in the Galaxy, but instead, for every stream there is a range in Galactocentric distance where the gravitational potential is best constrained.}
+% indicating that the information streams provide about the gravitational potential is radially confined.
 
 In the bottom panels of Figure~\ref{fig:ar} we explore in more detail the best constraints on the acceleration achievable using streams in our sample.
 Since the galaxy model is not spherically symmetric, we calculated constraints on the radial acceleration along 50 random lines of sight and marked the median with circles, while the errorbars indicate 16th and 84th percentile in all three panels of the second row.
