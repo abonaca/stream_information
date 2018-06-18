@@ -509,8 +509,12 @@ However, streams in our sample are independent experiments, so information they 
 In this section we first show how to calculate joint constraints from multiple streams, and then discuss resulting improvements in inferred properties of the Galactic dark matter halo that all streams have in common. 
 
 The Fisher information matrix, given by Equation~\ref{eq:crlb}, is proportional to the probability of observing data $\vec{y_i}$ of stream $i$, given true parameters of the Galactic model $\vec{x}$, that is $C_{x,i}^{-1}\propto \ln(P(\vec{y_i}|\vec{x}))$.
-Since the probability for an ensemble of independent experiments is the product of individual likelihoods, it follows that the Fisher information matrix for multiple streams is simply the sum of Fisher matrices for individual streams: $C_x^{-1} = \sum_{i} C_{x,i}^{-1}$.
-Note, however, that prior $V_x^{-1}$ should only be included once in the sum.
+Since the probability for an ensemble of independent experiments is the product of individual likelihoods, it follows that the Fisher information matrix for multiple streams is simply the sum of Fisher matrices for individual streams:
+\begin{equation}
+C_x^{-1} = \sum_{i} \left( \left(\frac{d\vec{y}}{d\vec{x}}\right)_i^{T} C_{y,i}^{-1} \left(\frac{d\vec{y}}{d\vec{x}}\right)_i \right) + V_x^{-1}
+\end{equation}
+{\bf where $(d\vec{y}/d\vec{x})_i$ are the derivatives of observables $\vec{y}$ with respect to parameters $\vec{x}$ for stream $i$, $C_{y,i}$ is the covariance matrix for the observations of stream $i$, and $V_x$ is the covariance matrix with prior constraints on parameters $\vec{x}$.}
+% Note, however, that prior $V_x^{-1}$ should only be included once in the sum.
 As in the case of individual streams, the Cram\' er--Rao bounds for multiple streams are given by the inverse of the Fisher matrix, $C_x$.
 
 \begin{figure*}
@@ -566,7 +570,7 @@ However, the \emph{Gaia} mission and a number of spectroscopic projects are slat
 Though in general less precise than the fiducial uncertainties we used so far, these surveys will have the scope required to provide at least one velocity component for most of the known streams in the next few years.
 In this section we analyze how constraints on the gravitational potential depend on the availability and quality of observational data along stellar streams. 
 
-The three main scenarios for data availability we considered are: fiducial, DESI-like and Gaia-like, which differ both in the dimensionality of the observational data as well as its precision (for more details, see Section~\S\,\ref{sec:datasets} and Table~\ref{t:datasets}).
+The three main scenarios for data availability we considered are: fiducial {\bf in 3D, 4D and 6D}, DESI-like and Gaia-like, which differ both in the dimensionality of the observational data as well as its precision (for more details, see Section~\S\,\ref{sec:datasets} and Table~\ref{t:datasets}).
 In Figure~\ref{fig:obsmodes} we compare Cram\'er--Rao bounds on parameters of the Galactic dark matter halo arising from streams in our sample assuming these kinds of data are available.
 Panels in the top and third rows show constraints on a single parameter, with different streams arranged along the x-axis, and ordered by the precision they reach in halo scale velocity, $V_h$, in the fiducial 6D case.
 Panels in the second and bottom row show constraints on a single parameter, normalized to the constraints in the fiducial 6D case.
@@ -579,12 +583,14 @@ Halo scale velocity is most susceptible to improvement with high-dimensional dat
 
 On the other hand, data precision has only a secondary impact on the recovery of the dark matter halo.
 In Figure~\ref{fig:obsmodes} we show the \CRLB\ assuming uncertainties from a DESI-like data set with medium dashed lines, and from a Gaia-like data with thick, dark dashed lines.
-DESI-like observations are equivalent to the fiducial 4D observing mode, but assume a factor of 2 larger uncertainties in radial velocities.
-This uncertainty, however, has little impact on the recovered \CRLB, which are on average 7\,\% larger than in the fiducial 4D for the halo scale velocity, and only 1\,\% larger for $x/y$ axis ratio of the halo.
-Gaia-like observations inherit uncertainties of the fiducial 6D observing mode, but assume distances are known an order of magnitude more precisely, while the proper motions are a factor of 2 worse than in the fiducial case.
-Again, these differences in data precision have a modest impact {\bf on} the resulting \CRLB: Gaia-like data is on average slightly less constraining than the fiducial case, but only marginally so.
-The largest difference of 20\,\% between the Gaia-like and fiducial 6D data is in halo $z$ axis flattening, whereas the smallest is 3\,\% for $x$ axis flattening.
-The dispersion between these two observing {\bf modes} is 20\,\% -- larger than the median difference, and indeed, Figure~\ref{fig:obsmodes} shows that some streams are more informative with Gaia-like data, while others provide better constraints on the halo with fiducial 6D data.
+DESI-like observations are {\bf directly comparable} to the fiducial 4D observing mode.
+{\bf This observing mode assumes that positions and radial velocities of stream stars are available, and that the uncertainties in the positions are the same as in the fiducial observing mode, but adopts a factor of 2 larger uncertainties in radial velocities.}
+This uncertainty, however, has little impact on the recovered \CRLB.
+{\bf For the halo scale velocity, DESI-like observations produce \CRLB\ only 7\,\% larger on average than the fiducial 4D observations, and the difference is only 1\,\% for $x/y$ axis ratio of the halo.}
+{\bf Similarly,} Gaia-like observations inherit uncertainties of the fiducial 6D observing mode, but assume distances are known an order of magnitude more precisely, while the proper motions are a factor of 2 worse than in the fiducial {\bf observing mode}.
+Again, these differences in data precision have a modest impact {\bf on} the resulting \CRLB: Gaia-like {\bf observations are} on average slightly less constraining than the fiducial {\bf 6D observations}, but only marginally so.
+The largest difference of 20\,\% between the Gaia-like and fiducial 6D {\bf observations} is in halo $z$ axis flattening, whereas the smallest is 3\,\% for $x$ axis flattening.
+The dispersion between these two observing {\bf modes} is 20\,\% -- larger than the median difference, and indeed, Figure~\ref{fig:obsmodes} shows that some streams are more informative with Gaia-like {\bf observing mode}, while others provide better constraints on the halo with fiducial 6D {\bf observing mode}.
 
 To summarize, additional dimensions in stream observations improve constraints on the dark matter halo by a factor of few, while the increase in data precision only improves the precision in model parameters by a few percent.
 This result, combined with the improvements expected from combining multiple streams (see Section~\S\,\ref{sec:res_joint}) suggests that lower-resolution, large-scale surveys which can target many streams would produce an optimal data set to constrain the Galactic potential with stellar streams.
