@@ -264,8 +264,9 @@ def crb_2d(name='atlas', vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
     
     pid, dp_fid, vlabel = get_varied_pars(vary)
     plabels, units = get_parlabel(pid)
-    punits = [' ({})'.format(x) if len(x) else '' for x in units]
-    params = ['$\Delta$ {}{}'.format(x, y) for x,y in zip(plabels, punits)]
+    #punits = [' ({})'.format(x) if len(x) else '' for x in units]
+    #params = ['$\Delta$ {}{}'.format(x, y) for x,y in zip(plabels, punits)]
+    params = ['$\Delta$ {}'.format(x) for x in plabels]
     Nvar = len(pid)
     
     fig = None
@@ -281,25 +282,32 @@ def crb_2d(name='atlas', vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
         
         color = mpl.cm.bone(frac[e])
         if Ndim==6:
-            fig, ax, pcc = corner_ellipses(cx, fig=fig, ax=ax, dax=2, color=color, alpha=0.7, lw=3, correlate=True)
+            fig, ax, pcc = corner_ellipses(cx, fig=fig, ax=ax, dax=2, color=color, alpha=0.7, lw=4, correlate=True)
         else:
-            fig, ax = corner_ellipses(cx, fig=fig, ax=ax, dax=2, color=color, alpha=0.7, lw=3)
+            fig, ax = corner_ellipses(cx, fig=fig, ax=ax, dax=2, color=color, alpha=0.7, lw=4)
+        
+        if e==0:
+            xlims = ax[-1][-1].get_xlim()
+            ylims = ax[-1][-1].get_ylim()
         
         plt.sca(ax[0][-1])
-        plt.plot([0,1], [1,1], '-', lw=3, color=color, alpha=0.7, label=dim_labels[e])
+        plt.plot([0,2], [1,2], '-', lw=6, color=color, alpha=0.7, label=dim_labels[e])
         
     # labels
     for k in range(Nvar-1):
         plt.sca(ax[-1][k])
-        plt.xlabel(params[k])
+        plt.xlabel(params[k], fontsize=36)
+        plt.xticks(fontsize=24)
         
         plt.sca(ax[k][0])
-        plt.ylabel(params[k+1])
+        plt.ylabel(params[k+1], fontsize=36)
+        plt.yticks(fontsize=24)
     
     
     plt.sca(ax[0][-1])
-    plt.legend(fontsize='xx-large', loc=1, bbox_to_anchor=(0., 0.))
-    plt.ylim(0,0.1)
+    plt.legend(fontsize=44, loc=1, bbox_to_anchor=(0., 0.))
+    plt.gca().set_xlim(xlims)
+    plt.gca().set_ylim(ylims)
     
     # correlations
     k = 0
@@ -307,12 +315,12 @@ def crb_2d(name='atlas', vary=['progenitor', 'bary', 'halo'], errmode='fiducial'
     for i in range(0,Nvar-1):
         for j in range(i+1,Nvar):
             plt.sca(ax[j-1][i])
-            txt = plt.text(0.9, 0.9, '{:.2f}'.format(pcc[2,k]), fontsize='x-small', transform=plt.gca().transAxes, va='top', ha='right')
+            txt = plt.text(0.9, 0.9, '{:.2f}'.format(pcc[2,k]), fontsize=24, transform=plt.gca().transAxes, va='top', ha='right')
             txt.set_bbox(dict(facecolor='w', alpha=0.7, ec='none'))
             
             k += 1
     
-    plt.tight_layout()
+    plt.tight_layout(h_pad=0, w_pad=0)
     plt.savefig('../paper/crb_correlations.pdf')
 
 def crb_2d_all(comb=[[11,14]], vary=['progenitor', 'bary', 'halo'], errmode='fiducial', align=True, relative=True):
@@ -770,6 +778,7 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
                     Nmin = 1
                     va = 'bottom'
                     ha = 'center'
+                    #ha = 'left'
                     orientation = 90
                     yoff = 1.2
                     xoff = 1.1
@@ -778,7 +787,10 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
                 for j_ in range(Nmin):
                     best_names = [done[np.int64(i_)] for i_ in comb[ids_min[j_]][:Nmulti]]
                     #print(k, j_, best_names)
-                    label = ' + '.join(best_names)
+                    if (k==3) & (Nmulti==3):
+                        label = ' + '.join(best_names[:2]) #+ '\n       + {}'.format(best_names[2])
+                    else:
+                        label = ' + '.join(best_names)
                     
                     if j_==0:
                         label = '$\it{best}$: ' + label
@@ -787,7 +799,10 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
                             plt.plot([Nmulti*1.05, Nmulti*1.1], [p_all[ids_min[j_],k], p_all[ids_min[j_],k]], '-', color='0.', lw=0.75)
                     
                     mpl.rc('text', usetex=True)
-                    plt.text(Nmulti*xoff, p_all[ids_min[j_],k]*yoff, '{}'.format(label), fontsize='xx-small', va=va, ha=ha, rotation=orientation)
+                    plt.text(Nmulti*xoff, p_all[ids_min[j_],k]*yoff, '{}'.format(label), fontsize='x-small', va=va, ha=ha, rotation=orientation)
+
+                    if (k==3) & (Nmulti==3):
+                        plt.text(Nmulti*xoff*1.1, p_all[ids_min[j_],k]*yoff*6.25, '+ {}'.format(best_names[2]), fontsize='x-small', va=va, ha=ha, rotation=orientation)
                     mpl.rc('text', usetex=False)
                     if Nmin==1:
                         plt.plot([Nmulti*1.05, Nmulti*1.1], [p_all[ids_min[j_],k], p_all[ids_min[j_],k]], '-', color='0.', lw=0.75)
@@ -804,7 +819,7 @@ def nstream_improvement(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fi
         plt.ylabel(params[k])
         
         if k==0:
-            plt.legend(frameon=False, fontsize='x-small', loc=1)
+            plt.legend(frameon=False, fontsize='small', loc=1)
     
         if k%ncol==nrow-1:
             plt.xlabel('Number of streams in a combination')
@@ -974,8 +989,9 @@ def orbit_corr(Ndim=6, vary=['progenitor', 'bary', 'halo'], errmode='fiducial', 
             plt.scatter(xvar[j][mask], p[:,i][mask], c=xvar[0][mask], vmax=30, cmap='binary', s=65, edgecolors='k')
             
             corr = scipy.stats.pearsonr(xvar[j][mask], p[:,i][mask])
-            fs = np.abs(corr[0])*10+7
-            txt = plt.text(0.9, 0.9, '{:.3g}'.format(corr[0]), size=fs, transform=plt.gca().transAxes, ha='right', va='top')
+            fs = np.abs(corr[0])*4+14
+            #fs = 15
+            txt = plt.text(0.9, 0.9, '{:.2g}'.format(corr[0]), size=fs, transform=plt.gca().transAxes, ha='right', va='top')
             #txt.set_bbox(dict(facecolor='w', alpha=0.7, ec='none'))
             
             if np.abs(corr[0])>0.5:
