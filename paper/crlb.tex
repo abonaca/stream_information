@@ -62,10 +62,10 @@ We show that kinematic measurements of stream stars are essential for producing 
 \keywords{Galaxy: halo --- dark matter --- Galaxy: kinematics and dynamics --- methods: statistical}
 
 \section{Introduction} \label{sec:intro}
-Immediately following the discovery of the first accreted structures in the Milky Way's halo \citep{ibata1994, ti1998}, \citet{johnston1999} recognized that these tidal tails can inform about the properties of the halo itself, concluding \emph{``you can judge a galaxy by its tail''}.
-They simulated tidal disruption of a Sagittarius-like satellite in different models of the Milky Way, and showed that with precise observations of the stream's positions and kinematics, the mass and shape of the halo can be constrained with a percent precision.
+Immediately following the discovery of the first accreted structures in the Milky Way's halo \citep{ibata1994, ti1998}, \citet{johnston1999} recognized that these tidal tails can inform {\bf us} about the properties of the halo itself, concluding \emph{``you can judge a galaxy by its tail''}.
+They simulated tidal disruption of a Sagittarius-like satellite in different models of the Milky Way, and showed that with precise observations of the stream's positions and kinematics, the mass and shape of the halo can be constrained with {\bf a precision of approximately one percent}.
 Despite the urgency to understand the distribution of matter in the Galaxy, in particular the dark matter-dominated halo, it took several years for the comprehensive models of the Sagittarius system to emerge \citep{helmi2004, johnston2005, lm10}.
-Gathering the required observational data was the main cause of the delay -- streams are diffuse and faint, so it is challenging to isolate stream members from the overwhelming Milky Way field.
+Gathering the required observational data was the main cause of the delay{\bf ;} streams are diffuse and faint, so it is challenging to isolate stream members from the overwhelming Milky Way field.
 
 To this day, a total of four streams have been used to measure the Milky Way's gravitational potential: tidal tails of the Sagittarius dwarf galaxy \citep{lm10,gibbons2014,dl2017}, Orphan stream \citep{newberg2010}, GD-1 stream \citep{koposov2010, bowden2015} and tails of Palomar~5 globular cluster \citep{kupper2015}.
 A consensus among the nearby streams is that the inner halo is nearly spherical \citep{bovy2016}, however there is no global solution that simultaneously reproduces properties of all streams \citep{pearson2015}.
@@ -183,7 +183,7 @@ In what follows, we describe how we measure differences in stream models with di
 \begin{figure}
 \begin{center}
 \includegraphics[width=0.8\textwidth]{derivative_vis.pdf}
-\caption{We quantify the response of streams on changes in model parameters by calculating numerical derivatives, and in this figure we visualize the $d\eta / d V_h$ derivative (change in the sky position with the change in scale velocity of the underlying dark matter halo).
+\caption{We quantify the response of streams {\bf to} changes in model parameters by calculating numerical derivatives, and in this figure we visualize the $d\eta / d V_h$ derivative (change in the sky position with the change in scale velocity of the underlying dark matter halo).
 (\emph{Top}) The on-sky positions of the fiducial stream are shown in gray points, while the colored points show models in a less massive (red) and more massive halo (blue).
 Solid lines show B-spline fits through these stream models.
 The coordinate system is rotated such that the $\xi$ coordinate is approximately along the fiducial stream model, and $\eta$ is perpendicular to this stream track. 
@@ -255,7 +255,9 @@ The adopted step size is in between these two regimes, and is calculated for eac
 For most parameters, the adopted size is rather small (e.g., on the order of $\rm m\,s^{-1}$ for velocities), but it still produces physically different stream models, underlying the importance of quantitative selection of step size in numerical differentiation.
 
 While we presented a robust method to calculate numerical derivatives, a fully self-consistent solution would be to obtain derivatives directly when creating a stream model.
-This is usually done using auto-differentiation, which has not been implemented in our legacy orbit integrator.
+{\bf Derivatives of functions evaluated by any computer program, including orbit integrators used to create stream models in this work, can in principle be calculated using a set of techniques for \emph{automatic differentiation} \citep{griewank2008}.
+However, this feature is currently lacking from the legacy orbit integrator we used.}
+% This is usually done using auto-differentiation, which has not been implemented in our legacy orbit integrator.
 Evaluating exact derivatives of stream models with respect to input model parameters remains the most important technical improvement left for future work, and is discussed in \S\,\ref{sec:dis_extensions}.
 
 
@@ -303,7 +305,9 @@ We adopt 0.1\,deg for our fiducial positional uncertainty.
 Unlike the positions projected on the sky, the distances to most of the streams are highly uncertain, as there are typically no standard candles identified along the stream.
 The main distance indicator is merely the position of the main sequence turn-off \citep[e.g.,][]{bonaca2012}, which provides a distance uncertainty of $\sim20\,\%$ under the assumption that the age and metallicity of the stream stars are known.
 For simplicity, we adopt a single value of $2\,\rm kpc$ as our fiducial uncertainty in distance.
+% As we are interested , we adopt a single value of $2\,\rm kpc$ as our fiducial uncertainty in distance for simplicity.
 This value is conservative for nearby streams, but likely overly optimistic for the more distant ones.
+{\bf In a more realistic scenario, the distance uncertainty would scale with the distance to the stream, but in this general exploration of information in stellar streams we assume homoscedastic uncertainties.}
 On the kinematics side, our fiducial uncertainty for radial velocities is conservatively 5\,km\,s$^{-1}$, as a number of medium-resolution spectrographs have demonstrated performance on the level of a few km\,s$^{-1}$ for individual stars \citep[e.g.,][]{sg}.
 And finally, space-based astrometry with a long baseline allows proper motions to be measured with an uncertainty of only 0.1\,mas\,yr$^{-1}$ \citep{sohn2015}, which we also use as our fiducial uncertainty.
 These uncertainties are among the best attainable at the present.
@@ -392,7 +396,7 @@ We report correlation coefficients for parameters constrained with 6D fiducial d
 On-sky positions of an ATLAS-like progenitor are perfectly anti-correlated, which stems from the requirement that the position of the progenitor is on top of the one-dimensional stream track, and the stream's projected span from southeast to northwest.
 Similarly, the progenitor's proper motions are anti-correlated, indicating that at least one component of the velocity vector is aligned with the stream.
 This is further supported by the strong correlations between the progenitor's proper motions and its radial velocity -- a mark that there is a more physical decomposition of the progenitor's velocity vector.
-One would expect similar behavior for the 3D spatial position of the progenitor, however, distances in our fiducial case are too uncertain to exhibit correlations with on-sky positions.
+One would expect similar behavior for the 3D spatial position of the progenitor{\bf;} however, distances in our fiducial case are too uncertain to exhibit correlations with on-sky positions.
 
 In addition to correlations arising from the geometry of stream observations, there are also covariances originating from the physical aspects of stream constraints on the gravitational potential.
 For example, scale velocity and scale radius of the dark matter halo are mildly anti-correlated, which is expected if the stream is most sensitive to the total amount of matter within some volume of the Galaxy, but is somewhat agnostic to the way the matter is distributed.
@@ -473,6 +477,7 @@ There are no obvious trends between the quality of constraints and the stream po
 \begin{center}
 \includegraphics[width=\textwidth]{orbit_correlations.pdf}
 \caption{Dependence of the precision in recovery of different model parameters (rows, from top: disk mass, halo scale velocity, halo scale radius, halo $x$ and $z$-axis flattening) as a function of different stream properties (columns, from left: stream length, apocentric radius, median $x$ and $z$-components of the angular momentum).
+{\bf Data points are color-coded by stream length, with longer streams being represented with darker colors.}
 The correlation in every panel is indicated in the top right corner with a $p$~value and with the panel brightness.
 The most robust trend is with stream length, as long streams in general produce more precise constraints.
 The disk mass is better constrained by streams whose angular momentum vector is in the disk plane, while streams on eccentric orbits are more sensitive to the halo shape.}
