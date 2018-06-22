@@ -4560,6 +4560,87 @@ def vel_improvement(vary=['progenitor', 'bary', 'halo'], align=True, component='
     
     plt.tight_layout()
 
+
+###
+# Referee's report
+###
+
+def mass_age(name='atlas', pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=np.eye(3), graph=False, graphsave=False, observer=mw_observer, vobs=vsun, footprint='', obsmode='equatorial'):
+    """Create a streakline model of a stream
+    baryonic component as in kupper+2015: 3.4e10*u.Msun, 0.7*u.kpc, 1e11*u.Msun, 6.5*u.kpc, 0.26*u.kpc"""
+    
+    # vary progenitor parameters
+    mock = pickle.load(open('../data/mock_{}.params'.format(name), 'rb'))
+    for i in range(3):
+        mock['x0'][i] += pparams0[26+i]
+        mock['v0'][i] += pparams0[29+i]
+    
+    # vary potential parameters
+    potential = 'octu'
+    pparams = pparams0[:26]
+    #print(pparams[0])
+    pparams[0] = (10**pparams0[0].value)*pparams0[0].unit
+    pparams[2] = (10**pparams0[2].value)*pparams0[2].unit
+    #pparams[0] = pparams0[0]*1e15
+    #pparams[2] = pparams0[2]*1e15
+    #print(pparams[0])
+    
+    # adjust circular velocity in this halo
+    vobs['vcirc'] = vcirc_potential(observer['galcen_distance'], pparams=pparams)
+    
+    ylabel = ['Dec (deg)', 'd (kpc)', '$V_r$ (km/s)', '$\mu_\\alpha$ (mas yr$^{-1}$)', '$\mu_\delta$ (mas yr$^{-1}$)']
+    
+    plt.close()
+    fig, ax = plt.subplots(2, 5, figsize=(20,7), sharex='col', sharey='col', squeeze=False)
+    
+    for e, f in enumerate(np.arange(0.8,1.21,0.1)[::-1]):
+    
+        # create a model stream with these parameters
+        params = {'generate': {'x0': mock['x0'], 'v0': mock['v0'], 'progenitor': {'coords': 'equatorial', 'observer': mock['observer'], 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': f*mock['mi'], 'mfinal': mock['mf'], 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': mock['age'], 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': mock['obsmode'], 'wangle': mock['wangle'], 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mock['observer'], 'vobs': mock['vobs'], 'footprint': mock['footprint'], 'rotmatrix': rotmatrix}}
+        
+        stream = Stream(**params['generate'])
+        stream.generate()
+        stream.observe(**params['observe'])
+        
+        for i in range(5):
+            plt.sca(ax[0][i])
+            
+            plt.gca().invert_xaxis()
+            #plt.xlabel('R.A. (deg)')
+            plt.ylabel(ylabel[i])
+            
+            plt.plot(stream.obs[0], stream.obs[i+1], 'o', color=mpl.cm.viridis(e/5), mec='none', ms=4, label='{:.2g}$\\times$10$^3$ M$_\odot$'.format(f*mock['mi'].to(u.Msun).value*1e-3))
+            
+            if (i==0) & (e==4):
+                plt.legend(frameon=True, handlelength=0.5, fontsize='small', markerscale=1.5)
+            
+            if i==2:
+                plt.title('Age = {:.2g}'.format(mock['age'].to(u.Gyr)), fontsize='medium')
+    
+        params = {'generate': {'x0': mock['x0'], 'v0': mock['v0'], 'progenitor': {'coords': 'equatorial', 'observer': mock['observer'], 'pm_polar': False}, 'potential': potential, 'pparams': pparams, 'minit': mock['mi'], 'mfinal': mock['mf'], 'rcl': 20*u.pc, 'dr': 0., 'dv': 0*u.km/u.s, 'dt': dt, 'age': f*mock['age'], 'nstars': 400, 'integrator': 'lf'}, 'observe': {'mode': mock['obsmode'], 'wangle': mock['wangle'], 'nstars':-1, 'sequential':True, 'errors': [2e-4*u.deg, 2e-4*u.deg, 0.5*u.kpc, 5*u.km/u.s, 0.5*u.mas/u.yr, 0.5*u.mas/u.yr], 'present': [0,1,2,3,4,5], 'observer': mock['observer'], 'vobs': mock['vobs'], 'footprint': mock['footprint'], 'rotmatrix': rotmatrix}}
+        
+        stream = Stream(**params['generate'])
+        stream.generate()
+        stream.observe(**params['observe'])
+        
+        for i in range(5):
+            plt.sca(ax[1][i])
+            
+            plt.gca().invert_xaxis()
+            plt.xlabel('R.A. (deg)')
+            plt.ylabel(ylabel[i])
+            
+            plt.plot(stream.obs[0], stream.obs[i+1], 'o', color=mpl.cm.viridis(e/5), mec='none', ms=4, label='{:.2g}'.format(f*mock['age'].to(u.Gyr)))
+            
+            if (i==0) & (e==4):
+                plt.legend(frameon=True, handlelength=0.5, fontsize='small', markerscale=1.5)
+            
+            if i==2:
+                plt.title('Initial mass = {:.2g}$\\times$10$^3$ M$_\odot$'.format(mock['mi'].to(u.Msun).value*1e-3), fontsize='medium')
+        
+    plt.tight_layout(w_pad=0)
+    plt.savefig('../paper/age_mass_{}.png'.format(name))
+
 # progenitor's orbit
 
 def prog_orbit(n):

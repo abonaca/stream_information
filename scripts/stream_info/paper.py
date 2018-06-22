@@ -11,7 +11,7 @@ from .stream_info import *
 
 def all_mocks():
     """"""
-    done = get_done()
+    done = get_done()[::-1]
     N = len(done)
     
     ncol = 3
@@ -1232,3 +1232,66 @@ def orbit_properties_all(p):
     t = Table.read('../data/crb/ar_orbital_summary.fits')
     if p in t.colnames:
         Table([t['name'], t[p]]).pprint(max_lines=20)
+
+def generate_table_mockproperties():
+    """Assemble a table with properties of mock streams"""
+    
+    done = get_done()[::-1]
+    N = len(done)
+    t = Table(names=('name', 'ra', 'dec', 'd', 'vr', 'pmra', 'pmdec', 'mi', 'age', 'period', 'length', 'rperi', 'rapo', 'rcur', 'ecc'), dtype=('S10', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f'))
+    
+    torbit = Table.read('../data/crb/ar_orbital_summary.fits')
+    
+    for e, name in enumerate(done[:]):
+        mock = pickle.load(open('../data/mock_{}.params'.format(name), 'rb'))
+        to = torbit[torbit['name']==name]
+        t.add_row([name, mock['x0'][0], mock['x0'][1], mock['x0'][2], mock['v0'][0], mock['v0'][1], mock['v0'][2], mock['mi'], mock['age'], to['period']*1e-3, to['length'], to['rperi'], to['rapo'], to['rcur'], to['ecc']])
+    
+    t['ra'].unit = u.deg
+    t['dec'].unit = u.deg
+    t['d'].unit = u.kpc
+    t['vr'].unit = u.km/u.s
+    t['pmra'].unit = u.mas/u.yr
+    t['pmdec'].unit = u.mas/u.yr
+    t['mi'].unit = u.Msun
+    t['age'].unit = u.Gyr
+    t['period'].unit = u.Gyr
+    t['length'].unit = u.deg
+    t['rperi'].unit = u.kpc
+    t['rapo'].unit = u.kpc
+    t['rcur'].unit = u.kpc
+    
+    t.pprint()
+    t.write('../data/mock_parameters.fits', overwrite=True)
+    
+def latex_table_mockproperties(verbose=True):
+    """Format table of mock stream properties as a latex include"""
+    
+    t = Table.read('../data/mock_parameters.fits')
+    N = len(t)
+    print(len(t.colnames))
+    
+    fout_inp = open('../paper/mock_inputs.tex', 'w')
+    fout_orb = open('../paper/mock_orbit.tex', 'w')
+    
+    for e in range(N):
+        #sigmas = obsmodes[mode]['sig_obs'].tolist()
+        #line = '{} & {:.1f} & {:.1f} & {:.0f} & {:.1f} & {:.1f} \\\\'.format(names[e], *sigmas)
+        #line = line.replace('nan', 'N/A')
+        mi_power = np.int(np.log10(t['mi'][e]))
+        mi_factor = t['mi'][e] * 10**-mi_power
+        
+        mi_string = '$%.1f\\times 10^{%d}$'%(mi_factor, mi_power)
+        
+        line_inp = '{} & {:.3f} & {:.3f} & {:.1f} & {:.0f} & {:.1f} & {:.1f} & {:s} & {:.1f}\\\\'.format(full_name(t['name'][e]), t['ra'][e], t['dec'][e], t['d'][e], t['vr'][e], t['pmra'][e], t['pmdec'][e], mi_string, t['age'][e])
+        line_orb = '{} & {:.2f} & {:.1f} & {:.1f} & {:.1f} & {:.2f} \\\\'.format(full_name(t['name'][e]), t['period'][e], t['rperi'][e], t['rapo'][e], t['rcur'][e], t['ecc'][e])
+        
+        if verbose:
+            print(line_inp)
+            print(line_orb)
+        
+        fout_inp.write('{}\n'.format(line_inp))
+        fout_orb.write('{}\n'.format(line_orb))
+    
+    fout_inp.close()
+    fout_orb.close()
