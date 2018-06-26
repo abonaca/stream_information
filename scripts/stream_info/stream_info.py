@@ -4749,8 +4749,22 @@ def stream_orbit(name='gd1', pparams0=pparams_fid, dt=0.2*u.Myr, rotmatrix=np.ey
         rmax = np.max(r)
         e = (rmax - rmin)/(rmax + rmin)
         print(rmin, rmax, e)
-        
+    
     return stream.orbit
+
+def check_rcur():
+    """"""
+    done = get_done()[::-1]
+    N = len(done)
+    
+    t = Table.read('../data/crb/ar_orbital_summary.fits')
+
+    for i, name in enumerate(done):
+        mock = pickle.load(open('../data/mock_{}.params'.format(name), 'rb'))
+        c = coord.ICRS(ra=mock['x0'][0], dec=mock['x0'][1], distance=mock['x0'][2])
+        gal = c.transform_to(coord.Galactocentric)
+        rcur = np.sqrt(gal.x**2 + gal.y**2 + gal.z**2).to(u.kpc)
+        print(done[i], rcur, np.array(t[t['name']==name]['rcur']))
 
 # summary of parameter constraints
 

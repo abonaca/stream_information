@@ -853,6 +853,42 @@ Streams where the mock deviates from observations likely experienced a different
 \end{center}
 \end{figure}
 
+\begin{figure}
+\begin{center}
+\includegraphics[width=\textwidth]{mocks_orbits.pdf}
+\caption{Positions of mock streams (black points) and their progenitors' orbits (gray lines) in Galactocentric cylindrical coordinates.
+Mock streams in the analyzed sample span a range in average Galactocentric distance, eccentricity and current orbital phase.
+}
+\label{fig:orbitgallery}
+\end{center}
+\end{figure}
+
+Mock streams resembling observed objects, such as the ones used in this work, can be created following these steps:
+\begin{itemize}
+\item Obtain ridge points along the observed stream.
+For some streams, mean tracks have been published, usually in a polynomial form, and we used published tracks for Sangarius from \citet{grillmair2017a}, Kwando and Orinoco from \citet{grillmair2017b}, Hermus from \citet{grillmair2014} and Triangulum from \citet{bonaca2012}.
+For other streams, tracks can be obtained by directly analyzing a match-filtered map showing the stream, and we analyzed maps from \citet{bernard2016} to get positions of ATLAS, GD-1, PS1A, PS1C, PS1D, and PS1E.
+ 
+\item Fit a polynomial to the ridge points, and define a stream coordinate system with one axis along the polynomial, and the other along the normal on the polynomial.
+
+\item Query a star catalog and assign a membership probability \citep[we used PanSTARRS1,][]{ps1,schlafly2012,schlafly2011}.
+We assume that the total probability can be split in a spatial and color-magnitude component, $p = p_{spatial} \times p_{CMD}$.
+The spatial probability follows a normal distribution centered on the stream track (measured as described above), with dispersion matching the reported stream width.
+The color-magnitude probability is obtained from a matched filter based on the M13 globular cluster, and placed at the reported distance to the stream.
+
+\item Select most likely members.
+We decided to work with a hunderd stars per stream, and replaced the lowest probability members by stars with kinematic measurements, if any were available.
+Sky positions of the adopted stream members are shown in black in Figure~\ref{fig:gallery}.
+
+\item Constrain parameters of the mock stream progenitor so that it produces a stream matching the observed distribution of member stars.
+We created models of mock streams in a fiducial gravitational potential defined by the first 9 parameters listed in Table~\ref{t:model} and these parameters were kept fixed for all of the mock streams.
+The parameters we varied were: 6D position of the progenitor today, initial mass of the progenitor (we assume the progenitor loses mass at a constant rate and disappears at the present), and the age of the stream.
+We estimated these parameters following \citet{bonaca2014} and show the adopted mock streams in gray in Figure~\ref{fig:gallery}.
+\end{itemize}
+In most cases, mock streams track well the positions of their observed counterparts.
+For some, however, the fit is not particularly good; for example, we can't seem to reproduce the observed curvature of Kwando and Orinoco in our fiducial model.
+This discrepancy indicates that the true gravitational potential of the Milky Way is more complex than the simple model we adopted as our fiducial, and that just the positions of a population of streams can rule out some models \citep[cf.][]{pearson2015}.
+This work focused on assessing the precision, and not accuracy, of stream constraints, so it is acceptable that our fiducial potential is only approximately representative of the Milky Way.
 
 \begin{table}
 \begin{center}
@@ -887,33 +923,6 @@ Name & Period & $R_{peri}$ & $R_{apo}$ & $R_{cur}$& Eccentricity \\
 \label{t:mocks_orbit}
 \end{center}
 \end{table}
-
-Mock streams resembling observed objects, such as the ones used in this work, can be created following these steps:
-\begin{itemize}
-\item Obtain ridge points along the observed stream.
-For some streams, mean tracks have been published, usually in a polynomial form, and we used published tracks for Sangarius from \citet{grillmair2017a}, Kwando and Orinoco from \citet{grillmair2017b}, Hermus from \citet{grillmair2014} and Triangulum from \citet{bonaca2012}.
-For other streams, tracks can be obtained by directly analyzing a match-filtered map showing the stream, and we analyzed maps from \citet{bernard2016} to get positions of ATLAS, GD-1, PS1A, PS1C, PS1D, and PS1E.
- 
-\item Fit a polynomial to the ridge points, and define a stream coordinate system with one axis along the polynomial, and the other along the normal on the polynomial.
-
-\item Query a star catalog and assign a membership probability \citep[we used PanSTARRS1,][]{ps1,schlafly2012,schlafly2011}.
-We assume that the total probability can be split in a spatial and color-magnitude component, $p = p_{spatial} \times p_{CMD}$.
-The spatial probability follows a normal distribution centered on the stream track (measured as described above), with dispersion matching the reported stream width.
-The color-magnitude probability is obtained from a matched filter based on the M13 globular cluster, and placed at the reported distance to the stream.
-
-\item Select most likely members.
-We decided to work with a hunderd stars per stream, and replaced the lowest probability members by stars with kinematic measurements, if any were available.
-Sky positions of the adopted stream members are shown in black in Figure~\ref{fig:gallery}.
-
-\item Constrain parameters of the mock stream progenitor so that it produces a stream matching the observed distribution of member stars.
-We created models of mock streams in a fiducial gravitational potential defined by the first 9 parameters listed in Table~\ref{t:model} and these parameters were kept fixed for all of the mock streams.
-The parameters we varied were: 6D position of the progenitor today, initial mass of the progenitor (we assume the progenitor loses mass at a constant rate and disappears at the present), and the age of the stream.
-We estimated these parameters following \citet{bonaca2014} and show the adopted mock streams in gray in Figure~\ref{fig:gallery}.
-\end{itemize}
-In most cases, mock streams track well the positions of their observed counterparts.
-For some, however, the fit is not particularly good; for example, we can't seem to reproduce the observed curvature of Kwando and Orinoco in our fiducial model.
-This discrepancy indicates that the true gravitational potential of the Milky Way is more complex than the simple model we adopted as our fiducial, and that just the positions of a population of streams can rule out some models \citep[cf.][]{pearson2015}.
-This work focused on assessing the precision, and not accuracy, of stream constraints, so it is acceptable that our fiducial potential is only approximately representative of the Milky Way.
 
 \section{Robust matrix inversion}
 \label{sec:inversion}

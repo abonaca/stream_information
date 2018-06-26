@@ -83,6 +83,55 @@ def all_mocks():
     plt.tight_layout(h_pad=0, w_pad=0)
     plt.savefig('../paper/mocks.pdf')
 
+def all_mocks_orbit():
+    """Plot orbits for all mock stream progenitors"""
+
+    done = get_done()[::-1]
+    N = len(done)
+    
+    ncol = 3
+    nrow = np.int64(np.ceil(N/ncol))
+    Np = ncol * nrow
+    da = 3
+    
+    plt.close()
+    fig, ax = plt.subplots(nrow, ncol, figsize=(ncol*da + 0.2*da, nrow*da), sharex=True, sharey=True)
+    
+    for i in range(N):
+        plt.sca(ax[int(i/ncol)][i%ncol])
+        
+        orbit = stream_orbit(name=done[i])
+        R = np.linalg.norm(orbit['x'][:2].to(u.kpc), axis=0)
+        z = orbit['x'][2].to(u.kpc)
+        plt.plot(R, z, 'k-', alpha=0.3, lw=0.8, label='Orbit')
+        
+        stream = stream_model(name=done[i])
+        c = coord.ICRS(ra=stream.obs[0]*u.deg, dec=stream.obs[1]*u.deg, distance=stream.obs[2]*u.kpc)
+        gal = c.transform_to(coord.Galactocentric)
+        Rs = np.sqrt(gal.x**2 + gal.y**2).to(u.kpc)
+        zs = gal.z.to(u.kpc)
+        
+        plt.plot(Rs, zs, 'ko', ms=1, label='Mock stream')
+        
+        fancy_name = full_name(done[i])
+        txt = plt.text(0.9, 0.9, fancy_name, fontsize='small', transform=plt.gca().transAxes, ha='right', va='top')
+        txt.set_bbox(dict(facecolor='w', alpha=0.5, ec='none'))
+        
+        if i==0:
+            plt.legend(frameon=False, fontsize='small', loc=4, handlelength=0.6, markerscale=2)
+        
+        if int(i/ncol)==nrow-1:
+            plt.xlabel('R (kpc)')
+        if i%ncol==0:
+            plt.ylabel('z (kpc)')
+    
+    for i in range(N, Np):
+        plt.sca(ax[int(i/ncol)][i%ncol])
+        plt.gca().axis('off')
+    
+    plt.tight_layout(h_pad=0, w_pad=0)
+    plt.savefig('../paper/mocks_orbits.pdf')
+
 def derivative_vis(name='atlas'):
     """Plot steps in calculating a stream derivative wrt a potential parameter"""
     
