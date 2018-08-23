@@ -47,14 +47,15 @@ New York University}
 \affiliation{Flatiron Institute, Simons Foundation}
 
 \begin{abstract}\noindent % trust me
-Cold stellar streams---produced by tidal disruptions of clusters---are long-lived, coherent dynamical features in the halo of the Milky Way.
+Cold stellar streams---produced by tidal disruptions of \changes{globular} clusters---are long-lived, coherent dynamical features in the halo of the Milky Way.
 They have delivered precise information about the gravitational potential, including constraints on the shape of the dark-matter halo.
 Because of their different ages and different positions in phase space, different streams tell us different things about the Galaxy.
 Here we employ a Cram\'er--Rao (\CRLB) or Fisher-matrix approach to understand the quantitative information content in (toy versions of) eleven known streams: ATLAS, GD-1, Hermus, Kwando, Orinoco, PS1A, PS1C, PS1D, PS1E, Sangarius and Triangulum.
 This approach depends on a generative model, which we have developed previously, and which permits calculation of derivatives of predicted stream properties with respect to Galaxy and stream parameters.
 We find that in simple analytic models of the Milky Way, streams on eccentric orbits contain the most information about the halo shape.
 For each stream, there are near-degeneracies between dark-matter-halo properties and parameters of the bulge, the disk, and the stream progenitor itself, but simultaneous fitting of multiple streams will constrain all parameters at the percent level.
-At this precision, simulated dark matter halos deviate from simple analytic parametrizations, so we add an expansion of basis functions to give the gravitational potential more freedom.
+% At this precision, simulated dark matter halos deviate from simple analytic parametrizations, so we add an expansion of basis functions to give the gravitational potential more freedom.
+At this precision, simulated dark matter halos deviate from simple analytic parametrizations, so we add an expansion of basis functions \changes{as a first step in giving the gravitational potential sufficient freedom}.
 As freedom increases, the information about the halo reduces overall, and it becomes more localized to the current position of the stream.
 In the limit of high model freedom, a stellar stream appears to measure the local acceleration at its current position; this motivates thinking about future non-parametric approaches.
 The \CRLB\ formalism also permits us to assess the value of future measurements of stellar velocities, distances, and proper motions.
@@ -78,13 +79,13 @@ However, N-body simulations of galaxy formation predict more complex halos \cite
 so in \citet{bonaca2014} we tested how accurately the streams that were simulated in a cosmological dark matter halo can be modeled in static, analytic potentials.
 We found that on average, a population of streams recovers the true halo mass as well as allowed by the analytic model (which itself can be biased a few tens of percent), but that individual streams can be extremely biased, thus posing the question: what are the stellar streams actually measuring?
 
-To quantitatively address this question, we here build a framework for measuring the information content in stellar streams regarding the gravitational potential.
+To quantitatively address this question, we here build a framework for measuring the information content in \changes{cold} stellar streams regarding the gravitational potential.
 Our goals are two-fold: (1) given a simple parametric model of the Galaxy, we want to know what kind of data we need to optimally constrain it, and more formally (2) what aspects of a non-parametric gravitational potential individual streams constrain.
 We use the formalism of Cram\'er--Rao lower bounds and describe how we adopted it to stellar streams in Section~\ref{sec:method}.
 We studied a sample of Milky Way-like streams (described in Appendix~\ref{sec:streams}), assuming current or near-future observational data sets (\S\,\ref{sec:datasets}).
 In Section~\ref{sec:results} we present how well streams constrain parameters of a simple potential, both individually (\S\S\,\ref{sec:res_ind},~\ref{sec:res_comp}) and jointly (\S\,\ref{sec:res_joint}).
 Exploring these constraints in a bit more detail, we show that data of higher dimensionality provide superior constraints to data of higher precision but lower dimensionality (\S\,\ref{sec:forecast}).
-Finally, relaxing our model for the gravitational potential, we show that streams best constrain the radial acceleration at their present location (\S\S\,\ref{sec:interpretation},~\ref{sec:bfe}).
+Finally, relaxing our model for the gravitational potential \changes{to begin capturing the likely complex shape of the dark matter halo}, we show that streams best constrain the radial acceleration at their present location (\S\S\,\ref{sec:interpretation},~\ref{sec:bfe}).
 In our final section~\ref{sec:discussion}, we discuss the implications of these results for future studies endeavoring to constrain the Milky Way potential using stellar streams.
 
 
@@ -122,10 +123,11 @@ The \CRLB\ formalism can only quantify information in the context of a model, wh
 We consider cold stellar streams originating from disrupting globular clusters, which have been well-modeled with direct N-body simulations \citep[e.g.,][]{baumgardt2003, dehnen2004}.
 Follow-up studies have shown that the phase-space distribution of the resulting debris is predominantly set by properties of the gravitational potential and the orbit of the progenitor, with a weaker dependence on the internal properties of the progenitor \citep{kupper2010, kupper2012}.
 Hence, our model consists of parameters defining the gravitational potential and a 6-dimensional position of the progenitor.
+\changes{Streams originating from more massive dwarf galaxies are not directly addressed in this study, but results derived in \S\S\,\ref{sec:results},~\ref{sec:applications} should hold for streams in general as \citet{fardal2015} showed how a similar framework can be used to model streams from both globular clusters and dwarf galaxies.}
 
 To represent the global gravitational potential of the Milky Way, we use a combination of a Hernquist bulge \citep[parameterized with mass, $M_b$, and scale radius, $a_b$]{hernquist1990}, a Miyamoto-Nagai disk \citep[with parameters for disk mass, $M_d$, scale length, $a_d$, and scale height, $b_d$]{mn} and a spherical NFW halo \citep[parameterized with scale velocity, scale radius, and axis ratios $q_x=q_z=1$]{nfw}.
 We provide the fiducial values for this model in Table~\ref{t:model}, along with measurement uncertainties where available.
-This potential is similar to \texttt{MWPotential2014} \citep{galpy}, and fits a range of observed Milky Way properties. % (e.g., rotation curve, ..., cit).
+This potential is similar to \texttt{MWPotential2014} \citep{galpy}, and fits a range of observed Milky Way properties.
 
 Next, we search for orbits of globular clusters in this fiducial gravitational potential that produce stellar streams similar to those observed in the Milky Way.
 Our final sample contains analogs of ATLAS, GD-1, Hermus, Kwando, Orinoco, PS1A, PS1C, PS1D, PS1E, Sangarius and Triangulum streams, and in Appendix~\ref{sec:streams} we describe how we created streams in our fiducial gravitational potential that match properties of observed streams.
