@@ -759,4 +759,14 @@ def stream_kinematics(name='atlas'):
         t.pprint()
         t.write('../data/lib/{}_members.fits'.format(name), overwrite=True)
         
-        
+
+import stream_info
+def member_info():
+    """Print information on stream members"""
+    
+    done = stream_info.get_done()
+    print(done)
+    for stream in done:
+        t = Table.read('../data/lib/{}_members.fits'.format(stream))
+        print(stream, np.sum(np.isfinite(t['vr'])), np.sum(~np.isfinite(t['vr'])))
+    

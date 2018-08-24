@@ -851,7 +851,7 @@ All code used in this work and all results are available at \url{https://github.
 \section{Cold tidal streams in a Milky Way-like galaxy}
 \label{sec:streams}
 To study the information content in stellar streams, we generated a set of mock streams that have similar properties to the known streams in the Milky Way.
-We limited our study to eleven streams in the PanSTARRS footprint: ATLAS, GD-1, Hermus, Kwando, Orinoco, PS1A, PS1C, PS1D, PS1E, Sangarius and Triangulum.
+We limited our study to eleven streams in the PanSTARRS footprint: ATLAS \citep{koposov2014}, GD-1 \citep{grillmair2006}, Hermus \citep{grillmair2014}, Kwando, Orinoco \citep{grillmair2017b}, PS1A, PS1C, PS1D, PS1E \citep{bernard2016}, Sangarius \citep{grillmair2017a} and Triangulum \citep{bonaca2012}.
 These streams range in length from a few to more than $50^\circ$ and in Galactocentric distance from 15 to 35\,kpc, thus representing some of the diversity in the currently known population.
 
 \begin{figure}
@@ -887,21 +887,36 @@ For other streams, tracks can be obtained by directly analyzing a match-filtered
 \item Query a star catalog and assign a membership probability \citep[we used PanSTARRS1,][]{ps1,schlafly2012,schlafly2011}.
 We assume that the total probability can be split in a spatial and color-magnitude component, $p = p_{spatial} \times p_{CMD}$.
 The spatial probability follows a normal distribution centered on the stream track (measured as described above), with dispersion matching the reported stream width.
-The color-magnitude probability is obtained from a matched filter based on the M13 globular cluster, and placed at the reported distance to the stream.
+The color-magnitude probability is obtained from a matched filter based on the M13 globular cluster, and placed at the distance to the stream \changes{reported in discovery papers referenced above, and also noted in Table~\ref{t:mocks_input}}.
 
-\item Select most likely members.
-We decided to work with a hunderd stars per stream, and replaced the lowest probability members by stars with kinematic measurements, if any were available.
+\item Select \changes{a hundred} most likely members.
+\changes{In the case of GD-1, we selected 24 kinematic members from \citet{koposov2010}, and 76 members following the above procedure.
+We assign a likely distance to every member star by drawing from a normal distribution centered on the reported distance to the stream, and assuming a 20\,\% width to accommodate for any unresolved distance gradients.
+}
+% We decided to work with a hunderd stars per stream, and replaced the lowest probability members by stars with kinematic measurements, if any were available.
 Sky positions of the adopted stream members are shown in black in Figure~\ref{fig:gallery}.
 
 \item Constrain parameters of the mock stream progenitor so that it produces a stream matching the observed distribution of member stars.
-We created models of mock streams in a fiducial gravitational potential defined by the first 9 parameters listed in Table~\ref{t:model} and these parameters were kept fixed for all of the mock streams.
-The parameters we varied were: 6D position of the progenitor today, initial mass of the progenitor (we assume the progenitor loses mass at a constant rate and disappears at the present), and the age of the stream.
-We estimated these parameters following \citet{bonaca2014} and show the adopted mock streams in gray in Figure~\ref{fig:gallery}.
+We created \changes{streakline} models of mock streams in a fiducial gravitational potential defined by the first 9 parameters listed in Table~\ref{t:model} and kept these parameters fixed for all of the mock streams.
+The parameters we varied were: 6D position of the progenitor today, initial mass of the progenitor, and the age of the stream.
+\changes{For simplicity, we assume the progenitor loses mass at a constant rate and disappears at the present.
+These choices predominantly affect the density along the stream, and not the location of its track that was used in this work.
+Following \citet{bonaca2014}, we searched for likely progenitor configurations by comparing distributions of observed and model stream stars.
+}
+% We estimated these parameters following \citet{bonaca2014} and show the adopted mock streams in gray in Figure~\ref{fig:gallery}.
 \end{itemize}
-In most cases, mock streams track well the positions of their observed counterparts.
+
+\changes{The resulting set of 11 mock streams is characterized in Table~\ref{t:mocks_input}, which lists the adopted, high-likelihood values for progenitor parameters.
+In each panel, Figure~\ref{fig:gallery} compares the on-sky locations of an observed stream (black points) and an analog mock stream (gray points).
+Mock streams span a range of orbital periods and eccentricities (Table~\ref{t:mocks_orbit}).
+Each panel of Figure~\ref{fig:orbitgallery} shows the progenitor track in the Galactocentric $R-z$ plane (gray) and the present-day locations of stars in the mock stream (black).
+The diversity in observed properties of mock streams is matched by the diversity in orbits of disrupting progenitors.
+}
+
+In most cases, mock streams track well the positions of their observed counterparts \changes{(Figure~\ref{fig:gallery})}.
 For some, however, the fit is not particularly good; for example, we can't seem to reproduce the observed curvature of Kwando and Orinoco in our fiducial model.
 This discrepancy indicates that the true gravitational potential of the Milky Way is more complex than the simple model we adopted as our fiducial, and that just the positions of a population of streams can rule out some models \citep[cf.][]{pearson2015}.
-This work focused on assessing the precision, and not accuracy, of stream constraints, so it is acceptable that our fiducial potential is only approximately representative of the Milky Way.
+This work focused on assessing the precision, and not accuracy, of stream constraints, so it is acceptable that our fiducial potential is only approximately representative of the Milky Way, \changes{and that our mock streams are only approximately representative of streams observed in the Milky Way}.
 
 \begin{table}
 \begin{center}
