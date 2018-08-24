@@ -1344,3 +1344,39 @@ def latex_table_mockproperties(verbose=True):
     
     fout_inp.close()
     fout_orb.close()
+
+# data
+def check_convergence():
+    """Ensure all the Fisher matrices are invertible"""
+    
+    done = get_done()
+    potentials = ['progenitor_bary_halo', 'progenitor_bary_halo_dipole', 'progenitor_bary_halo_dipole_quad', 'progenitor_bary_halo_dipole_quad_octu']
+    obsmodes = ['fiducial6', 'fiducial4', 'fiducial3', 'desi4', 'gaia6']
+    
+    for stream in done:
+        
+        # all observing modes in the fiducial potential
+        for obsmode in obsmodes:
+            t = np.load('../data/crb/cxi_{}_{}_a1_{}.npz'.format(obsmode, stream, potentials[0]))
+            cxi = t['cxi']
+            cx = stable_inverse(cxi, verbose=False, maxiter=100)
+            N = np.shape(cxi)[0]
+            invertible = np.allclose(np.matmul(cx,cxi), np.eye(N))
+            
+            if not invertible:
+                print(stream, obsmode)
+        
+        # fiducial observing model in all potentials
+        for potential in potentials:
+            t = np.load('../data/crb/cxi_{}_{}_a1_{}.npz'.format(obsmodes[0], stream, potential))
+            cxi = t['cxi']
+            cx = stable_inverse(cxi, verbose=False, maxiter=100)
+            N = np.shape(cxi)[0]
+            invertible = np.allclose(np.matmul(cx,cxi), np.eye(N))
+            
+            if not invertible:
+                print(stream, potential)
+    
+def bundle():
+    """Create an HDF-5 bundle with all the Fisher matrices"""
+    
