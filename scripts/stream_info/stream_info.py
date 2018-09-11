@@ -1551,8 +1551,8 @@ def obsmode_name(mode):
     full_names = {'fiducial': 'Fiducial',
                   'binospec': 'Binospec',
                   'hectochelle': 'Hectochelle',
-                  'desi': 'DESI',
-                  'gaia': 'Gaia',
+                  'desi': 'DESI-like',
+                  'gaia': 'Gaia-like',
                   'exgal': 'Extragalactic'}
     keys = full_names.keys()
     
@@ -4439,7 +4439,7 @@ def comp_obsmodes(vary=['progenitor', 'bary', 'halo'], align=True, component='ha
     #errmodes = ['fiducial', 'gaia', 'desi']
     #Ndims = [6,6,4]
 
-    labels = {'desi': 'DESI', 'gaia': 'Gaia', 'fiducial': 'Fiducial'}
+    labels = {'desi': 'DESI-like', 'gaia': 'Gaia-like', 'fiducial': 'Fiducial'}
     cfrac = {'desi': 0.8, 'gaia': 0.6, 'fiducial': 0.2}
     
     cmap = {'fiducial': mpl.cm.bone, 'desi': mpl.cm.pink, 'gaia': mpl.cm.pink}
