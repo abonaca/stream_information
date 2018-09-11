@@ -1380,3 +1380,45 @@ def check_convergence():
 def bundle():
     """Create an HDF-5 bundle with all the Fisher matrices"""
     
+    done = get_done()
+    potentials = ['progenitor_bary_halo', 'progenitor_bary_halo_dipole', 'progenitor_bary_halo_dipole_quad', 'progenitor_bary_halo_dipole_quad_octu']
+    obsmodes = ['fiducial6', 'fiducial4', 'fiducial3', 'desi4', 'gaia6']
+    keys = ['cxi', 'pxi', 'dxi']
+    
+    f = h5py.File('../data/stream_information_matrices.hdf5', 'w')
+    for stream in done:
+        grp = f.create_group(stream)
+        
+        # all observing modes in the fiducial potential
+        for obsmode in obsmodes:
+            subgrp = grp.create_group(obsmode)
+            subsubgrp = subgrp.create_group(potentials[0])
+            t = np.load('../data/crb/cxi_{}_{}_a1_{}.npz'.format(obsmode, stream, potentials[0]))
+            for k in keys:
+                subsubgrp.create_dataset(k, data=t[k])
+            
+            # fiducial observing model in all potentials
+            if obsmode=='fiducial6':
+                for potential in potentials[1:]:
+                    subsubgrp = subgrp.create_group(potential)
+                    t = np.load('../data/crb/cxi_{}_{}_a1_{}.npz'.format(obsmode, stream, potential))
+                    for k in keys:
+                        subsubgrp.create_dataset(k, data=t[k])
+    
+    f.flush()
+    f.close()
+
+def check_hdf5():
+    """"""
+    
+    f = h5py.File('../data/stream_information_matrices.hdf5', 'r')
+    streams = f.keys()
+    
+    for s in streams[:1]:
+        obsmodes = f[s].keys()
+        for o in obsmodes:
+            potentials = f[s][o].keys()
+            for p in potentials:
+                print(o, p, f[s][o][p]['cxi'])
+    
+    f.close()
