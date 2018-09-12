@@ -1384,6 +1384,7 @@ def bundle():
     potentials = ['progenitor_bary_halo', 'progenitor_bary_halo_dipole', 'progenitor_bary_halo_dipole_quad', 'progenitor_bary_halo_dipole_quad_octu']
     obsmodes = ['fiducial6', 'fiducial4', 'fiducial3', 'desi4', 'gaia6']
     keys = ['cxi', 'pxi', 'dxi']
+    titles = ['Inverse of a stream Fisher information matrix (cxi)', 'Prior contribution to the stream information matrix (pxi, such that cxi = pxi + dxi)', 'Data contribution to the stream information matrix (dxi, such that cxi = pxi + dxi)']
     
     f = h5py.File('../data/stream_information_matrices.hdf5', 'w')
     for stream in done:
@@ -1394,22 +1395,24 @@ def bundle():
             subgrp = grp.create_group(obsmode)
             subsubgrp = subgrp.create_group(potentials[0])
             t = np.load('../data/crb/cxi_{}_{}_a1_{}.npz'.format(obsmode, stream, potentials[0]))
-            for k in keys:
+            for e, k in enumerate(keys):
                 subsubgrp.create_dataset(k, data=t[k])
+                subsubgrp[k].attrs['title'] = titles[e]
             
             # fiducial observing model in all potentials
             if obsmode=='fiducial6':
                 for potential in potentials[1:]:
                     subsubgrp = subgrp.create_group(potential)
                     t = np.load('../data/crb/cxi_{}_{}_a1_{}.npz'.format(obsmode, stream, potential))
-                    for k in keys:
+                    for e, k in enumerate(keys):
                         subsubgrp.create_dataset(k, data=t[k])
+                        subsubgrp[k].attrs['title'] = titles[e]
     
     f.flush()
     f.close()
 
 def check_hdf5():
-    """"""
+    """Check HDF5 file looks ok"""
     
     f = h5py.File('../data/stream_information_matrices.hdf5', 'r')
     streams = f.keys()
@@ -1419,6 +1422,6 @@ def check_hdf5():
         for o in obsmodes:
             potentials = f[s][o].keys()
             for p in potentials:
-                print(o, p, f[s][o][p]['cxi'])
+                print(o, p, f[s][o][p]['cxi'], f[s][o][p]['dxi'].attrs['title'])
     
     f.close()
